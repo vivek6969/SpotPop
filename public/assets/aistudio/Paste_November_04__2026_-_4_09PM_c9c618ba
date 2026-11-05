@@ -1,0 +1,1156 @@
+# BUILD SPOTPOP — A COMPLETE, PRODUCTION-READY SOCIAL CANVAS PLATFORM
+
+You are acting as a senior product designer, full-stack engineer, software architect, database engineer, security engineer and QA specialist.
+
+Your task is to design and build **SPOTPOP**, a complete, functional, modern social platform centred around one enormous, shared, interactive digital canvas.
+
+This is not a conventional social network. It is not a blog, marketplace, portfolio website or static landing page.
+
+It is a public internet canvas where people purchase small pieces of space, personalise them, publish them and share them anywhere.
+
+The experience should feel like a real, polished consumer internet product: playful, addictive, colourful, social and extremely easy to use.
+
+Build the actual application, including its frontend, backend, database, authentication, payments, image storage, sharing functionality, administration and PWA support.
+
+Do not stop after generating a visual prototype.
+
+---
+
+# 1. PRODUCT IDENTITY
+
+**Product name:** SPOTPOP
+
+**Core concept:** Your little space on the internet.
+
+**Brand personality:**
+- Playful, expressive and internet-native.
+- Colourful without looking childish.
+- Social without copying Instagram.
+- Fun, creative and highly shareable.
+- Professional enough to feel like a serious technology startup.
+
+**Primary tagline:** Claim your spot on the internet.
+
+**Core user journey:**
+
+OPEN SPOTPOP → EXPLORE THE CANVAS → DISCOVER PEOPLE'S CREATIONS → CREATE YOUR OWN SPOT → SHARE IT WITH THE WORLD.
+
+The canvas is the product. Everything else supports the canvas.
+
+---
+
+# 2. NON-NEGOTIABLE PRODUCT RULES
+
+These rules must be followed throughout development.
+
+1. The main homepage must immediately display the shared public canvas.
+2. Do not put a conventional hero banner above the canvas.
+3. Do not create a pixel-grid marketplace.
+4. Do not use a fridge metaphor.
+5. Do not make the product look like a generic AI-generated landing page.
+6. Do not use generic dashboard layouts.
+7. Do not copy Instagram's interface.
+8. Do not create unnecessary pages or complicated navigation.
+9. Do not hide the canvas behind a signup wall.
+10. Visitors must be able to explore public creations without purchasing.
+11. Only two purchase products exist: Mini Pop ₹29 and Big Pop ₹99.
+12. Never fabricate purchases, users, activity, ratings or statistics.
+13. Never pretend that a payment succeeded without verifying it on the server.
+14. Do not make important functionality decorative or non-functional.
+15. Every major interaction must work on desktop and mobile.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+Build using the following architecture unless a genuine technical blocker requires an alternative. Explain any proposed change before making it.
+
+## Frontend
+- React
+- Vite
+- TypeScript
+- Tailwind CSS
+- PixiJS for the main interactive canvas
+- pixi-viewport for zooming, dragging, panning and pinch gestures
+- React Router only where necessary; the primary experience should remain one page.
+- A lightweight state management solution such as Zustand.
+- vite-plugin-pwa for installable PWA functionality.
+
+## Backend
+- Cloudflare Workers for API endpoints.
+- Cloudflare D1 for relational data.
+- Cloudflare R2 for uploaded images and generated media.
+- Cloudflare Turnstile or equivalent anti-bot protection.
+- Server-side payment verification.
+
+## Payments
+- Razorpay integration for Indian customers.
+- Support UPI, cards and other methods provided by Razorpay.
+- Use test mode during development.
+- Never store card details.
+- Never trust payment success information supplied only by the browser.
+
+## Hosting
+Prepare the application for Cloudflare Pages and Workers deployment.
+
+Keep the code portable and avoid unnecessary vendor lock-in.
+
+If Replit requires a different development configuration, make the smallest necessary adjustments while preserving the intended architecture.
+
+---
+
+# 4. THE MAIN CANVAS — THE HEART OF SPOTPOP
+
+This is the most important part of the entire project.
+
+The homepage should open directly into a large, populated-looking shared canvas.
+
+It should feel like entering an enormous living internet world filled with people's creativity.
+
+## Canvas appearance
+
+The canvas contains individual creations called SPOTS.
+
+Each SPOT is an independent visual object placed on a large shared coordinate-based surface.
+
+A SPOT can contain:
+- Text.
+- Images.
+- Drawings.
+- Stickers.
+- Emojis.
+- Signatures.
+- Personal messages.
+- Memes.
+- Illustrations.
+- Personal artwork.
+
+There should be a diverse collage of creations.
+
+Some spots are tiny. Some are larger. Some are colourful. Some are minimal. Some contain photographs. Some contain drawings.
+
+The canvas should feel organic and visually interesting rather than like a rigid spreadsheet.
+
+## Canvas behaviour
+
+Implement:
+
+- Smooth drag-to-pan.
+- Mouse-wheel zoom.
+- Zoom buttons.
+- Touch-based pinch-to-zoom.
+- Touch-based drag.
+- Double-click zoom.
+- Fit-to-screen.
+- Fullscreen mode.
+- Minimap navigation.
+- Smooth movement and transitions.
+- Click/tap to open a SPOT.
+- Search for a specific SPOT.
+- Deep linking to individual SPOTS.
+
+The canvas must handle large numbers of objects efficiently.
+
+Use viewport culling, efficient rendering, texture caching and lazy loading where appropriate.
+
+Do not render thousands of complex React components directly.
+
+Use PixiJS for the rendering engine and React for the surrounding interface.
+
+## Initial viewport
+
+When somebody opens SPOTPOP, they should immediately understand that this is a giant public canvas.
+
+The first screen should contain:
+
+1. SPOTPOP branding.
+2. Compact navigation.
+3. Optional live activity information based on actual data.
+4. A large visible portion of the canvas.
+5. Zoom and navigation controls.
+6. A clear purchase action.
+
+Do not put large marketing paragraphs in front of the canvas.
+
+## Canvas data
+
+Every SPOT must have:
+- Unique ID.
+- Owner ID.
+- Public slug.
+- Position X and Y.
+- Width and height.
+- Shape.
+- Background.
+- Content.
+- Creation timestamp.
+- Publication status.
+- Purchase tier.
+- Moderation status.
+
+The canvas should load actual published spots from the database.
+
+Create a small set of clearly labelled demonstration records for development if the database is initially empty. Never represent demonstration data as real customers or purchases.
+
+---
+
+# 5. TWO PRODUCTS — ONLY TWO
+
+The entire monetisation system must revolve around these two products.
+
+## PRODUCT A: MINI POP — ₹29
+
+A small, affordable personal space.
+
+Features:
+- Small fixed-size frame.
+- Text creation.
+- Name or nickname.
+- Selectable fonts.
+- Text colour.
+- Background colour and patterns.
+- Border/frame styles.
+- Limited stickers.
+- Emojis.
+- Basic alignment controls.
+- Preview before publishing.
+
+Restrictions:
+- No image upload.
+- No freehand drawing.
+- No multiple independent image layers.
+- Limited content capacity.
+
+The Mini Pop editor should be extremely easy to use.
+
+A customer should be able to create one in less than a minute.
+
+## PRODUCT B: BIG POP — ₹99
+
+A larger, more expressive space.
+
+Features:
+- Larger area than Mini Pop.
+- Multiple predefined shapes.
+- Image upload.
+- Multiple text elements.
+- Multiple stickers and emojis.
+- More background options.
+- More frame options.
+- Freehand drawing.
+- Signature tool.
+- Graffiti-style drawing.
+- Layer arrangement.
+- Drag, resize and rotate supported elements.
+- Richer personalisation.
+- Preview before publishing.
+
+Offer a small number of predefined size and shape choices. Make sure all sizes have a consistent and predictable pricing model.
+
+Do not introduce additional paid tiers, subscriptions or hidden upgrades.
+
+## Product comparison
+
+Clearly communicate the difference between Mini Pop and Big Pop.
+
+The customer should understand what they receive before paying.
+
+Display prices prominently:
+- Mini Pop — ₹29
+- Big Pop — ₹99
+
+Prices must be centrally configurable.
+
+Do not hardcode prices in multiple unrelated components.
+
+---
+
+# 6. SPOT CREATION EXPERIENCE
+
+Build a complete creation flow.
+
+The user journey:
+
+1. Click "Add Your Spot".
+2. Choose Mini Pop or Big Pop.
+3. Open the relevant editor.
+4. Personalise the SPOT.
+5. Preview the final result.
+6. Enter display name.
+7. Continue to payment.
+8. Complete payment.
+9. Server verifies payment.
+10. Create and publish the SPOT.
+11. Show an exciting reveal animation.
+12. Generate a shareable URL and social media assets.
+
+## Mini Pop editor
+
+Create a clean, simple editing interface.
+
+Include:
+- Text field.
+- Font selector.
+- Font size.
+- Text colour.
+- Background selector.
+- Frame selector.
+- Sticker picker.
+- Emoji picker.
+- Alignment options.
+- Live preview.
+
+## Big Pop editor
+
+Create a more powerful creative editor.
+
+Include:
+- Image upload.
+- Image crop.
+- Multiple text elements.
+- Drag-and-drop placement.
+- Text styling.
+- Background controls.
+- Sticker library.
+- Emoji library.
+- Drawing canvas.
+- Eraser.
+- Undo and redo.
+- Layer ordering.
+- Rotate and resize.
+- Preview.
+
+The editor must feel like a consumer creative application, not a complicated professional design tool.
+
+Make the interface responsive.
+
+## Upload requirements
+
+- Validate file type.
+- Validate file size.
+- Restrict unsupported file formats.
+- Compress images.
+- Generate thumbnails.
+- Strip unnecessary metadata.
+- Store original and processed files appropriately.
+- Prevent executable uploads.
+- Protect against malicious file content.
+- Use secure storage.
+- Never expose private storage credentials.
+
+---
+
+# 7. SPOT PLACEMENT
+
+Every purchased SPOT must receive a unique location on the public canvas.
+
+For the initial release:
+
+- Automatically allocate the next available valid position.
+- Prevent overlap between spots.
+- Allow the system to support different spot sizes.
+- Keep a consistent gap between objects.
+- Store coordinates in the database.
+- Never overwrite an existing spot.
+- Preserve existing placements when new spots are purchased.
+
+Create the placement system so it can later support optional user-selected placement without redesigning the database.
+
+The canvas must remain visually interesting as the number of SPOTS grows.
+
+---
+
+# 8. INDIVIDUAL SPOT PAGES
+
+Every published SPOT must have its own public URL.
+
+Example:
+
+spotpop.com/s/unique-spot-id
+
+Opening this URL should show:
+- The selected SPOT.
+- Creator display name.
+- Creation date.
+- Share controls.
+- A link to explore the full canvas.
+- A clear invitation to create a personal SPOT.
+
+The URL should work when shared externally.
+
+Use proper metadata for social previews, including Open Graph and Twitter/X cards.
+
+Anyone should be able to view a public SPOT.
+
+Only its authenticated owner should be allowed to edit it.
+
+Never allow a visitor to modify someone else's SPOT.
+
+---
+
+# 9. VIRAL SHARING SYSTEM
+
+Sharing is one of the most important growth mechanisms.
+
+Every published SPOT should have a share kit.
+
+Generate:
+
+1. Instagram Story image — 1080 × 1920.
+2. Instagram square image — 1080 × 1080.
+3. Portrait social post — 1080 × 1350.
+4. WhatsApp Status image — 1080 × 1920.
+5. Shareable public URL.
+6. QR code.
+
+The share image should display:
+- The actual SPOT.
+- Creator name.
+- SPOTPOP branding.
+- A short message such as "I claimed my spot on SPOTPOP."
+- A QR code or clear URL.
+
+Use the actual user's creation, not a generic template image.
+
+Implement:
+- Native share API where supported.
+- Download image.
+- Copy link.
+- WhatsApp share.
+- Share through device-supported apps.
+
+Sharing must work even if the viewer did not purchase a SPOT.
+
+Anyone can share publicly available SPOTS.
+
+Do not force users to install the app to view a shared link.
+
+---
+
+# 10. USER ACCOUNTS
+
+Visitors should be able to explore the canvas without creating an account.
+
+Accounts should be required for purchasing and managing ownership.
+
+Implement:
+- Email registration.
+- Login.
+- Secure password hashing.
+- Password reset.
+- Email verification.
+- Secure session management.
+- Logout.
+- Account profile.
+
+A user profile should contain:
+- Display name.
+- Username.
+- Profile picture, optional.
+- Owned SPOTS.
+- Public SPOT links.
+- Account creation date.
+
+Users must be able to manage their own SPOTS.
+
+One account should be able to purchase multiple SPOTS.
+
+Build the database to support multiple purchases per account.
+
+---
+
+# 11. PAYMENTS AND PURCHASE SECURITY
+
+Integrate Razorpay.
+
+Purchase flow:
+
+1. Customer selects product.
+2. Server creates a pending order.
+3. Razorpay checkout opens.
+4. Customer completes payment.
+5. Backend verifies payment signature.
+6. Backend confirms the order.
+7. Backend creates the SPOT entitlement.
+8. Customer can publish their creation.
+9. The system generates the public URL.
+
+Implement:
+- Order IDs.
+- Payment IDs.
+- Payment status.
+- Amount verification.
+- Currency verification.
+- Signature verification.
+- Webhook verification.
+- Duplicate webhook protection.
+- Idempotent order processing.
+- Failed-payment handling.
+- Payment retry.
+- Refund status tracking.
+
+Never create a paid SPOT merely because the browser says payment succeeded.
+
+The amount must always be verified against the server's product configuration.
+
+Provide clear error messages.
+
+Build and test using Razorpay test credentials first.
+
+Do not use live payment credentials in source code.
+
+---
+
+# 12. SOCIAL FEATURES
+
+Build the foundation for a social experience.
+
+Include:
+
+- Public creator names.
+- Public SPOT viewing.
+- Search.
+- Recently published SPOTS.
+- Featured SPOTS.
+- Trending SPOTS.
+- Popular creators.
+- Activity feed.
+
+For the first release, keep these features lightweight.
+
+Likes and public rankings should be optional configuration features, not hard dependencies.
+
+Do not introduce complicated messaging, followers, or a full social network in the initial release.
+
+The shared canvas must remain the central experience.
+
+---
+
+# 13. SEARCH AND DISCOVERY
+
+Create a search interface that can find:
+
+- SPOT ID.
+- Public username.
+- Creator name.
+- Text inside publicly searchable SPOTS.
+
+When a user searches, show relevant results and let them jump directly to the SPOT on the canvas.
+
+Create discovery filters:
+- Latest.
+- Featured.
+- Trending.
+- Random.
+
+Only show trending and popularity rankings when supported by genuine activity data.
+
+---
+
+# 14. DESIGN SYSTEM
+
+This is extremely important.
+
+I do not want generic AI-generated design.
+
+I want the application to look like a real, professionally designed consumer internet product.
+
+Design inspiration:
+- The visual polish of Instagram.
+- The simplicity of modern consumer apps.
+- The expressive creativity of internet communities.
+- The playful personality of modern social platforms.
+
+Do not copy Instagram layouts or branding.
+
+## Visual direction
+
+Use:
+- Clean typography.
+- Consistent spacing.
+- Strong visual hierarchy.
+- Carefully selected colours.
+- Restrained accent colours.
+- Clear iconography.
+- Precise alignment.
+- Natural shadows.
+- Subtle transitions.
+- High-quality empty states.
+- Realistic loading states.
+
+The canvas itself should be colourful and chaotic.
+
+The surrounding application UI should be clean and controlled.
+
+Do not make every element rounded.
+
+Do not use:
+- Excessive neon glow.
+- Random gradients.
+- Generic glowing purple buttons.
+- Overused glassmorphism.
+- Huge unnecessary cards.
+- Random decorative icons.
+- Excessive animation.
+- Inconsistent button styles.
+- Default-looking AI-generated dashboards.
+
+Every component must have a consistent design language.
+
+Create a proper design system with:
+- Typography scale.
+- Colour tokens.
+- Spacing scale.
+- Border-radius rules.
+- Button variants.
+- Input styles.
+- Modal styles.
+- Icon sizing.
+- Responsive breakpoints.
+
+---
+
+# 15. MOBILE-FIRST EXPERIENCE
+
+SPOTPOP must feel like a native mobile app even when opened in a browser.
+
+Prioritise mobile usability.
+
+On mobile:
+
+- Canvas fills most of the screen.
+- Support pinch-to-zoom.
+- Support touch-based panning.
+- Make spots easy to tap.
+- Keep controls compact.
+- Use a clear bottom purchase bar.
+- Keep navigation minimal.
+- Prevent accidental browser scrolling while interacting with the canvas.
+- Make editors comfortable on small screens.
+- Ensure image uploads work from mobile devices.
+
+On desktop:
+
+- Use the full browser viewport.
+- Provide smooth mouse navigation.
+- Use a minimap.
+- Allow fullscreen canvas mode.
+- Use hover states appropriately.
+
+Do not simply shrink the desktop design for mobile.
+
+Create a genuinely responsive experience.
+
+---
+
+# 16. PWA — INSTALLABLE APP EXPERIENCE
+
+Make SPOTPOP a proper Progressive Web App.
+
+Implement:
+- Web app manifest.
+- App name.
+- Short name.
+- Icons.
+- Theme colour.
+- Standalone display mode.
+- Install prompt.
+- Service worker.
+- App-shell caching.
+- Offline fallback.
+- Appropriate caching strategies.
+- Update notification when a new version is available.
+
+The canvas must clearly communicate when it cannot load fresh data offline.
+
+Do not falsely present stale canvas data as live.
+
+Ensure the app can be installed on supported Android and iOS devices.
+
+Keep the architecture ready for a future Capacitor wrapper if native app stores become important.
+
+---
+
+# 17. ADMIN PANEL
+
+Create a secure admin area.
+
+Only authorised administrators can access it.
+
+Admin functionality:
+
+## Dashboard
+- Total registered users.
+- Total paid purchases.
+- Total published SPOTS.
+- Mini Pop sales.
+- Big Pop sales.
+- Gross revenue.
+- Failed payments.
+- Pending payments.
+- Recent activity.
+
+All numbers must come from the database.
+
+## SPOT management
+- View all SPOTS.
+- Search by ID or username.
+- View content.
+- Hide a SPOT.
+- Unpublish a SPOT.
+- Restore a SPOT.
+- Review reported content.
+
+## User management
+- Search users.
+- View user accounts.
+- Suspend accounts.
+- Review ownership.
+- Handle reports.
+
+## Payment management
+- View orders.
+- View payment status.
+- Search payment IDs.
+- View refunds.
+- Export transaction data.
+
+## Moderation
+- Review flagged SPOTS.
+- Remove prohibited content.
+- Record moderation actions.
+- Maintain an audit log.
+
+Do not create an insecure default admin account.
+
+Use a secure first-admin provisioning process.
+
+---
+
+# 18. MODERATION AND LEGAL PROTECTION
+
+SPOTPOP is a public user-generated-content platform.
+
+Build moderation into the product from the beginning.
+
+Include:
+- Report SPOT functionality.
+- Report reasons.
+- Admin review queue.
+- Content removal.
+- User suspension.
+- Upload restrictions.
+- Rate limiting.
+- Anti-spam protection.
+- Abuse prevention.
+- Audit logs.
+
+Prohibit:
+- Illegal content.
+- Harassment.
+- Threats.
+- Hate content.
+- Non-consensual intimate imagery.
+- Child sexual abuse material.
+- Impersonation.
+- Doxxing.
+- Personal information exposed without consent.
+- Copyright-infringing material.
+- Malware or malicious links.
+
+Create pages or overlays for:
+- Terms of Service.
+- Privacy Policy.
+- Refund Policy.
+- Content Policy.
+- Contact and support.
+
+Do not invent legal claims or promise permanent hosting without a defined policy.
+
+Make it clear that published SPOTS are publicly visible.
+
+---
+
+# 19. DATABASE ARCHITECTURE
+
+Design a proper relational database.
+
+Create tables for:
+
+- users
+- profiles
+- spots
+- spot_content
+- spot_assets
+- products
+- orders
+- payments
+- payment_webhooks
+- sessions
+- reports
+- moderation_actions
+- activity_events
+- admin_users
+- system_settings
+
+Use:
+- Primary keys.
+- Foreign keys.
+- Indexes.
+- Unique constraints.
+- Appropriate timestamps.
+- Database migrations.
+- Transactional operations where needed.
+
+Store structured SPOT content in a validated JSON format where appropriate.
+
+Do not store large image files directly inside D1.
+
+Use R2 for assets.
+
+Create seed data only for development.
+
+---
+
+# 20. SECURITY
+
+Treat security as a core feature.
+
+Implement:
+- Server-side validation.
+- Input sanitisation.
+- Authentication checks.
+- Authorisation checks.
+- Secure cookies.
+- CSRF protection where applicable.
+- Rate limiting.
+- Secure payment verification.
+- File upload validation.
+- SQL injection protection.
+- XSS protection.
+- Secrets management.
+- Admin access protection.
+- Ownership verification.
+- Webhook signature validation.
+
+Never put API secrets in frontend code.
+
+Never trust client-provided ownership IDs.
+
+Never trust client-provided prices.
+
+Never allow users to manipulate canvas coordinates to overwrite other SPOTS.
+
+---
+
+# 21. PERFORMANCE AND SCALABILITY
+
+SPOTPOP should be designed to grow.
+
+The canvas could eventually contain hundreds of thousands of SPOTS.
+
+Plan for that possibility.
+
+Implement:
+- Spatial indexing or another efficient visibility-query strategy.
+- Viewport-based loading.
+- Efficient canvas rendering.
+- Lazy-loaded images.
+- Thumbnail generation.
+- Image compression.
+- Caching.
+- Pagination.
+- Database indexes.
+- API response limits.
+- Request throttling.
+- Efficient asset delivery.
+
+Do not fetch every SPOT and every original image on initial page load.
+
+Load only what is necessary for the current viewport.
+
+Keep the canvas smooth on average Android phones.
+
+Avoid unnecessary dependencies.
+
+---
+
+# 22. ANALYTICS AND BUSINESS METRICS
+
+Track important events:
+
+- Homepage visits.
+- Canvas interactions.
+- Zoom and pan activity.
+- SPOT views.
+- Purchase button clicks.
+- Editor starts.
+- Checkout starts.
+- Successful purchases.
+- Failed purchases.
+- Published SPOTS.
+- Share button clicks.
+- Share downloads.
+- Registration conversions.
+
+Build an admin analytics view.
+
+Measure the funnel:
+
+VISITOR → CANVAS EXPLORER → EDITOR → CHECKOUT → PURCHASE → PUBLISHED SPOT → SHARED SPOT.
+
+Do not collect unnecessary personal data.
+
+Provide a privacy-conscious analytics approach.
+
+---
+
+# 23. ERROR HANDLING AND USER EXPERIENCE
+
+Every important action needs a proper response.
+
+Create:
+- Loading indicators.
+- Skeleton states.
+- Empty states.
+- Error states.
+- Success confirmations.
+- Retry options.
+- Network error handling.
+- Payment failure handling.
+- Upload failure handling.
+- Authentication expiry handling.
+
+The application must never silently fail.
+
+Do not leave buttons that do nothing.
+
+If a feature is not implemented, label it as unavailable during development rather than pretending it works.
+
+---
+
+# 24. DEVELOPMENT PHASES
+
+Do not attempt to generate the entire platform in one uncontrolled operation.
+
+Build it in phases, but maintain one coherent application architecture.
+
+## PHASE 1 — FOUNDATION AND CANVAS
+
+Build:
+- Project setup.
+- Design system.
+- Main homepage.
+- PixiJS canvas.
+- Zoom and pan.
+- Responsive interface.
+- Database connection.
+- Development seed spots.
+
+Acceptance criteria:
+- Homepage opens directly into the canvas.
+- Canvas works on mobile and desktop.
+- Users can explore and open spots.
+- Canvas does not feel like a generic dashboard.
+
+## PHASE 2 — CREATION SYSTEM
+
+Build:
+- Mini Pop editor.
+- Big Pop editor.
+- Text editing.
+- Image upload.
+- Stickers and emojis.
+- Drawing.
+- Preview.
+- Spot placement.
+- Database persistence.
+
+Acceptance criteria:
+- Users can create and save both product types.
+- Their content survives refresh.
+- Spots have unique IDs and coordinates.
+- Different users cannot overwrite each other's creations.
+
+## PHASE 3 — AUTHENTICATION AND PAYMENTS
+
+Build:
+- Registration.
+- Login.
+- User profiles.
+- Razorpay test integration.
+- Secure order creation.
+- Payment verification.
+- Purchase history.
+- Entitlement system.
+
+Acceptance criteria:
+- Payment success is verified by the backend.
+- Failed payments do not create paid spots.
+- Duplicate callbacks do not duplicate purchases.
+
+## PHASE 4 — PUBLISHING AND SHARING
+
+Build:
+- Publishing.
+- Public spot URLs.
+- Social preview metadata.
+- Share images.
+- QR codes.
+- WhatsApp sharing.
+- Native sharing.
+- Download functionality.
+
+Acceptance criteria:
+- A published spot can be opened by another person.
+- Sharing works without an account.
+- Social images show the actual user's creation.
+
+## PHASE 5 — DISCOVERY AND SOCIAL FEATURES
+
+Build:
+- Search.
+- Latest spots.
+- Featured spots.
+- Trending foundation.
+- Public profiles.
+- Activity feed.
+- Reporting.
+
+Acceptance criteria:
+- Users can discover existing spots.
+- Search results navigate to the correct canvas location.
+- Moderation works.
+
+## PHASE 6 — ADMIN AND OPERATIONS
+
+Build:
+- Admin authentication.
+- Admin dashboard.
+- User management.
+- Spot management.
+- Payment management.
+- Moderation queue.
+- Analytics.
+- Audit logs.
+
+Acceptance criteria:
+- Admin can safely moderate content.
+- Admin metrics are database-backed.
+- Unauthorised users cannot access admin functions.
+
+## PHASE 7 — PWA AND PRODUCTION READINESS
+
+Build:
+- PWA manifest.
+- Service worker.
+- Install support.
+- Offline fallback.
+- Production configuration.
+- Cloudflare deployment setup.
+- Performance optimisation.
+- Security checks.
+
+Acceptance criteria:
+- Application can be installed on supported devices.
+- Production build succeeds.
+- Core functionality works after deployment.
+- No secrets are exposed.
+
+---
+
+# 25. TESTING REQUIREMENTS
+
+Create meaningful tests.
+
+Test:
+- Registration and login.
+- Ownership permissions.
+- Mini Pop creation.
+- Big Pop creation.
+- Image uploads.
+- Canvas placement.
+- Canvas navigation.
+- Payment verification.
+- Payment failure.
+- Duplicate payment webhooks.
+- Public spot links.
+- Sharing.
+- Admin access.
+- Moderation.
+- Mobile responsiveness.
+
+Use unit tests, integration tests and browser-based end-to-end tests where appropriate.
+
+Run the tests after implementing each major phase.
+
+Fix failures before moving forward.
+
+---
+
+# 26. FINAL PRODUCT QUALITY
+
+I want a real product that I could launch publicly.
+
+Do not deliver:
+- A static HTML mockup.
+- A non-functional Figma-style clone.
+- A homepage with fake buttons.
+- A canvas containing hardcoded fake customer data.
+- A fake payment-success screen.
+- An admin dashboard with fabricated statistics.
+- A frontend-only project pretending to have a backend.
+
+Deliver:
+- Complete source code.
+- Working frontend.
+- Working backend.
+- Database schema and migrations.
+- Authentication.
+- Payment integration in test mode.
+- R2 upload integration.
+- Canvas engine.
+- PWA functionality.
+- Admin system.
+- Tests.
+- Environment variable documentation.
+- Cloudflare deployment instructions.
+
+Maintain clean, modular, readable code.
+
+Do not put the entire application into one giant file.
+
+Do not silently remove features to make development easier.
+
+If something cannot be completed because an external account or credential is missing, implement the integration properly, provide clear setup instructions and continue with the rest of the project.
+
+---
+
+# 27. YOUR FIRST ACTION
+
+Before writing large amounts of code:
+
+1. Analyse the complete product requirements.
+2. Design the architecture.
+3. Identify technical risks.
+4. Define the database schema.
+5. Define the canvas rendering strategy.
+6. Create the project structure.
+7. Create a development roadmap.
+8. Begin Phase 1 immediately.
+
+Do not spend the entire session discussing architecture.
+
+Start building the actual application.
+
+Make sensible implementation decisions without repeatedly asking me questions.
+
+However, do not make irreversible product decisions that conflict with the requirements.
+
+**The most important instruction: SPOTPOP must feel like a living, enormous, shared internet canvas—not a normal website with a canvas embedded inside it.**
+
+When somebody opens it, the first reaction should be:
+
+"WHAT IS THIS? I WANT MY OWN SPOT."
+
+Build that product.

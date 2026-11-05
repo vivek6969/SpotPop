@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#0C0D14"/>
+  <defs>
+    <linearGradient id="crownGrad" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE600"/>
+      <stop offset="50%" stop-color="#FFB800"/>
+      <stop offset="100%" stop-color="#FF8A00"/>
+    </linearGradient>
+    <linearGradient id="popGrad" x1="120" y1="260" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF2E93"/>
+      <stop offset="100%" stop-color="#D9006C"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#FF2E93" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Crown Emblem -->
+  <path d="M128 352L100 176L196 244L256 128L316 244L412 176L384 352H128Z" fill="url(#crownGrad)" stroke="#FFE873" stroke-width="8" stroke-linejoin="round"/>
+  
+  <!-- Crown Jewels -->
+  <circle cx="100" cy="168" r="14" fill="#FFE873"/>
+  <circle cx="256" cy="120" r="16" fill="#FFE873"/>
+  <circle cx="412" cy="168" r="14" fill="#FFE873"/>
+
+  <!-- SpotPop Dot Sparkle -->
+  <circle cx="380" cy="330" r="28" fill="url(#popGrad)" filter="url(#glow)"/>
+  <circle cx="380" cy="330" r="12" fill="#FFFFFF"/>
+</svg>

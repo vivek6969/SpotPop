@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Typography Scale */
+.font-outfit { font-family: 'Outfit', sans-serif; }
+.font-caveat { font-family: 'Caveat', cursive; }
+.font-marker { font-family: 'Permanent Marker', cursive; }
+.font-space { font-family: 'Space Mono', monospace; }
+.font-dancing { font-family: 'Dancing Script', cursive; }
+.font-pacifico { font-family: 'Pacifico', cursive; }
+.font-shadows { font-family: 'Shadows Into Light', cursive; }
+.font-gloria { font-family: 'Gloria Hallelujah', cursive; }
+.font-fredoka { font-family: 'Fredoka', sans-serif; }
+.font-comfortaa { font-family: 'Comfortaa', cursive; }
+.font-bungee { font-family: 'Bungee', cursive; }
+.font-bebas { font-family: 'Bebas Neue', cursive; }
+.font-creepster { font-family: 'Creepster', cursive; }
+.font-pixel { font-family: 'Press Start 2P', monospace; }
+.font-vt323 { font-family: 'VT323', monospace; }
+.font-playfair { font-family: 'Playfair Display', serif; }
+.font-cinzel { font-family: 'Cinzel', serif; }
+.font-abril { font-family: 'Abril Fatface', cursive; }
+
+/* Custom canvas animations & scrollbars */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float-slow 4s ease-in-out infinite;
+}
+
+/* Hide scrollbars for smooth UI controls */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

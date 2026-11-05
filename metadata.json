@@ -1,0 +1,6 @@
+{
+  "name": "SpotPop",
+  "description": "Your little space on the internet. An enormous shared interactive digital canvas to claim your spot, customize it with artwork, stickers and photos, and share it with the world.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
