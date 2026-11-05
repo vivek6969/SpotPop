@@ -2945,6 +2945,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                             style={{ backgroundColor: c }}
                           />
                         ))}
+                      </div>
                     </div>
                   )}
 

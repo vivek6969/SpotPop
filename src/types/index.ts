@@ -134,10 +134,12 @@ export interface SpotLayer {
   rotation: number;
   opacity: number;
   blendMode?: BlendMode;
-  zIndex: number;
+  zIndex?: number;
   // Image layer specific
   imageUrl?: string;
   adjustments?: PhotoAdjustments;
+  photoAdjustments?: PhotoAdjustments;
+  content?: string;
   // Text layer specific
   text?: string;
   fontFamily?: string;
@@ -150,6 +152,8 @@ export interface SpotLayer {
   strokeWidth?: number;
   shadowColor?: string;
   shadowBlur?: number;
+  textGlow?: string | boolean;
+  textStroke?: string;
   curved?: boolean;
   curveRadius?: number;
   bgBadgeColor?: string;
@@ -169,6 +173,11 @@ export interface SpotContent {
   headline?: string;
   headlineX?: number;
   headlineY?: number;
+  isCurvedText?: boolean;
+  curveRadius?: number;
+  textStroke?: string;
+  textGlow?: string;
+  letterSpacing?: number;
   text?: string;
   subtextX?: number;
   subtextY?: number;
