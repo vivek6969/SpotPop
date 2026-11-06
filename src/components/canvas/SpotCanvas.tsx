@@ -1,6 +1,12 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Spot } from '../../types';
 import { SpotCard } from './SpotCard';
+import { api } from '../../services/api';
+import { getCleanFontFamily, getPhotoFilterStyle } from '../../utils/photoFilters';
+
+const CELL_SIZE = 500;
+const CHUNK_SIZE = 1500;
+const MAX_CLIENT_CACHE = 3000;
 
 interface SpotCanvasProps {
   spots: Spot[];
@@ -27,6 +33,49 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     y: 0,
     zoom: 0.85,
   });
+
+  // Client-Side Spatial Index, Dynamic Chunk Loader & Memory Management
+  const spotCacheRef = useRef<Map<string, Spot>>(new Map());
+  const spatialGridRef = useRef<Map<string, Set<string>>>(new Map());
+  const loadedChunksRef = useRef<Set<string>>(new Set());
+  const inFlightChunksRef = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [cacheRevision, setCacheRevision] = useState(0);
+
+  // Helper to index a single spot into the client-side spatial grid
+  const indexSpot = useCallback((spot: Spot) => {
+    if (!spot || !spot.id) return;
+    spotCacheRef.current.set(spot.id, spot);
+
+    const halfW = (spot.width || 170) / 2;
+    const halfH = (spot.height || 170) / 2;
+    const minCx = Math.floor((spot.x - halfW) / CELL_SIZE);
+    const maxCx = Math.floor((spot.x + halfW) / CELL_SIZE);
+    const minCy = Math.floor((spot.y - halfH) / CELL_SIZE);
+    const maxCy = Math.floor((spot.y + halfH) / CELL_SIZE);
+
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const key = `${cx}:${cy}`;
+        let cell = spatialGridRef.current.get(key);
+        if (!cell) {
+          cell = new Set<string>();
+          spatialGridRef.current.set(key, cell);
+        }
+        cell.add(spot.id);
+      }
+    }
+  }, []);
+
+  // Ingest initial or updated spots from parent props into spatial index
+  useEffect(() => {
+    if (spots && spots.length > 0) {
+      for (const s of spots) {
+        indexSpot(s);
+      }
+      setCacheRevision(r => r + 1);
+    }
+  }, [spots, indexSpot]);
 
   // Dragging & Interaction states
   const isDraggingRef = useRef(false);
@@ -217,20 +266,171 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
   const zoomOut = () => setCamera(prev => ({ ...prev, zoom: Math.max(0.25, prev.zoom * 0.75) }));
   const resetCenter = () => setCamera({ x: 0, y: 0, zoom: 0.85 });
 
-  // Viewport culling: only calculate items within or near visible boundary
+  // Viewport culling: calculate items within or near visible boundary using spatial index
   const containerW = containerRef.current?.clientWidth || 1200;
   const containerH = containerRef.current?.clientHeight || 800;
   const halfViewW = (containerW / 2) / camera.zoom + 250;
   const halfViewH = (containerH / 2) / camera.zoom + 250;
 
-  const visibleSpots = spots.filter(s => {
-    return (
-      s.x >= camera.x - halfViewW &&
-      s.x <= camera.x + halfViewW &&
-      s.y >= camera.y - halfViewH &&
-      s.y <= camera.y + halfViewH
-    );
-  });
+  // Query spots in visible viewport via client-side spatial hash grid
+  const visibleSpots = useMemo(() => {
+    const minX = camera.x - halfViewW;
+    const maxX = camera.x + halfViewW;
+    const minY = camera.y - halfViewH;
+    const maxY = camera.y + halfViewH;
+
+    const minCx = Math.floor(minX / CELL_SIZE);
+    const maxCx = Math.floor(maxX / CELL_SIZE);
+    const minCy = Math.floor(minY / CELL_SIZE);
+    const maxCy = Math.floor(maxY / CELL_SIZE);
+
+    const candidateIds = new Set<string>();
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const cell = spatialGridRef.current.get(`${cx}:${cy}`);
+        if (cell) {
+          for (const id of cell) {
+            candidateIds.add(id);
+          }
+        }
+      }
+    }
+
+    const results: Spot[] = [];
+    for (const id of candidateIds) {
+      const s = spotCacheRef.current.get(id);
+      if (!s || s.status === 'hidden') continue;
+      const sW = (s.width || 170) / 2;
+      const sH = (s.height || 170) / 2;
+      if (!(s.x + sW < minX || s.x - sW > maxX || s.y + sH < minY || s.y - sH > maxY)) {
+        results.push(s);
+      }
+    }
+
+    // Fallback: If cache is empty yet spots prop has items, filter spots directly
+    if (results.length === 0 && spots.length > 0) {
+      return spots.filter(s =>
+        s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY
+      );
+    }
+
+    return results;
+  }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, cacheRevision, spots]);
+
+  // Dynamic Viewport Chunk Loader with Request Deduplication & Memory Management
+  useEffect(() => {
+    const minX = camera.x - halfViewW;
+    const maxX = camera.x + halfViewW;
+    const minY = camera.y - halfViewH;
+    const maxY = camera.y + halfViewH;
+
+    const minChunkX = Math.floor(minX / CHUNK_SIZE);
+    const maxChunkX = Math.floor(maxX / CHUNK_SIZE);
+    const minChunkY = Math.floor(minY / CHUNK_SIZE);
+    const maxChunkY = Math.floor(maxY / CHUNK_SIZE);
+
+    const missingChunks: string[] = [];
+    for (let cx = minChunkX; cx <= maxChunkX; cx++) {
+      for (let cy = minChunkY; cy <= maxChunkY; cy++) {
+        const key = `${cx}:${cy}`;
+        if (!loadedChunksRef.current.has(key) && !inFlightChunksRef.current.has(key)) {
+          missingChunks.push(key);
+        }
+      }
+    }
+
+    if (missingChunks.length === 0) return;
+
+    // Mark as in-flight to prevent duplicate simultaneous queries
+    for (const k of missingChunks) {
+      inFlightChunksRef.current.add(k);
+    }
+
+    const timer = setTimeout(async () => {
+      // Abort previous in-flight request if user is rapidly panning
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        const chunkMinX = minChunkX * CHUNK_SIZE;
+        const chunkMaxX = (maxChunkX + 1) * CHUNK_SIZE;
+        const chunkMinY = minChunkY * CHUNK_SIZE;
+        const chunkMaxY = (maxChunkY + 1) * CHUNK_SIZE;
+
+        const res = await api.getViewportSpots(
+          chunkMinX,
+          chunkMinY,
+          chunkMaxX,
+          chunkMaxY,
+          camera.zoom,
+          controller.signal
+        );
+
+        if (res && res.spots) {
+          for (const s of res.spots) {
+            indexSpot(s);
+          }
+          for (const k of missingChunks) {
+            loadedChunksRef.current.add(k);
+          }
+
+          // Memory Management: Keep client cache bounded to prevent browser memory exhaustion
+          if (spotCacheRef.current.size > MAX_CLIENT_CACHE) {
+            const allSpots = Array.from(spotCacheRef.current.values());
+            allSpots.sort((a, b) => {
+              const distA = Math.hypot(a.x - camera.x, a.y - camera.y);
+              const distB = Math.hypot(b.x - camera.x, b.y - camera.y);
+              return distB - distA; // furthest first
+            });
+            const spotsToRemove = allSpots.slice(0, allSpots.length - MAX_CLIENT_CACHE);
+            for (const rem of spotsToRemove) {
+              spotCacheRef.current.delete(rem.id);
+            }
+
+            // Rebuild spatial grid for active bounded cache
+            spatialGridRef.current.clear();
+            for (const activeSpot of spotCacheRef.current.values()) {
+              const halfW = (activeSpot.width || 170) / 2;
+              const halfH = (activeSpot.height || 170) / 2;
+              const sMinCx = Math.floor((activeSpot.x - halfW) / CELL_SIZE);
+              const sMaxCx = Math.floor((activeSpot.x + halfW) / CELL_SIZE);
+              const sMinCy = Math.floor((activeSpot.y - halfH) / CELL_SIZE);
+              const sMaxCy = Math.floor((activeSpot.y + halfH) / CELL_SIZE);
+              for (let cx = sMinCx; cx <= sMaxCx; cx++) {
+                for (let cy = sMinCy; cy <= sMaxCy; cy++) {
+                  const key = `${cx}:${cy}`;
+                  let cell = spatialGridRef.current.get(key);
+                  if (!cell) {
+                    cell = new Set<string>();
+                    spatialGridRef.current.set(key, cell);
+                  }
+                  cell.add(activeSpot.id);
+                }
+              }
+            }
+            loadedChunksRef.current.clear();
+          }
+
+          setCacheRevision(r => r + 1);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Viewport chunk load warning:', err);
+        }
+      } finally {
+        for (const k of missingChunks) {
+          inFlightChunksRef.current.delete(k);
+        }
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, indexSpot]);
 
   return (
     <div
@@ -274,6 +474,9 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         {visibleSpots.map((spot) => {
           const isSelected = selectedSpotId === spot.id;
           const { content } = spot;
+          const isHero = spot.id === 'sp_spotpop_hero';
+          const spotW = isHero ? spot.width : Math.min(spot.width || 170, 170);
+          const spotH = isHero ? spot.height : Math.min(spot.height || (spot.tier === 'big_pop' ? 210 : 170), spot.tier === 'big_pop' ? 210 : 170);
 
           return (
             <div
@@ -288,23 +491,46 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                 isSelected ? 'z-40 ring-4 ring-[#FF2E93] ring-offset-2 ring-offset-black scale-105 shadow-2xl' : 'z-10'
               }`}
               style={{
-                left: spot.x - spot.width / 2,
-                top: spot.y - spot.height / 2,
-                width: spot.width,
-                height: spot.height,
+                left: spot.x - spotW / 2,
+                top: spot.y - spotH / 2,
+                width: spotW,
+                height: spotH,
               }}
             >
-              <SpotCard
-                tier={spot.tier}
-                shape={spot.shape}
-                background={spot.background}
-                borderColor={spot.borderColor}
-                content={spot.content}
-                creatorName={spot.creatorName}
-                rotation={spot.rotation}
-                width={spot.width}
-                height={spot.height}
-              />
+              {camera.zoom < 0.28 && !isHero ? (
+                <div
+                  className="w-full h-full rounded-xs flex flex-col items-center justify-center p-1 text-center shadow-xs overflow-hidden select-none transition-opacity"
+                  style={{
+                    background: spot.background,
+                    border: spot.borderColor ? `2px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
+                    transform: `rotate(${spot.rotation}deg)`,
+                    filter: (spot.tier === 'mini_pop' || !content.imageUrl) && content.photoAdjustments
+                      ? getPhotoFilterStyle(content.photoAdjustments).filter !== 'none'
+                        ? getPhotoFilterStyle(content.photoAdjustments).filter
+                        : undefined
+                      : undefined,
+                  }}
+                >
+                  <div
+                    className="font-bold text-[10px] leading-tight truncate max-w-full"
+                    style={{ color: content.textColor || '#1E293B', fontFamily: getCleanFontFamily(content.fontFamily) }}
+                  >
+                    {content.headline || spot.creatorName}
+                  </div>
+                </div>
+              ) : (
+                <SpotCard
+                  tier={spot.tier}
+                  shape={spot.shape}
+                  background={spot.background}
+                  borderColor={spot.borderColor}
+                  content={spot.content}
+                  creatorName={spot.creatorName}
+                  rotation={spot.rotation}
+                  width={spotW}
+                  height={spotH}
+                />
+              )}
             </div>
           );
         })}

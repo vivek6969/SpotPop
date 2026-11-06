@@ -1,8 +1,10 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './server/api.ts';
+import { migrateBase64Images } from './server/migrateImages.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,19 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || '3000', 10);
+
+  // Automatically migrate any legacy Base64 images to content-addressed object storage
+  await migrateBase64Images().catch(err => console.warn('Image migration notice:', err));
+
+  // Static uploads directory with 1-year immutable caching for zero-egress/low-latency delivery
+  const uploadsPath = path.resolve(__dirname, 'uploads');
+  if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsPath, {
+    maxAge: '1y',
+    immutable: true,
+  }));
 
   // Body parser with 20MB limit for image uploads
   app.use(express.json({ limit: '20mb' }));

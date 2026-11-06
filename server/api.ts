@@ -3,6 +3,7 @@ import { db } from './database.ts';
 import { createRazorpayOrder, verifyPaymentSignature } from './razorpay.ts';
 import type { ProductTier, Spot, Order, User, ModerationReport } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
+import { imageService } from './imageService.ts';
 
 export const apiRouter = Router();
 
@@ -20,12 +21,111 @@ function getAuthenticatedUser(req: Request): User | null {
 
 // =================== SPOTS ===================
 
-// GET all visible spots
+// GET spots: backward-compatible full list OR high-performance bounding box viewport query
 apiRouter.get('/spots', (req: Request, res: Response) => {
   try {
+    const minX = req.query.minX !== undefined ? parseFloat(req.query.minX as string) : undefined;
+    const minY = req.query.minY !== undefined ? parseFloat(req.query.minY as string) : undefined;
+    const maxX = req.query.maxX !== undefined ? parseFloat(req.query.maxX as string) : undefined;
+    const maxY = req.query.maxY !== undefined ? parseFloat(req.query.maxY as string) : undefined;
+    const zoom = req.query.zoom !== undefined ? parseFloat(req.query.zoom as string) : 1;
+    const limit = req.query.limit !== undefined ? parseInt(req.query.limit as string, 10) : 2000;
+
+    // Viewport-based query if bounding coordinates are provided
+    if (minX !== undefined && minY !== undefined && maxX !== undefined && maxY !== undefined) {
+      let spots = db.queryViewport(minX, minY, maxX, maxY, limit);
+
+      // Level of Detail (LOD) optimization: when zoomed far out, strip heavy asset payloads
+      if (zoom < 0.4) {
+        spots = spots.map(s => ({
+          ...s,
+          content: {
+            ...s.content,
+            drawingData: undefined, // remove heavy freehand vector paths
+            stickers: s.content.stickers?.slice(0, 2) || [], // truncate stickers for overview
+          },
+        }));
+      }
+
+      res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=15');
+      return res.json({
+        spots,
+        stats: db.getStats(),
+        bbox: { minX, minY, maxX, maxY },
+        count: spots.length,
+      });
+    }
+
+    // Default backward-compatible fallback: returns full spots and stats exactly as before
     const spots = db.getSpots();
     const stats = db.getStats();
     res.json({ spots, stats });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated GET /spots/viewport for explicit spatial chunk loading
+apiRouter.get('/spots/viewport', (req: Request, res: Response) => {
+  try {
+    const minX = parseFloat((req.query.minX as string) || '-1000');
+    const minY = parseFloat((req.query.minY as string) || '-1000');
+    const maxX = parseFloat((req.query.maxX as string) || '1000');
+    const maxY = parseFloat((req.query.maxY as string) || '1000');
+    const zoom = req.query.zoom ? parseFloat(req.query.zoom as string) : 1;
+    const limit = req.query.limit ? Math.min(2000, parseInt(req.query.limit as string, 10)) : 1000;
+
+    let spots = db.queryViewport(minX, minY, maxX, maxY, limit);
+
+    // Level of Detail (LOD) filtering
+    if (zoom < 0.4) {
+      spots = spots.map(s => ({
+        ...s,
+        content: {
+          ...s.content,
+          drawingData: undefined,
+          stickers: s.content.stickers?.slice(0, 2) || [],
+        },
+      }));
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=15');
+    res.json({
+      spots,
+      stats: db.getStats(),
+      bbox: { minX, minY, maxX, maxY },
+      count: spots.length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================== IMAGE ASSET OPTIMIZATION & THUMBNAILS ===================
+apiRouter.get('/images/thumbnail', (req: Request, res: Response) => {
+  try {
+    const rawUrl = req.query.url as string;
+    const targetWidth = parseInt((req.query.w as string) || '200', 10);
+    const quality = parseInt((req.query.q as string) || '75', 10);
+
+    if (!rawUrl) {
+      return res.status(400).json({ error: 'Missing image url' });
+    }
+
+    // For Unsplash images, dynamically rewrite dimension queries to serve lightweight thumbnails
+    if (rawUrl.includes('images.unsplash.com')) {
+      const urlObj = new URL(rawUrl);
+      urlObj.searchParams.set('w', targetWidth.toString());
+      urlObj.searchParams.set('q', quality.toString());
+      urlObj.searchParams.set('auto', 'format');
+      urlObj.searchParams.set('fit', 'crop');
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      return res.redirect(302, urlObj.toString());
+    }
+
+    // Pass-through with caching for external/uploaded assets (preserves originals 100%)
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.redirect(302, rawUrl);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -284,9 +384,9 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Payment signature verification failed' });
     }
 
-    // Calculate non-overlapping coordinates on canvas
+    // Calculate non-overlapping coordinates on canvas using concurrency reservation lock
     const product = PRODUCTS[order.productId];
-    const { x, y, rotation } = db.allocateCoordinate(product.width, product.height);
+    const { x, y, rotation, reservationId } = db.allocateCoordinate(product.width, product.height, true);
 
     const draft = order.spotDraft || {};
     const slugBase = (draft.creatorName || 'spot')
@@ -349,6 +449,9 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
     };
 
     db.addSpot(newSpot);
+    if (reservationId) {
+      db.releaseReservation(reservationId);
+    }
 
     // Update order with paid status and link allocated spot
     db.updateOrder(orderId, {
@@ -375,25 +478,39 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
   }
 });
 
-// Image upload endpoint (stores base64 or optimized image)
-apiRouter.post('/upload', (req: Request, res: Response) => {
+// High-performance image upload with deduplication, metadata stripping, WebP compression & object storage
+apiRouter.post('/upload', async (req: Request, res: Response) => {
   try {
     const { imageBase64, filename } = req.body;
     if (!imageBase64) {
       return res.status(400).json({ error: 'Image data is required' });
     }
 
-    // Validate size (max 8MB base64)
-    if (imageBase64.length > 8 * 1024 * 1024) {
-      return res.status(400).json({ error: 'Image exceeds maximum 8MB size limit' });
-    }
+    // Process through extreme cost-optimised image pipeline
+    const result = await imageService.processAndStore(imageBase64, filename || 'user_upload.jpg');
 
-    // In local dev/fullstack, return data URI directly for seamless instant rendering
     res.json({
       success: true,
-      imageUrl: imageBase64,
-      filename: filename || 'user_upload.jpg',
+      imageUrl: result.imageUrl, // WebP preview asset (~20-55KB)
+      thumbnailUrl: result.thumbnailUrl, // Tiny WebP thumbnail (~8-18KB)
+      highResUrl: result.highResUrl,
+      hash: result.hash,
+      width: result.width,
+      height: result.height,
+      size: result.size,
+      isDuplicate: result.isDuplicate,
+      filename: filename || 'user_upload.webp',
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Storage & Cost Intelligence Report
+apiRouter.get('/admin/storage-stats', (req: Request, res: Response) => {
+  try {
+    const report = imageService.getStorageReport();
+    res.json(report);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -474,6 +591,91 @@ apiRouter.post('/admin/spots/:id/moderate', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Spot not found' });
     }
     res.json({ success: true, spot: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Single spot delete
+apiRouter.delete('/admin/spots/:id', (req: Request, res: Response) => {
+  try {
+    const deleted = db.deleteSpot(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Multiple spots batch delete
+apiRouter.post('/admin/spots/batch-delete', (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'IDs array required' });
+    }
+    const count = db.deleteSpots(ids);
+    res.json({ success: true, deletedCount: count });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete all spots
+apiRouter.post('/admin/spots/delete-all', (_req: Request, res: Response) => {
+  try {
+    const count = db.deleteAllSpots();
+    res.json({ success: true, deletedCount: count });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add new spot directly from admin
+apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
+  try {
+    const { tier = 'mini_pop', creatorName = 'SpotPop Admin', shape = 'sticky', background = '#FFF8E7', headline = 'Admin Spot', text = '', imageUrl } = req.body;
+    const product = PRODUCTS[tier as ProductTier] || PRODUCTS.mini_pop;
+    const { x, y, rotation, reservationId } = db.allocateCoordinate(product.width, product.height, true);
+
+    const newSpot: Spot = {
+      id: `sp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      ownerId: 'usr_admin',
+      creatorName,
+      slug: `${creatorName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.random().toString(36).substring(2, 6)}`,
+      tier: tier as ProductTier,
+      x,
+      y,
+      width: product.width,
+      height: product.height,
+      rotation,
+      shape,
+      background,
+      content: {
+        headline,
+        text,
+        imageUrl: tier === 'big_pop' ? imageUrl : undefined,
+        fontFamily: 'Caveat',
+        fontSize: 20,
+        textColor: '#1E293B',
+        alignment: 'center',
+        frameStyle: 'tape',
+        stickers: [],
+      },
+      createdAt: new Date().toISOString(),
+      status: 'published',
+      moderationStatus: 'approved',
+      viewsCount: 0,
+      sharesCount: 0,
+    };
+
+    db.addSpot(newSpot);
+    if (reservationId) {
+      db.releaseReservation(reservationId);
+    }
+    res.json({ success: true, spot: newSpot });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

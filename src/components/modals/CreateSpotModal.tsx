@@ -3,7 +3,25 @@ import confetti from 'canvas-confetti';
 import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
-import { FILTER_PRESETS, AI_CAPTION_PRESETS } from '../../utils/photoFilters';
+import { PhotoCropTab } from './editor/PhotoCropTab';
+import { AdjustTab } from './editor/AdjustTab';
+import { RetouchTab } from './editor/RetouchTab';
+import { TextStudioTab } from './editor/TextStudioTab';
+import { StickersStockTab } from './editor/StickersStockTab';
+import { DrawStudioTab } from './editor/DrawStudioTab';
+import { FramesTab } from './editor/FramesTab';
+import { ThemesTab } from './editor/ThemesTab';
+import { BrushStyle, PlanDraft } from './editor/types';
+import {
+  FILTER_PRESETS,
+  EFFECT_PRESETS,
+  CURVE_PRESETS,
+  AI_CAPTION_PRESETS,
+  loadGoogleFont,
+  speakText,
+} from '../../utils/photoFilters';
+
+export type { BrushStyle, PlanDraft };
 
 interface CreateSpotModalProps {
   isOpen: boolean;
@@ -14,25 +32,46 @@ interface CreateSpotModalProps {
 
 // =================== FONTS ===================
 export const ALL_FONTS = [
+  // Handwritten
   { id: 'Caveat', name: 'Caveat (Casual Handwriting)', family: "'Caveat', cursive", category: 'Handwritten' },
   { id: 'Dancing Script', name: 'Dancing Script (Calligraphy)', family: "'Dancing Script', cursive", category: 'Handwritten' },
   { id: 'Pacifico', name: 'Pacifico (Brush Script)', family: "'Pacifico', cursive", category: 'Handwritten' },
   { id: 'Shadows Into Light', name: 'Shadows Into Light (Doodle)', family: "'Shadows Into Light', cursive", category: 'Handwritten' },
   { id: 'Gloria Hallelujah', name: 'Gloria Hallelujah (Blackboard)', family: "'Gloria Hallelujah', cursive", category: 'Handwritten' },
+  { id: 'Kalam', name: 'Kalam (Marker Pen)', family: "'Kalam', cursive", category: 'Handwritten' },
+  { id: 'Satisfy', name: 'Satisfy (Smooth Ink)', family: "'Satisfy', cursive", category: 'Handwritten' },
+  { id: 'Sacramento', name: 'Sacramento (Fine Ribbon)', family: "'Sacramento', cursive", category: 'Handwritten' },
+
+  // Modern
   { id: 'Outfit', name: 'Outfit (Modern Bold Sans)', family: "'Outfit', sans-serif", category: 'Modern' },
   { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans (Clean Minimal)', family: "'Plus Jakarta Sans', sans-serif", category: 'Modern' },
   { id: 'Fredoka', name: 'Fredoka (Cute Bubble Sans)', family: "'Fredoka', sans-serif", category: 'Modern' },
   { id: 'Comfortaa', name: 'Comfortaa (Soft Geometric)', family: "'Comfortaa', cursive", category: 'Modern' },
+  { id: 'Inter', name: 'Inter (Precision Clean)', family: "'Inter', sans-serif", category: 'Modern' },
+  { id: 'Poppins', name: 'Poppins (Geometric Pop)', family: "'Poppins', sans-serif", category: 'Modern' },
+  { id: 'Space Grotesk', name: 'Space Grotesk (Tech Neo)', family: "'Space Grotesk', sans-serif", category: 'Modern' },
+
+  // Display
   { id: 'Permanent Marker', name: 'Permanent Marker (Graffiti Tag)', family: "'Permanent Marker', cursive", category: 'Display' },
   { id: 'Bungee', name: 'Bungee (Urban Signage)', family: "'Bungee', cursive", category: 'Display' },
   { id: 'Bebas Neue', name: 'Bebas Neue (Bold Impact)', family: "'Bebas Neue', cursive", category: 'Display' },
+  { id: 'Righteous', name: 'Righteous (Deco Modern)', family: "'Righteous', cursive", category: 'Display' },
+  { id: 'Shrikhand', name: 'Shrikhand (Retro Poster)', family: "'Shrikhand', cursive", category: 'Display' },
+  { id: 'Bangers', name: 'Bangers (Comic Hero)', family: "'Bangers', cursive", category: 'Display' },
   { id: 'Creepster', name: 'Creepster (Spooky Horror)', family: "'Creepster', cursive", category: 'Display' },
+
+  // Retro
   { id: 'Press Start 2P', name: 'Press Start 2P (8-Bit Arcade)', family: "'Press Start 2P', monospace", category: 'Retro' },
   { id: 'Space Mono', name: 'Space Mono (Cyber Tech)', family: "'Space Mono', monospace", category: 'Retro' },
   { id: 'VT323', name: 'VT323 (Retro Terminal)', family: "'VT323', monospace", category: 'Retro' },
+  { id: 'Silkscreen', name: 'Silkscreen (Pixel Crisp)', family: "'Silkscreen', monospace", category: 'Retro' },
+
+  // Serif
   { id: 'Playfair Display', name: 'Playfair Display (Editorial Luxury)', family: "'Playfair Display', serif", category: 'Serif' },
   { id: 'Cinzel', name: 'Cinzel (Roman Classical)', family: "'Cinzel', serif", category: 'Serif' },
   { id: 'Abril Fatface', name: 'Abril Fatface (High-Fashion Title)', family: "'Abril Fatface', cursive", category: 'Serif' },
+  { id: 'Cormorant Garamond', name: 'Cormorant Garamond (Fine Literature)', family: "'Cormorant Garamond', serif", category: 'Serif' },
+  { id: 'DM Serif Display', name: 'DM Serif (Modern Editorial)', family: "'DM Serif Display', serif", category: 'Serif' },
 ];
 
 // =================== CARD SHAPES & FRAMES ===================
@@ -299,25 +338,8 @@ export const BLEND_MODES: { id: BlendMode; label: string }[] = [
   { id: 'exclusion', label: 'Exclusion' },
 ];
 
-// Sample Photos for Big Pop
-const SAMPLE_PHOTOS = [
-  { label: 'Sunset Love', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80' },
-  { label: 'Cool Shades', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' },
-  { label: 'Cat with Glasses', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80' },
-  { label: 'Anime Girl Lo-Fi', url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80' },
-  { label: 'Space Star', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=600&q=80' },
-];
-
-// Brush styles definition for Big Pop Drawing Studio
-export type BrushStyle =
-  | 'neon'
-  | 'calligraphy'
-  | 'graffiti'
-  | 'watercolor'
-  | 'pen'
-  | 'rainbow'
-  | 'highlighter'
-  | 'eraser';
+// Default Photo for Big Pop
+export const DEFAULT_SPOT_PHOTO = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80';
 
 export const BRUSH_STYLES: { id: BrushStyle; name: string; icon: string; desc: string }[] = [
   { id: 'neon', name: 'Neon Glow', icon: '🌟', desc: 'Glowing electric stroke' },
@@ -325,6 +347,7 @@ export const BRUSH_STYLES: { id: BrushStyle; name: string; icon: string; desc: s
   { id: 'graffiti', name: 'Graffiti Spray', icon: '💨', desc: 'Airbrush splatter dots' },
   { id: 'watercolor', name: 'Watercolor', icon: '🎨', desc: 'Soft translucent pastel' },
   { id: 'pen', name: 'Gel Pen', icon: '🖊️', desc: 'Crisp precision ink' },
+  { id: 'pencil', name: 'Pencil', icon: '✏️', desc: 'Textured graphite sketch' },
   { id: 'rainbow', name: 'Rainbow Sparkle', icon: '✨', desc: 'Shifting hue + stars' },
   { id: 'highlighter', name: 'Highlighter', icon: '🖍️', desc: 'Wide chisel marker' },
   { id: 'eraser', name: 'Eraser', icon: '🧹', desc: 'Alpha wipe eraser' },
@@ -339,55 +362,32 @@ export const DEFAULT_ADJUSTMENTS: PhotoAdjustments = {
   tint: 0,
   hue: 0,
   blur: 0,
+  blurType: 'gaussian',
   sharpen: 0,
   vignette: 0,
   grain: 0,
+  highlights: 0,
+  shadows: 0,
   retouchSmooth: 0,
+  blemishRemoval: 0,
+  faceGlow: 0,
+  teethWhitening: 0,
+  reshapeAmount: 0,
+  hairTint: 'none',
+  hslRed: 0,
+  hslGreen: 0,
+  hslBlue: 0,
+  hslYellow: 0,
+  curveRgb: 'linear',
   flipH: false,
   flipV: false,
+  rotationAngle: 0,
+  aspectRatio: 'free',
+  perspectiveSkewX: 0,
+  perspectiveSkewY: 0,
   filter: 'none',
+  effect: 'none',
 };
-
-// Clean isolated draft state interface to prevent ₹29 and ₹99 cross-contamination
-interface PlanDraft {
-  headline: string;
-  headlineX?: number;
-  headlineY?: number;
-  secondaryText: string;
-  subtextX?: number;
-  subtextY?: number;
-  subtextSize?: number;
-  creatorName: string;
-  authorX?: number;
-  authorY?: number;
-  authorSize?: number;
-  authorOpacity?: number;
-  fontFamily: string;
-  fontSize: number;
-  textColor: string;
-  textOpacity: number;
-  alignment: 'left' | 'center' | 'right';
-  backgroundColor: string;
-  frameStyle: FrameStyle;
-  shape: SpotShape;
-  stickers: StickerItem[];
-  // Big Pop only
-  imageUrl?: string;
-  photoOpacity?: number;
-  photoZoom?: number;
-  photoOffsetX?: number;
-  photoOffsetY?: number;
-  drawingDataUrl?: string | null;
-  drawingOpacity?: number;
-  // Advanced Canva/Photoshop-style Studio additions
-  photoAdjustments?: PhotoAdjustments;
-  layers?: SpotLayer[];
-  isCurvedText?: boolean;
-  curveRadius?: number;
-  textStroke?: string;
-  textGlow?: string;
-  letterSpacing?: number;
-}
 
 const DEFAULT_MINI_DRAFT: PlanDraft = {
   headline: 'Good Vibes Only ♡',
@@ -402,7 +402,7 @@ const DEFAULT_MINI_DRAFT: PlanDraft = {
   frameStyle: 'pin',
   shape: 'sticky',
   stickers: [
-    { id: 'mini_stk_1', emojiOrIcon: '♡', x: 135, y: 15, size: 26, rotation: 8, opacity: 1 },
+    { id: 'mini_stk_1', emojiOrIcon: '♡', x: 125, y: 15, size: 26, rotation: 8, opacity: 1 },
   ],
   photoAdjustments: { ...DEFAULT_ADJUSTMENTS },
   layers: [],
@@ -422,7 +422,7 @@ const DEFAULT_BIG_DRAFT: PlanDraft = {
   backgroundColor: '#FFFFFF',
   frameStyle: 'tape',
   shape: 'polaroid',
-  imageUrl: SAMPLE_PHOTOS[0].url,
+  imageUrl: DEFAULT_SPOT_PHOTO,
   photoOpacity: 1,
   photoZoom: 1,
   photoOffsetX: 0,
@@ -430,8 +430,8 @@ const DEFAULT_BIG_DRAFT: PlanDraft = {
   drawingDataUrl: null,
   drawingOpacity: 1,
   stickers: [
-    { id: 'big_stk_1', emojiOrIcon: '💖', x: 200, y: 20, size: 30, rotation: -6, opacity: 1 },
-    { id: 'big_stk_2', emojiOrIcon: '✨', x: 25, y: 25, size: 28, rotation: 12, opacity: 0.9 },
+    { id: 'big_stk_1', emojiOrIcon: '💖', x: 125, y: 20, size: 28, rotation: -6, opacity: 1 },
+    { id: 'big_stk_2', emojiOrIcon: '✨', x: 20, y: 20, size: 26, rotation: 12, opacity: 0.9 },
   ],
   photoAdjustments: { ...DEFAULT_ADJUSTMENTS },
   layers: [],
@@ -467,7 +467,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   };
 
   // Active Tool Tab in Editor
-  const [activeEditorTab, setActiveEditorTab] = useState<'text' | 'adjust' | 'layers' | 'stickers' | 'draw' | 'frames' | 'themes'>('text');
+  const [activeEditorTab, setActiveEditorTab] = useState<
+    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes'
+  >('photo');
   const [selectedBgCategory, setSelectedBgCategory] = useState<'all' | 'halloween' | 'christmas' | 'love' | 'retro' | 'classic'>('all');
   const [selectedFontCategory, setSelectedFontCategory] = useState<string>('All');
 
@@ -532,7 +534,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setSelectedItemId(newLayer.id);
   };
 
-  const handleAddShapeLayer = (shapeType: 'rectangle' | 'circle' | 'heart' | 'star' | 'arrow' | 'speech_bubble') => {
+  const handleAddShapeLayer = (shapeType: 'rectangle' | 'circle' | 'heart' | 'star' | 'arrow' | 'speech_bubble' | 'cloud' | 'diamond' | 'flower' | 'lightning') => {
     const newLayer: SpotLayer = {
       id: `layer_shp_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
       type: 'shape',
@@ -552,6 +554,47 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     };
     updateDraft({ layers: [...(currentDraft.layers || []), newLayer] });
     setSelectedItemId(newLayer.id);
+  };
+
+  const handleBringToFront = (id: string) => {
+    const list = [...(currentDraft.layers || [])];
+    const idx = list.findIndex(l => l.id === id);
+    if (idx < 0 || idx === list.length - 1) return;
+    const [item] = list.splice(idx, 1);
+    list.push(item);
+    updateDraft({ layers: list });
+  };
+
+  const handleSendToBack = (id: string) => {
+    const list = [...(currentDraft.layers || [])];
+    const idx = list.findIndex(l => l.id === id);
+    if (idx <= 0) return;
+    const [item] = list.splice(idx, 1);
+    list.unshift(item);
+    updateDraft({ layers: list });
+  };
+
+  const handleMergeLayers = () => {
+    if (!currentDraft.layers || currentDraft.layers.length === 0) return;
+    updateDraft({
+      layers: [
+        {
+          id: `layer_merged_${Date.now()}`,
+          type: 'image',
+          name: 'Merged Composite',
+          content: currentDraft.imageUrl || (currentDraft.layers[0]?.content ?? ''),
+          x: 0,
+          y: 0,
+          width: tier === 'big_pop' ? 170 : 170,
+          height: tier === 'big_pop' ? 210 : 170,
+          rotation: 0,
+          opacity: 1,
+          blendMode: 'normal',
+          locked: false,
+          visible: true,
+        },
+      ],
+    });
   };
 
   const handleAddTextLayer = (initialText: string = 'New Text') => {
@@ -672,6 +715,28 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   // Currently Selected Item on Card: null | 'headline' | 'photo' | 'drawing' | sticker_id
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const lastSelectedAtRef = useRef<number>(0);
+
+  const handleSelectItem = (id: string | null) => {
+    setSelectedItemId(id);
+    if (!id) return;
+    lastSelectedAtRef.current = Date.now();
+
+    // Auto-focus the corresponding Picsart tool tab when user taps an element:
+    if (id === 'photo') {
+      setActiveEditorTab('photo');
+      setIsDrawingMode(false);
+    } else if (id === 'headline' || id === 'subtext' || id === 'author') {
+      setActiveEditorTab('text');
+      setIsDrawingMode(false);
+    } else if (id === 'background') {
+      setActiveEditorTab('themes');
+      setIsDrawingMode(false);
+    } else {
+      setActiveEditorTab('stickers');
+      setIsDrawingMode(false);
+    }
+  };
 
   // Sticker categories
   const [stickerCategory, setStickerCategory] = useState<string>('love');
@@ -726,13 +791,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   const handleAddSticker = (emoji: string) => {
     if (currentDraft.stickers.length >= (tier === 'big_pop' ? 24 : 12)) return;
     const newId = `stk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const boundsW = tier === 'big_pop' ? 260 : 180;
-    const boundsH = tier === 'big_pop' ? 320 : 180;
+    const boundsW = 170;
+    const boundsH = tier === 'big_pop' ? 210 : 170;
     const newStk: StickerItem = {
       id: newId,
       emojiOrIcon: emoji,
-      x: Math.round(boundsW * 0.2 + Math.random() * (boundsW * 0.5)),
-      y: Math.round(boundsH * 0.2 + Math.random() * (boundsH * 0.5)),
+      x: Math.round(boundsW * 0.25 + Math.random() * (boundsW * 0.4)),
+      y: Math.round(boundsH * 0.25 + Math.random() * (boundsH * 0.4)),
       size: 28,
       rotation: Math.floor(Math.random() * 20 - 10),
       opacity: 1,
@@ -796,6 +861,11 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         ctx.shadowBlur = 0;
         ctx.globalAlpha = brushOpacity * 0.45;
         ctx.lineWidth = brushSize * 2.5;
+      } else if (drawTool === 'pencil') {
+        ctx.strokeStyle = drawColor;
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = brushOpacity * 0.75;
+        ctx.lineWidth = Math.max(1, brushSize * 0.8);
       } else if (drawTool === 'rainbow') {
         const nextHue = (rainbowHue + 15) % 360;
         setRainbowHue(nextHue);
@@ -907,14 +977,26 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === 'string') {
+        const rawB64 = reader.result;
+        // Instant visual parity preview for user
         updateDraft({
-          imageUrl: reader.result,
+          imageUrl: rawB64,
           photoZoom: 1,
           photoOffsetX: 0,
           photoOffsetY: 0,
         });
+
+        // Background server-side compression & object storage
+        try {
+          const res = await api.uploadImage(rawB64, file.name);
+          if (res?.imageUrl) {
+            updateDraft({ imageUrl: res.imageUrl });
+          }
+        } catch (err) {
+          console.warn('Background image upload notice:', err);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -936,6 +1018,19 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setStep('processing');
 
     try {
+      // Ensure image is converted to optimized object storage asset before submitting
+      let finalImageUrl = currentDraft.imageUrl;
+      if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
+        try {
+          const uploadRes = await api.uploadImage(finalImageUrl, 'photo.jpg');
+          if (uploadRes?.imageUrl) {
+            finalImageUrl = uploadRes.imageUrl;
+          }
+        } catch (e) {
+          console.warn('Image optimization fallback:', e);
+        }
+      }
+
       const draftSpot: Partial<Spot> = {
         shape: currentDraft.shape,
         background: currentDraft.backgroundColor,
@@ -958,7 +1053,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           fontSize: currentDraft.fontSize,
           textOpacity: currentDraft.textOpacity,
           alignment: currentDraft.alignment,
-          imageUrl: currentDraft.imageUrl,
+          imageUrl: finalImageUrl,
           photoOpacity: currentDraft.photoOpacity,
           photoZoom: currentDraft.photoZoom,
           photoOffsetX: currentDraft.photoOffsetX,
@@ -1088,7 +1183,11 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             {/* LEFT / TOP: LIVE INTERACTIVE WYSIWYG PREVIEW */}
             <div className="lg:col-span-5 flex flex-col items-center">
               <div
-                onClick={() => setSelectedItemId(null)}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget && Date.now() - lastSelectedAtRef.current > 350) {
+                    setSelectedItemId(null);
+                  }
+                }}
                 className="w-full p-4 sm:p-6 rounded-2xl bg-[#090A0F] border border-white/10 flex flex-col items-center justify-center min-h-[360px] relative overflow-hidden shadow-inner select-none"
               >
                 <div className="absolute top-2.5 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5">
@@ -1162,7 +1261,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     creatorName={currentDraft.creatorName}
                     interactive={!isDrawingMode}
                     selectedItemId={selectedItemId}
-                    onSelectItem={setSelectedItemId}
+                    onSelectItem={handleSelectItem}
                     onUpdateSticker={handleUpdateSticker}
                     onDeleteSticker={handleDeleteSticker}
                     onUpdateLayer={handleUpdateLayer}
@@ -1173,8 +1272,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       isDrawingMode ? (
                         <canvas
                           ref={drawingCanvasRef}
-                          width={tier === 'big_pop' ? 260 : 180}
-                          height={tier === 'big_pop' ? 320 : 180}
+                          width={tier === 'big_pop' ? 170 : 170}
+                          height={tier === 'big_pop' ? 210 : 170}
                           onMouseDown={startDrawing}
                           onMouseMove={draw}
                           onMouseUp={stopDrawing}
@@ -1194,335 +1293,111 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 <p className="text-[11px] text-slate-400 mt-4 text-center">
                   {isDrawingMode
                     ? '✏️ Drawing Mode Active: Sketch anywhere on your spot!'
-                    : '👉 Tap any element (Headline, Subtext, Creator Tag, Photo, Sticker, Layer) to select. Drag anywhere to move freely. Pull corner to resize!'}
+                    : '👉 Tap any element (Headline, Subtext, Photo, Sticker) to select & edit instantly!'}
                 </p>
               </div>
 
-              {/* ACTIVE SELECTED ITEM FLOATING QUICK TOOLBAR */}
+              {/* ACTIVE SELECTED ITEM FLOATING QUICK STATUS */}
               {selectedItemId && (
-                <div className="w-full mt-3 p-3.5 rounded-2xl bg-[#181B2A] border border-[#FF2E93]/40 shadow-xl space-y-3 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>✨</span>
-                      <span>
-                        {activeSelectedSticker
-                          ? `Sticker: ${activeSelectedSticker.emojiOrIcon}`
-                          : activeSelectedLayer
-                          ? `Layer: ${activeSelectedLayer.name || activeSelectedLayer.type}`
-                          : selectedItemId === 'headline'
-                          ? 'Main Headline (Free Drag & Resize)'
-                          : selectedItemId === 'subtext'
-                          ? 'Subtext / Message (Free Drag & Resize)'
-                          : selectedItemId === 'author'
-                          ? 'Creator Tag (Free Drag & Resize)'
-                          : selectedItemId === 'photo'
-                          ? 'Photo Controls (Crop & Zoom)'
-                          : 'Selected Item'}
-                      </span>
+                <div className="w-full mt-3 px-3.5 py-2.5 rounded-xl bg-[#181B2A] border border-[#FF2E93]/40 flex items-center justify-between shadow-lg animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#FF2E93] animate-pulse" />
+                    <span className="text-xs font-bold text-white">
+                      {activeSelectedSticker
+                        ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
+                        : selectedItemId === 'headline'
+                        ? 'Headline Selected'
+                        : selectedItemId === 'subtext'
+                        ? 'Subtext Selected'
+                        : selectedItemId === 'author'
+                        ? 'Creator Tag Selected'
+                        : selectedItemId === 'photo'
+                        ? 'Photo Selected'
+                        : selectedItemId === 'background'
+                        ? 'Background Selected'
+                        : 'Item Selected'}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activeSelectedSticker && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
+                        className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                      >
+                        ✕ Delete
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => {
-                        if (activeSelectedSticker) {
-                          handleDeleteSticker(activeSelectedSticker.id);
-                        } else if (activeSelectedLayer) {
-                          handleDeleteLayer(activeSelectedLayer.id);
-                        } else if (selectedItemId === 'subtext') {
-                          updateDraft({ secondaryText: '' });
-                          setSelectedItemId(null);
-                        } else if (selectedItemId === 'photo') {
-                          updateDraft({ imageUrl: undefined });
-                          setSelectedItemId(null);
-                        } else {
-                          setSelectedItemId(null);
-                        }
-                      }}
-                      className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors"
+                      onClick={() => setSelectedItemId(null)}
+                      className="px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
                     >
-                      {activeSelectedSticker || activeSelectedLayer || selectedItemId === 'subtext' || selectedItemId === 'photo' ? '✕ Remove' : '✕ Deselect'}
+                      Done
                     </button>
                   </div>
-
-                  {/* 0. LAYER QUICK CONTROLS: OPACITY, BLEND MODE, LOCK & DUPLICATE */}
-                  {activeSelectedLayer && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Blend Mode</span>
-                        <select
-                          value={activeSelectedLayer.blendMode || 'normal'}
-                          onChange={(e) => handleUpdateLayer(activeSelectedLayer.id, { blendMode: e.target.value as BlendMode })}
-                          className="px-2 py-1 bg-black/60 border border-white/20 rounded-md text-white text-xs"
-                        >
-                          {BLEND_MODES.map(bm => (
-                            <option key={bm.id} value={bm.id}>{bm.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Opacity ({Math.round((activeSelectedLayer.opacity ?? 1) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.05}
-                          max={1}
-                          step={0.05}
-                          value={activeSelectedLayer.opacity ?? 1}
-                          onChange={(e) => handleUpdateLayer(activeSelectedLayer.id, { opacity: Number(e.target.value) })}
-                          className="w-32 accent-[#00F0FF]"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateLayer(activeSelectedLayer.id, { locked: !activeSelectedLayer.locked })}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                            activeSelectedLayer.locked ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-white/10 text-slate-300'
-                          }`}
-                        >
-                          {activeSelectedLayer.locked ? '🔒 Locked' : '🔓 Unlocked'}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDuplicateLayer(activeSelectedLayer)}
-                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1"
-                        >
-                          📋 Duplicate Layer
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 1. STICKER QUICK CONTROLS: SIZE, OPACITY & ROTATE (NO ARROWS) */}
-                  {activeSelectedSticker && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Size ({activeSelectedSticker.size}px)</span>
-                        <input
-                          type="range"
-                          min={14}
-                          max={72}
-                          value={activeSelectedSticker.size}
-                          onChange={(e) => handleUpdateSticker(activeSelectedSticker.id, { size: Number(e.target.value) })}
-                          className="w-32 accent-[#FF2E93]"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Opacity ({Math.round((activeSelectedSticker.opacity ?? 1) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={activeSelectedSticker.opacity ?? 1}
-                          onChange={(e) => handleUpdateSticker(activeSelectedSticker.id, { opacity: Number(e.target.value) })}
-                          className="w-32 accent-[#FF2E93]"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Rotation ({activeSelectedSticker.rotation}°)</span>
-                        <input
-                          type="range"
-                          min={-180}
-                          max={180}
-                          value={activeSelectedSticker.rotation}
-                          onChange={(e) => handleUpdateSticker(activeSelectedSticker.id, { rotation: Number(e.target.value) })}
-                          className="w-32 accent-amber-400"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 2. MAIN HEADLINE QUICK CONTROLS: DIRECT TEXT EDIT, FONT SIZE, OPACITY */}
-                  {selectedItemId === 'headline' && (
-                    <div className="space-y-2.5 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Edit Headline Text:
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={48}
-                          value={currentDraft.headline}
-                          onChange={(e) => updateDraft({ headline: e.target.value })}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/20 text-white text-xs focus:border-[#FF2E93] focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Font Size ({currentDraft.fontSize}px)</span>
-                        <input
-                          type="range"
-                          min={14}
-                          max={46}
-                          value={currentDraft.fontSize}
-                          onChange={(e) => updateDraft({ fontSize: Number(e.target.value) })}
-                          className="w-32 accent-amber-400"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Opacity ({Math.round(currentDraft.textOpacity * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={currentDraft.textOpacity}
-                          onChange={(e) => updateDraft({ textOpacity: Number(e.target.value) })}
-                          className="w-32 accent-amber-400"
-                        />
-                      </div>
-
-                      {currentDraft.headlineX !== undefined && (
-                        <div className="flex justify-end pt-1">
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ headlineX: undefined, headlineY: undefined })}
-                            className="text-[11px] text-amber-300 hover:text-white underline cursor-pointer"
-                          >
-                            Reset Position to Center
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 3. SUBTEXT QUICK CONTROLS: DIRECT TEXT EDIT, SIZE, OPACITY */}
-                  {selectedItemId === 'subtext' && (
-                    <div className="space-y-2.5 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Edit Subtext Note:
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={70}
-                          value={currentDraft.secondaryText}
-                          onChange={(e) => updateDraft({ secondaryText: e.target.value })}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/20 text-white text-xs focus:border-amber-400 focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Subtext Size ({currentDraft.subtextSize || 14}px)</span>
-                        <input
-                          type="range"
-                          min={10}
-                          max={28}
-                          value={currentDraft.subtextSize || 14}
-                          onChange={(e) => updateDraft({ subtextSize: Number(e.target.value) })}
-                          className="w-32 accent-amber-400"
-                        />
-                      </div>
-
-                      {currentDraft.subtextX !== undefined && (
-                        <div className="flex justify-end pt-1">
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ subtextX: undefined, subtextY: undefined })}
-                            className="text-[11px] text-amber-300 hover:text-white underline cursor-pointer"
-                          >
-                            Reset Position to Center
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 4. CREATOR TAG QUICK CONTROLS: EDIT NAME, SIZE, OPACITY */}
-                  {selectedItemId === 'author' && (
-                    <div className="space-y-2.5 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                          Edit Creator Name / Handle:
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={24}
-                          value={currentDraft.creatorName}
-                          onChange={(e) => updateDraft({ creatorName: e.target.value })}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/20 text-white text-xs focus:border-cyan-400 focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Tag Size ({currentDraft.authorSize || 11}px)</span>
-                        <input
-                          type="range"
-                          min={9}
-                          max={22}
-                          value={currentDraft.authorSize || 11}
-                          onChange={(e) => updateDraft({ authorSize: Number(e.target.value) })}
-                          className="w-32 accent-cyan-400"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Tag Opacity ({Math.round((currentDraft.authorOpacity ?? currentDraft.textOpacity) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={currentDraft.authorOpacity ?? currentDraft.textOpacity}
-                          onChange={(e) => updateDraft({ authorOpacity: Number(e.target.value) })}
-                          className="w-32 accent-cyan-400"
-                        />
-                      </div>
-
-                      {currentDraft.authorX !== undefined && (
-                        <div className="flex justify-end pt-1">
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ authorX: undefined, authorY: undefined })}
-                            className="text-[11px] text-cyan-300 hover:text-white underline cursor-pointer"
-                          >
-                            Reset Tag to Bottom Footer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 5. PHOTO QUICK CONTROLS: ZOOM & OPACITY (BIG POP) */}
-                  {selectedItemId === 'photo' && tier === 'big_pop' && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Zoom & Crop ({Math.round((currentDraft.photoZoom ?? 1) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={1}
-                          max={2.5}
-                          step={0.1}
-                          value={currentDraft.photoZoom ?? 1}
-                          onChange={(e) => updateDraft({ photoZoom: Number(e.target.value) })}
-                          className="w-32 accent-[#FF2E93]"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Photo Opacity ({Math.round((currentDraft.photoOpacity ?? 1) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={currentDraft.photoOpacity ?? 1}
-                          onChange={(e) => updateDraft({ photoOpacity: Number(e.target.value) })}
-                          className="w-32 accent-[#FF2E93]"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
             {/* RIGHT / BOTTOM: STUDIO TOOLS ACCORDION TABS */}
             <div className="lg:col-span-7 flex flex-col space-y-3">
-              {/* Tool Navigation Bar */}
+              {/* Tool Navigation Bar (Picsart Mobile & Desktop Responsive Scrolling Pills) */}
               <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10 overflow-x-auto no-scrollbar">
+                {/* Tools (Photo Crop & Upload) - Big Pop Only */}
+                {tier === 'big_pop' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveEditorTab('photo');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                      activeEditorTab === 'photo' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>📐</span>
+                    <span>Tools</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveEditorTab('adjust');
+                    setIsDrawingMode(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                    activeEditorTab === 'adjust' && !isDrawingMode
+                      ? 'bg-amber-400 text-black shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🎨</span>
+                  <span>Adjust</span>
+                </button>
+
+                {/* Retouch (Portrait Beautify) - Big Pop Only */}
+                {tier === 'big_pop' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveEditorTab('retouch');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                      activeEditorTab === 'retouch' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>✨</span>
+                    <span>Retouch</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1536,44 +1411,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   }`}
                 >
                   <span>✍️</span>
-                  <span>Text & Fonts</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('adjust');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'adjust' && !isDrawingMode
-                      ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>📸</span>
-                  <span>Adjust & Filters</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('layers');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'layers' && !isDrawingMode
-                      ? 'bg-cyan-500 text-black shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>📚</span>
-                  <span>Layers</span>
-                  {currentDraft.layers && currentDraft.layers.length > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-cyan-950 text-cyan-200 text-[10px] flex items-center justify-center font-mono">
-                      {currentDraft.layers.length}
-                    </span>
-                  )}
+                  <span>Text</span>
                 </button>
 
                 <button
@@ -1584,12 +1422,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                     activeEditorTab === 'stickers' && !isDrawingMode
-                      ? 'bg-white text-black shadow-sm'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <span>💖</span>
-                  <span>Stickers & Stamps</span>
+                  <span>Stickers</span>
                 </button>
 
                 <button
@@ -1606,7 +1444,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   }`}
                 >
                   <span>🖌️</span>
-                  <span>Draw & Shapes</span>
+                  <span>Draw</span>
                 </button>
 
                 <button
@@ -1622,7 +1460,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   }`}
                 >
                   <span>🖼️</span>
-                  <span>Frames & Shape</span>
+                  <span>Frames</span>
                 </button>
 
                 <button
@@ -1637,1351 +1475,99 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <span>🎨</span>
-                  <span>Themes & BG</span>
+                  <span>🌈</span>
+                  <span>Background</span>
                 </button>
               </div>
 
-              {/* TAB 1: TEXT & FONTS (ULTRA-MODERN INTERACTIVE REDESIGN) */}
-              {activeEditorTab === 'text' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* 1. Main Headline Input Card */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2 hover:border-white/20 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-pink-500/20 text-[#FF2E93] border border-pink-500/30 flex items-center justify-center text-xs">
-                          💬
-                        </span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Main Headline / Message
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {currentDraft.headline && (
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ headline: '' })}
-                            className="text-[10px] text-slate-400 hover:text-rose-400 font-semibold cursor-pointer"
-                          >
-                            ✕ Clear
-                          </button>
-                        )}
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {currentDraft.headline.length}/48
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative rounded-xl bg-black/60 border border-white/15 focus-within:border-[#FF2E93] focus-within:ring-2 focus-within:ring-[#FF2E93]/30 transition-all overflow-hidden">
-                      <input
-                        type="text"
-                        maxLength={48}
-                        value={currentDraft.headline}
-                        onChange={(e) => updateDraft({ headline: e.target.value })}
-                        placeholder="e.g. My Memory ♡ or Living My Best Life"
-                        className="w-full px-3.5 py-2.5 bg-transparent text-white text-sm font-medium focus:outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    {/* Interactive Inspiration Presets */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400 font-medium">Quick ideas:</span>
-                      {[
-                        'My Memory ♡',
-                        'Good Vibes Only ✨',
-                        'Forever & Always 💕',
-                        'Living Life in Full Color 🌈',
-                        'To The Moon 🚀',
-                        'King Energy 👑',
-                        'Art ♡',
-                      ].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => updateDraft({ headline: preset })}
-                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-pink-500/20 hover:text-pink-300 border border-white/10 text-slate-300 text-[10px] font-medium transition-colors"
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 2. Subtext / Personal Note Card */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2 hover:border-white/20 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs">
-                          📝
-                        </span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Subtext / Personal Note
-                        </label>
-                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/10 text-slate-400 font-bold">
-                          Optional
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {currentDraft.secondaryText && (
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ secondaryText: '' })}
-                            className="text-[10px] text-slate-400 hover:text-rose-400 font-semibold cursor-pointer"
-                          >
-                            ✕ Clear
-                          </button>
-                        )}
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {currentDraft.secondaryText.length}/70
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative rounded-xl bg-black/60 border border-white/15 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30 transition-all overflow-hidden">
-                      <input
-                        type="text"
-                        maxLength={70}
-                        value={currentDraft.secondaryText}
-                        onChange={(e) => updateDraft({ secondaryText: e.target.value })}
-                        placeholder="e.g. Living life in full color or Since 2024"
-                        className="w-full px-3.5 py-2.5 bg-transparent text-white text-sm font-medium focus:outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    {/* Quick Subtext Presets */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400 font-medium">Quick notes:</span>
-                      {[
-                        'Living life in full color.',
-                        'Claimed on SpotPop 2026',
-                        'Since 2024 ♡',
-                        'Best memories are made together.',
-                        'Catch flights, not feelings.',
-                        'Made with love ✨',
-                      ].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => updateDraft({ secondaryText: preset })}
-                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 border border-white/10 text-slate-300 text-[10px] font-medium transition-colors"
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3. Creator Tag / Signature Card */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2 hover:border-white/20 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs">
-                          🏷️
-                        </span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Creator Tag / Signature
-                        </label>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {currentDraft.creatorName.length}/24
-                      </span>
-                    </div>
-
-                    <div className="flex items-center rounded-xl bg-black/60 border border-white/15 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/30 transition-all overflow-hidden">
-                      <span className="px-3 text-cyan-400 font-bold text-sm select-none">@</span>
-                      <input
-                        type="text"
-                        maxLength={24}
-                        value={currentDraft.creatorName}
-                        onChange={(e) => updateDraft({ creatorName: e.target.value })}
-                        placeholder="YourNameOrHandle"
-                        className="w-full pr-3.5 py-2.5 bg-transparent text-white text-sm font-medium focus:outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    {/* Quick Tag Presets */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400 font-medium">Tag presets:</span>
-                      {['Spot Pioneer', 'Anonymous ♡', 'VIP Creator', 'Founder #1', 'With Love ♡'].map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => updateDraft({ creatorName: tag })}
-                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 border border-white/10 text-slate-300 text-[10px] font-medium transition-colors"
-                        >
-                          @{tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 4. Font Typography (Visual Font Selector) */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2.5 hover:border-white/20 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xs">
-                          ✍️
-                        </span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Font Typography ({ALL_FONTS.length} Curated Fonts)
-                        </label>
-                      </div>
-                      <span className="text-[11px] text-[#FF2E93] font-bold font-mono">
-                        {currentDraft.fontFamily}
-                      </span>
-                    </div>
-
-                    {/* Font Category Filter Pills */}
-                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
-                      {['All', 'Handwritten', 'Modern', 'Display', 'Retro', 'Serif'].map((cat) => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedFontCategory(cat)}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap transition-colors ${
-                            selectedFontCategory === cat
-                              ? 'bg-[#FF2E93] text-white shadow-xs'
-                              : 'bg-white/5 text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Visual Font Cards Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto no-scrollbar p-1 bg-black/30 rounded-xl border border-white/5">
-                      {filteredFonts.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => updateDraft({ fontFamily: f.id })}
-                          className={`p-2 rounded-lg border text-left transition-all ${
-                            currentDraft.fontFamily === f.id
-                              ? 'border-[#FF2E93] bg-[#FF2E93]/20 text-white ring-1 ring-[#FF2E93]'
-                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/25 hover:bg-white/10'
-                          }`}
-                        >
-                          <div className="text-[10px] text-slate-400 font-sans truncate">{f.name.split(' (')[0]}</div>
-                          <div
-                            className="text-sm font-bold truncate mt-0.5 text-white"
-                            style={{ fontFamily: f.family }}
-                          >
-                            {currentDraft.headline || 'Hello World'}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 5. Color & Text Opacity Styling Bar */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-xs">
-                        🎨
-                      </span>
-                      <label className="text-xs font-bold text-white tracking-wide">
-                        Text Color & Legibility
-                      </label>
-                    </div>
-
-                    {/* Color Presets Palette */}
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                      {[
-                        { color: '#FFFFFF', label: 'White' },
-                        { color: '#0F172A', label: 'Black' },
-                        { color: '#FF2E93', label: 'Pink' },
-                        { color: '#FFB800', label: 'Gold' },
-                        { color: '#00F0FF', label: 'Cyan' },
-                        { color: '#10B981', label: 'Green' },
-                        { color: '#8B5CF6', label: 'Purple' },
-                        { color: '#EF4444', label: 'Red' },
-                        { color: '#FBCFE8', label: 'Pastel' },
-                      ].map((cp) => (
-                        <button
-                          key={cp.color}
-                          type="button"
-                          onClick={() => updateDraft({ textColor: cp.color })}
-                          className={`w-7 h-7 rounded-full border-2 transition-transform ${
-                            currentDraft.textColor === cp.color
-                              ? 'scale-125 border-white ring-2 ring-[#FF2E93] shadow-md'
-                              : 'border-white/20 hover:scale-110'
-                          }`}
-                          style={{ backgroundColor: cp.color }}
-                          title={cp.label}
-                        />
-                      ))}
-
-                      {/* Custom Color Input */}
-                      <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-white/15">
-                        <input
-                          type="color"
-                          value={currentDraft.textColor}
-                          onChange={(e) => updateDraft({ textColor: e.target.value })}
-                          className="w-7 h-7 rounded-full cursor-pointer bg-transparent border-0"
-                          title="Custom Hex Picker"
-                        />
-                        <span className="text-[10px] font-mono text-slate-400 uppercase">
-                          {currentDraft.textColor}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Opacity & Alignment Controls */}
-                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-white/10">
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-300 mb-1">
-                          <span>Text Opacity</span>
-                          <span className="font-mono text-[#FF2E93] font-bold">
-                            {Math.round(currentDraft.textOpacity * 100)}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={currentDraft.textOpacity}
-                          onChange={(e) => updateDraft({ textOpacity: Number(e.target.value) })}
-                          className="w-full accent-[#FF2E93]"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-300 mb-1">
-                          <span>Font Size</span>
-                          <span className="font-mono text-amber-400 font-bold">
-                            {currentDraft.fontSize}px
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ fontSize: Math.max(14, currentDraft.fontSize - 2) })}
-                            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="range"
-                            min={14}
-                            max={46}
-                            value={currentDraft.fontSize}
-                            onChange={(e) => updateDraft({ fontSize: Number(e.target.value) })}
-                            className="w-full accent-amber-400"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => updateDraft({ fontSize: Math.min(46, currentDraft.fontSize + 2) })}
-                            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 6. Curved Text & Letter Spacing Box */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-pink-500/20 text-[#FF2E93] border border-pink-500/30 flex items-center justify-center text-xs">
-                          📐
-                        </span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Curved / Arched Text & Letter Spacing
-                        </label>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => updateDraft({ isCurvedText: !currentDraft.isCurvedText })}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                          currentDraft.isCurvedText
-                            ? 'bg-[#FF2E93] text-white shadow-md'
-                            : 'bg-white/10 text-slate-300 hover:text-white'
-                        }`}
-                      >
-                        {currentDraft.isCurvedText ? '🌈 Curved: ON' : 'Straight: OFF'}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
-                      <span>Letter Spacing ({currentDraft.letterSpacing || 0}px)</span>
-                      <input
-                        type="range"
-                        min={-2}
-                        max={10}
-                        step={1}
-                        value={currentDraft.letterSpacing || 0}
-                        onChange={(e) => updateDraft({ letterSpacing: Number(e.target.value) })}
-                        className="w-36 accent-[#FF2E93]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 7. AI Writer & AI Captions Assistant */}
-                  <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#1E112A] to-[#12141F] border border-purple-500/30 space-y-3 shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🪄</span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          AI Writer & Viral Captions
-                        </label>
-                      </div>
-                      <span className="text-[10px] uppercase font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
-                        1-Tap Insert
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5 max-h-52 overflow-y-auto no-scrollbar p-1">
-                      {AI_CAPTION_PRESETS.map((catGroup) => (
-                        <div key={catGroup.category} className="space-y-1.5">
-                          <div className="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1">
-                            <span>{catGroup.icon}</span>
-                            <span>{catGroup.category}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {catGroup.captions.map((cap) => (
-                              <button
-                                key={cap}
-                                type="button"
-                                onClick={() => updateDraft({ headline: cap })}
-                                className="p-2 rounded-lg bg-black/40 hover:bg-purple-600/20 border border-white/10 hover:border-purple-400 text-left text-slate-200 text-xs font-medium transition-all group"
-                              >
-                                <span className="group-hover:text-purple-300 leading-snug block">"{cap}"</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              {/* TAB 1: TOOLS (CROP & PHOTO - BIG POP ONLY) */}
+              {activeEditorTab === 'photo' && tier === 'big_pop' && !isDrawingMode && (
+                <PhotoCropTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  updatePhotoAdjustments={updatePhotoAdjustments}
+                  tier={tier}
+                  onFileUpload={handleFileUpload}
+                />
               )}
 
-              {/* TAB 2: FRAMES & CARD SHAPES (NEW DEDICATED FORMAT & FRAME SELECTOR) */}
-              {activeEditorTab === 'frames' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* Hero Callout for Transparent Cutout Mode */}
-                  <div
-                    onClick={() => handleSelectShape(AVAILABLE_SHAPES[0])}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      currentDraft.shape === 'transparent'
-                        ? 'border-[#FF2E93] bg-gradient-to-r from-[#FF2E93]/20 via-purple-600/20 to-cyan-500/20 shadow-lg ring-2 ring-[#FF2E93]'
-                        : 'border-white/15 bg-white/5 hover:border-white/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl filter drop-shadow">🌟</span>
-                        <div>
-                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>Transparent Cutout Mode (PNG Only)</span>
-                            <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#FF2E93] to-purple-600 text-[9px] font-black uppercase text-white tracking-wider">
-                              No Card Background
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-300 mt-0.5">
-                            Completely removes sticky note & card frames! Your uploaded PNG artwork, stickers & doodles float directly on the canvas.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 pl-2">
-                        <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] ${
-                          currentDraft.shape === 'transparent' ? 'border-[#FF2E93] bg-[#FF2E93] text-white' : 'border-white/40'
-                        }`}>
-                          {currentDraft.shape === 'transparent' ? '✓' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* All 11 Frame Shapes Grid */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-2">
-                      Card Formats & Frame Styles ({AVAILABLE_SHAPES.length} Choices)
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto no-scrollbar p-1">
-                      {AVAILABLE_SHAPES.map((shapeOpt) => {
-                        const isSelected = currentDraft.shape === shapeOpt.id;
-                        return (
-                          <button
-                            key={shapeOpt.id}
-                            type="button"
-                            onClick={() => handleSelectShape(shapeOpt)}
-                            className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
-                              isSelected
-                                ? 'border-[#FF2E93] bg-[#FF2E93]/15 text-white ring-2 ring-[#FF2E93]/60 shadow-md scale-102'
-                                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/25 hover:bg-white/10'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xl filter drop-shadow">{shapeOpt.icon}</span>
-                              {shapeOpt.badge && (
-                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded-md bg-white/10 text-white font-bold">
-                                  {shapeOpt.badge}
-                                </span>
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-white truncate">{shapeOpt.name}</div>
-                              <div className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
-                                {shapeOpt.desc}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Fasteners & Frame Accents */}
-                  <div className="pt-2 border-t border-white/10">
-                    <label className="block text-xs font-bold text-slate-300 mb-2">
-                      Fastener & Border Accents
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {(tier === 'big_pop' ? BIG_FRAMES : MINI_FRAMES).map((fr) => (
-                        <button
-                          key={fr.id}
-                          type="button"
-                          onClick={() => updateDraft({ frameStyle: fr.id })}
-                          className={`p-2 rounded-xl border text-xs font-medium text-left transition-all ${
-                            currentDraft.frameStyle === fr.id
-                              ? 'border-[#FF2E93] bg-[#FF2E93]/20 text-white shadow-sm ring-1 ring-[#FF2E93]'
-                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                          }`}
-                        >
-                          {fr.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: THEMES & BACKGROUND PALETTES */}
-              {activeEditorTab === 'themes' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* Category Filter Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                    {[
-                      { id: 'all', label: 'All Themes' },
-                      { id: 'halloween', label: '🎃 Halloween' },
-                      { id: 'christmas', label: '🎄 Christmas' },
-                      { id: 'love', label: '💖 Love' },
-                      { id: 'retro', label: '⚡ Cosmic/Retro' },
-                      { id: 'classic', label: '📝 Classics' },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setSelectedBgCategory(tab.id as any)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
-                          selectedBgCategory === tab.id
-                            ? 'bg-amber-400 text-black shadow-sm'
-                            : 'bg-white/5 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Background Palette Grid */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold text-slate-300">
-                        Background Palette ({filteredBackgrounds.length} Themes)
-                      </label>
-                      <span className="text-[10px] text-slate-400">
-                        Applies directly to your active spot
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1 bg-black/30 rounded-xl border border-white/5 no-scrollbar">
-                      {filteredBackgrounds.map((bg, idx) => {
-                        const isSelected = currentDraft.backgroundColor === bg.value;
-                        const isBgTransparent = bg.value === 'transparent';
-
-                        return (
-                          <button
-                            key={`${bg.name}_${idx}`}
-                            type="button"
-                            onClick={() => handleSelectBackground(bg)}
-                            className={`h-16 rounded-xl p-2 border flex flex-col justify-end text-left transition-all relative overflow-hidden ${
-                              isSelected
-                                ? 'border-[#FF2E93] ring-2 ring-[#FF2E93]/60 scale-102 shadow-lg'
-                                : 'border-white/10 hover:border-white/30'
-                            }`}
-                            style={{
-                              background: isBgTransparent ? 'repeating-conic-gradient(#334155 0% 25%, #1E293B 0% 50%) 50% / 12px 12px' : bg.value,
-                            }}
-                          >
-                            <span
-                              className="text-[10px] font-bold truncate drop-shadow-md z-10"
-                              style={{ color: isBgTransparent ? '#FFFFFF' : bg.text }}
-                            >
-                              {bg.name}
-                            </span>
-                            {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF2E93] text-white flex items-center justify-center text-[9px] font-bold">
-                                ✓
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: ADJUST & FILTERS (CANVA/PHOTOSHOP-GRADE PHOTO SUITE) */}
+              {/* TAB 2: ADJUST (SINGLE-SLIDER PICSART ENGINE) */}
               {activeEditorTab === 'adjust' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* Upload / Replace Primary Artwork */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">📸</span>
-                        <label className="text-xs font-bold text-white tracking-wide">
-                          Spot Main Artwork & Photo
-                        </label>
-                      </div>
-                      <label className="px-3 py-1.5 rounded-xl bg-[#FF2E93] hover:bg-[#E6007A] text-white text-xs font-bold cursor-pointer transition-colors shadow-md">
-                        {currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Preset Aesthetics Gallery */}
-                    <div className="grid grid-cols-5 gap-2 pt-1">
-                      {SAMPLE_PHOTOS.map(sp => (
-                        <div
-                          key={sp.label}
-                          onClick={() => updateDraft({ imageUrl: sp.url, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
-                          className={`aspect-square rounded-xl overflow-hidden border cursor-pointer transition-transform hover:scale-105 ${
-                            currentDraft.imageUrl === sp.url ? 'border-[#FF2E93] ring-2 ring-[#FF2E93]/50' : 'border-white/10'
-                          }`}
-                        >
-                          <img src={sp.url} alt={sp.label} className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Transform / Quick Rotate & Flip Bar */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">
-                    <label className="text-xs font-bold text-slate-300 block">
-                      Transform & Orientation
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updatePhotoAdjustments({ flipH: !currentDraft.photoAdjustments?.flipH })}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${
-                          currentDraft.photoAdjustments?.flipH ? 'bg-pink-500/20 text-pink-300 border-pink-500/40' : 'bg-white/5 border-white/10 text-slate-300'
-                        }`}
-                      >
-                        <span>↔️</span>
-                        <span>Flip H</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updatePhotoAdjustments({ flipV: !currentDraft.photoAdjustments?.flipV })}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${
-                          currentDraft.photoAdjustments?.flipV ? 'bg-pink-500/20 text-pink-300 border-pink-500/40' : 'bg-white/5 border-white/10 text-slate-300'
-                        }`}
-                      >
-                        <span>↕️</span>
-                        <span>Flip V</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updatePhotoAdjustments({ ...DEFAULT_ADJUSTMENTS })}
-                        className="py-2 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <span>↺</span>
-                        <span>Reset All</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 10 Filter Preset Chips */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-white tracking-wide">
-                        Color Grading & Filter Presets
-                      </label>
-                      <span className="text-[10px] text-pink-400 font-bold uppercase">
-                        {currentDraft.photoAdjustments?.filter || 'Normal'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {FILTER_PRESETS.map((fp) => {
-                        const isSelected = (currentDraft.photoAdjustments?.filter || 'none') === fp.id;
-                        return (
-                          <button
-                            key={fp.id}
-                            type="button"
-                            onClick={() => updatePhotoAdjustments({ filter: fp.id })}
-                            className={`p-2 rounded-xl border flex flex-col items-center text-center transition-all ${
-                              isSelected
-                                ? 'border-[#FF2E93] bg-[#FF2E93]/20 text-white ring-1 ring-[#FF2E93] shadow-md scale-102'
-                                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                            }`}
-                          >
-                            <span className="text-base">{fp.icon}</span>
-                            <span className="text-[11px] font-bold mt-1 truncate w-full">{fp.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Crop / Zoom & Pan Position */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <label className="text-xs font-bold text-slate-300 block">
-                      Crop / Zoom & Alignment
-                    </label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Crop / Zoom Scale ({Math.round((currentDraft.photoZoom ?? 1) * 100)}%)</span>
-                        <input
-                          type="range"
-                          min={0.5}
-                          max={2.5}
-                          step={0.05}
-                          value={currentDraft.photoZoom ?? 1}
-                          onChange={(e) => updateDraft({ photoZoom: Number(e.target.value) })}
-                          className="w-40 accent-[#FF2E93]"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Horizontal Pan ({currentDraft.photoOffsetX ?? 0}px)</span>
-                        <input
-                          type="range"
-                          min={-70}
-                          max={70}
-                          value={currentDraft.photoOffsetX ?? 0}
-                          onChange={(e) => updateDraft({ photoOffsetX: Number(e.target.value) })}
-                          className="w-40 accent-[#FF2E93]"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-300">
-                        <span>Vertical Pan ({currentDraft.photoOffsetY ?? 0}px)</span>
-                        <input
-                          type="range"
-                          min={-70}
-                          max={70}
-                          value={currentDraft.photoOffsetY ?? 0}
-                          onChange={(e) => updateDraft({ photoOffsetY: Number(e.target.value) })}
-                          className="w-40 accent-[#FF2E93]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fine Tune Sliders */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <label className="text-xs font-bold text-slate-300 block">
-                      Fine Tune & Pro Adjustments
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Brightness</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.brightness || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-100}
-                          max={100}
-                          value={currentDraft.photoAdjustments?.brightness || 0}
-                          onChange={(e) => updatePhotoAdjustments({ brightness: Number(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Contrast</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.contrast || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-100}
-                          max={100}
-                          value={currentDraft.photoAdjustments?.contrast || 0}
-                          onChange={(e) => updatePhotoAdjustments({ contrast: Number(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Saturation</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.saturation || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-100}
-                          max={100}
-                          value={currentDraft.photoAdjustments?.saturation || 0}
-                          onChange={(e) => updatePhotoAdjustments({ saturation: Number(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Exposure</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.exposure || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-100}
-                          max={100}
-                          value={currentDraft.photoAdjustments?.exposure || 0}
-                          onChange={(e) => updatePhotoAdjustments({ exposure: Number(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Temperature (Warmth)</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.temperature || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-100}
-                          max={100}
-                          value={currentDraft.photoAdjustments?.temperature || 0}
-                          onChange={(e) => updatePhotoAdjustments({ temperature: Number(e.target.value) })}
-                          className="w-full accent-amber-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Hue Rotation</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.hue || 0}°</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-180}
-                          max={180}
-                          value={currentDraft.photoAdjustments?.hue || 0}
-                          onChange={(e) => updatePhotoAdjustments({ hue: Number(e.target.value) })}
-                          className="w-full accent-cyan-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Blur</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.blur || 0}px</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={40}
-                          value={currentDraft.photoAdjustments?.blur || 0}
-                          onChange={(e) => updatePhotoAdjustments({ blur: Number(e.target.value) })}
-                          className="w-full accent-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Skin Smooth & Radiance</span>
-                          <span className="font-mono">{currentDraft.photoAdjustments?.retouchSmooth || 0}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={40}
-                          value={currentDraft.photoAdjustments?.retouchSmooth || 0}
-                          onChange={(e) => updatePhotoAdjustments({ retouchSmooth: Number(e.target.value) })}
-                          className="w-full accent-rose-400"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                          <span>Photo Opacity</span>
-                          <span className="font-mono">{Math.round((currentDraft.photoOpacity ?? 1) * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={currentDraft.photoOpacity ?? 1}
-                          onChange={(e) => updateDraft({ photoOpacity: Number(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <AdjustTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  updatePhotoAdjustments={updatePhotoAdjustments}
+                />
               )}
 
-              {/* TAB: LAYERS STUDIO & MULTI-PHOTO (UNLIMITED LAYERS) */}
-              {activeEditorTab === 'layers' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* Action Bar: Add Photo, Add Shape, Add Text */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <label className="text-xs font-bold text-white block">
-                      Add Extra Elements / Multi-Photo
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <label className="py-2 px-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-colors text-center">
-                        <span>+ 📸 Photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCustomStickerUpload}
-                          className="hidden"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => handleAddTextLayer('New Text Layer')}
-                        className="py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-colors"
-                      >
-                        <span>+ ✍️ Text</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAddShapeLayer('heart')}
-                        className="py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-colors"
-                      >
-                        <span>+ 💖 Shape</span>
-                      </button>
-                    </div>
-
-                    {/* Quick Shapes Palette */}
-                    <div className="pt-2 border-t border-white/10">
-                      <label className="text-[11px] font-bold text-slate-400 block mb-1.5">
-                        Insert Vector Shape:
-                      </label>
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                        {[
-                          { id: 'heart', label: 'Heart', icon: '💖' },
-                          { id: 'star', label: 'Star', icon: '⭐' },
-                          { id: 'circle', label: 'Circle', icon: '⭕' },
-                          { id: 'rectangle', label: 'Box', icon: '⬛' },
-                          { id: 'arrow', label: 'Arrow', icon: '➡️' },
-                          { id: 'speech_bubble', label: 'Bubble', icon: '💬' },
-                        ].map(shp => (
-                          <button
-                            key={shp.id}
-                            type="button"
-                            onClick={() => handleAddShapeLayer(shp.id as any)}
-                            className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/15 border border-white/10 text-white text-xs font-bold flex items-center gap-1 shrink-0"
-                          >
-                            <span>{shp.icon}</span>
-                            <span>{shp.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Layer Stack Manager */}
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Layer Stack</span>
-                        <span className="text-[10px] text-cyan-400 font-mono">
-                          ({(currentDraft.layers || []).length} Layers)
-                        </span>
-                      </label>
-                      <span className="text-[10px] text-slate-400">
-                        Top = Front · Bottom = Back
-                      </span>
-                    </div>
-
-                    {(currentDraft.layers || []).length === 0 ? (
-                      <div className="p-6 rounded-xl border border-dashed border-white/15 text-center text-slate-400 space-y-1">
-                        <p className="text-xs">No extra layers added yet.</p>
-                        <p className="text-[11px] text-slate-500">Tap + Photo, + Text, or + Shape to add unlimited overlay elements!</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5 max-h-56 overflow-y-auto no-scrollbar p-1">
-                        {[...(currentDraft.layers || [])].reverse().map((layer) => {
-                          const isSelected = selectedItemId === layer.id;
-
-                          return (
-                            <div
-                              key={layer.id}
-                              onClick={() => setSelectedItemId(layer.id)}
-                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'border-[#00F0FF] bg-[#00F0FF]/15 text-white shadow-md'
-                                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm">
-                                  {layer.type === 'image' ? '📸' : layer.type === 'text' ? '✍️' : '🔷'}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold truncate">{layer.name || layer.type}</p>
-                                  <p className="text-[10px] text-slate-400 capitalize">{layer.blendMode || 'normal'} · {Math.round((layer.opacity ?? 1) * 100)}%</p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateLayer(layer.id, { locked: !layer.locked })}
-                                  className={`w-6 h-6 rounded flex items-center justify-center text-xs transition-colors ${
-                                    layer.locked ? 'text-amber-400 bg-amber-500/20' : 'text-slate-400 hover:text-white'
-                                  }`}
-                                  title={layer.locked ? 'Unlock Layer' : 'Lock Layer'}
-                                >
-                                  {layer.locked ? '🔒' : '🔓'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateLayer(layer.id, { visible: layer.visible === false ? true : false })}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs text-slate-400 hover:text-white"
-                                  title={layer.visible === false ? 'Show Layer' : 'Hide Layer'}
-                                >
-                                  {layer.visible === false ? '🕶️' : '👁️'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleReorderLayer(layer.id, 'up')}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs text-slate-400 hover:text-white"
-                                  title="Bring Forward"
-                                >
-                                  ⬆️
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleReorderLayer(layer.id, 'down')}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs text-slate-400 hover:text-white"
-                                  title="Send Backward"
-                                >
-                                  ⬇️
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicateLayer(layer)}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs text-slate-400 hover:text-white"
-                                  title="Duplicate Layer"
-                                >
-                                  📋
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteLayer(layer.id)}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs text-rose-400 hover:bg-rose-500/20"
-                                  title="Delete Layer"
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {/* TAB 3: RETOUCH & BEAUTIFY (BIG POP ONLY) */}
+              {activeEditorTab === 'retouch' && tier === 'big_pop' && !isDrawingMode && (
+                <RetouchTab
+                  currentDraft={currentDraft}
+                  updatePhotoAdjustments={updatePhotoAdjustments}
+                />
               )}
 
-              {/* TAB: STICKERS & GRAPHICS LIBRARY */}
+              {/* TAB 4: TEXT STUDIO */}
+              {activeEditorTab === 'text' && !isDrawingMode && (
+                <TextStudioTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  selectedFontCategory={selectedFontCategory}
+                  setSelectedFontCategory={setSelectedFontCategory}
+                />
+              )}
+
+              {/* TAB 5: STICKERS */}
               {activeEditorTab === 'stickers' && !isDrawingMode && (
-                <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-                  {/* Search & Custom Upload Bar */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 relative">
-                        <input
-                          type="text"
-                          value={stickerSearchQuery}
-                          onChange={(e) => setStickerSearchQuery(e.target.value)}
-                          placeholder="Search stickers, stamps, emojis..."
-                          className="w-full pl-8 pr-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-[#FF2E93]"
-                        />
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
-                        {stickerSearchQuery && (
-                          <button
-                            type="button"
-                            onClick={() => setStickerSearchQuery('')}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-
-                      <label className="px-3 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors shadow-sm">
-                        <span>+ Custom PNG</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCustomStickerUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-
-                    {/* AI Sticker Generator Input */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={aiStickerPrompt}
-                        onChange={(e) => setAiStickerPrompt(e.target.value)}
-                        placeholder="AI Tag: Type any vibe (e.g. Neon Soulmate, 2026 Forever)..."
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-purple-400"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAiStickerCreate();
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAiStickerCreate}
-                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shrink-0 hover:opacity-90"
-                      >
-                        🪄 Stamp Tag
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sticker Category Tabs */}
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
-                    {STICKER_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          setStickerCategory(cat.id);
-                          setStickerSearchQuery('');
-                        }}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
-                          stickerCategory === cat.id && !stickerSearchQuery
-                            ? 'bg-[#FF2E93] text-white shadow-sm'
-                            : 'bg-white/5 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Stickers Grid */}
-                  <div className="p-3 bg-black/40 rounded-xl border border-white/10">
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto no-scrollbar p-1">
-                      {STICKER_CATEGORIES.flatMap(c => {
-                        if (stickerSearchQuery) {
-                          return c.emojis.filter(e => e.toLowerCase().includes(stickerSearchQuery.toLowerCase()));
-                        }
-                        return c.id === stickerCategory ? c.emojis : [];
-                      }).map((em, idx) => (
-                        <button
-                          key={`${em}_${idx}`}
-                          type="button"
-                          onClick={() => handleAddSticker(em)}
-                          className="min-h-[44px] rounded-xl bg-white/5 hover:bg-[#FF2E93]/20 border border-white/10 hover:border-[#FF2E93] flex items-center justify-center p-1.5 hover:scale-105 transition-transform"
-                        >
-                          <span className="select-none truncate text-center font-bold text-xs text-white drop-shadow-sm">{em}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <StickersStockTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  handleAddSticker={handleAddSticker}
+                  onCustomStickerUpload={handleCustomStickerUpload}
+                  selectedItemId={selectedItemId}
+                  onUpdateSticker={handleUpdateSticker}
+                  onDeleteSticker={handleDeleteSticker}
+                />
               )}
 
-              {/* TAB 5: DRAW STUDIO & SHAPES (MOBILE & DESKTOP FRIENDLY) */}
+              {/* TAB 7: DRAW & PAINT */}
               {(isDrawingMode || activeEditorTab === 'draw') && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1A112C] to-[#12141F] border border-pink-500/30 space-y-3.5 animate-fade-in shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-lg">🖌️</span>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
-                        Full-Space Drawing & Brush Studio
-                      </span>
-                    </div>
+                <DrawStudioTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  drawTool={drawTool}
+                  setDrawTool={setDrawTool}
+                  drawColor={drawColor}
+                  setDrawColor={setDrawColor}
+                  brushSize={brushSize}
+                  setBrushSize={setBrushSize}
+                  brushOpacity={brushOpacity}
+                  setBrushOpacity={setBrushOpacity}
+                  handleUndoDrawing={handleUndoDrawing}
+                  handleClearDrawing={handleClearDrawing}
+                  handleAddShapeLayer={handleAddShapeLayer}
+                />
+              )}
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleUndoDrawing}
-                        disabled={drawingHistory.length === 0}
-                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        ↩ Undo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleClearDrawing}
-                        className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Clear All
-                      </button>
-                      {isDrawingMode ? (
-                        <button
-                          type="button"
-                          onClick={() => setIsDrawingMode(false)}
-                          className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold transition-colors shadow-sm cursor-pointer"
-                        >
-                          ✓ Done Drawing
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsDrawingMode(true);
-                            setSelectedItemId(null);
-                          }}
-                          className="px-3 py-1 rounded-lg bg-[#FF2E93] hover:bg-[#FF1493] text-white text-xs font-bold transition-colors shadow-sm cursor-pointer"
-                        >
-                          ✏️ Start Sketching
-                        </button>
-                      )}
-                    </div>
-                  </div>
+              {/* TAB 8: FRAMES & SHAPE */}
+              {activeEditorTab === 'frames' && !isDrawingMode && (
+                <FramesTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  tier={tier}
+                  handleSelectShape={handleSelectShape}
+                />
+              )}
 
-                  {/* 8 Brush Styles */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-pink-300 mb-1.5 uppercase">
-                      Select Pen / Brush Style:
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {BRUSH_STYLES.map(brush => (
-                        <button
-                          key={brush.id}
-                          type="button"
-                          onClick={() => setDrawTool(brush.id)}
-                          className={`p-2 rounded-xl border flex flex-col items-center text-center transition-all ${
-                            drawTool === brush.id
-                              ? 'border-[#FF2E93] bg-[#FF2E93]/20 text-white shadow-md scale-102 ring-1 ring-[#FF2E93]'
-                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                          }`}
-                        >
-                          <span className="text-lg">{brush.icon}</span>
-                          <span className="text-[11px] font-bold mt-0.5">{brush.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Brush Size & Opacity */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between text-xs text-slate-300">
-                        <span>Brush Size</span>
-                        <span className="font-bold text-[#FF2E93]">{brushSize}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={2}
-                        max={36}
-                        value={brushSize}
-                        onChange={(e) => setBrushSize(Number(e.target.value))}
-                        className="accent-[#FF2E93]"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between text-xs text-slate-300">
-                        <span>Pen Opacity</span>
-                        <span className="font-bold text-[#FF2E93]">{Math.round(brushOpacity * 100)}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.1}
-                        max={1}
-                        step={0.05}
-                        value={brushOpacity}
-                        onChange={(e) => setBrushOpacity(Number(e.target.value))}
-                        className="accent-[#FF2E93]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Color Palette */}
-                  {drawTool !== 'eraser' && (
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold text-slate-300">Ink Color Palette:</span>
-                        <input
-                          type="color"
-                          value={drawColor}
-                          onChange={(e) => setDrawColor(e.target.value)}
-                          className="w-6 h-6 rounded-md cursor-pointer border-0 bg-transparent"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                        {[
-                          '#FF2E93', '#FFE600', '#00F0FF', '#76FF03', '#FFFFFF',
-                          '#9333EA', '#FF5722', '#000000', '#FF1493', '#00E5FF'
-                        ].map(c => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => setDrawColor(c)}
-                            className={`w-7 h-7 rounded-full shrink-0 border-2 transition-transform hover:scale-110 ${
-                              drawColor === c ? 'border-white scale-115 ring-2 ring-[#FF2E93]' : 'border-transparent'
-                            }`}
-                            style={{ backgroundColor: c }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Vector Shape Stamps Section */}
-                  <div className="pt-2 border-t border-white/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-pink-300 uppercase tracking-wider">
-                        🔷 Or Stamp Vector Shape Layers:
-                      </span>
-                      <span className="text-[10px] text-slate-400">Adds resizable layer</span>
-                    </div>
-                    <div className="grid grid-cols-6 gap-1.5">
-                      {[
-                        { type: 'heart', label: 'Heart', icon: '❤️' },
-                        { type: 'star', label: 'Star', icon: '⭐' },
-                        { type: 'circle', label: 'Circle', icon: '⭕' },
-                        { type: 'rectangle', label: 'Box', icon: '⬛' },
-                        { type: 'arrow', label: 'Arrow', icon: '➡️' },
-                        { type: 'speech_bubble', label: 'Bubble', icon: '💬' },
-                      ].map((shp) => (
-                        <button
-                          key={shp.type}
-                          type="button"
-                          onClick={() => {
-                            handleAddShapeLayer(shp.type as any);
-                            setIsDrawingMode(false);
-                          }}
-                          className="p-1.5 rounded-xl bg-white/5 hover:bg-[#FF2E93]/20 border border-white/10 hover:border-[#FF2E93] flex flex-col items-center justify-center text-center transition-all cursor-pointer hover:scale-105"
-                        >
-                          <span className="text-base">{shp.icon}</span>
-                          <span className="text-[9px] font-bold text-slate-300 mt-0.5 truncate w-full">{shp.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              {/* TAB 9: THEMES & BG */}
+              {activeEditorTab === 'themes' && !isDrawingMode && (
+                <ThemesTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
+                  selectedBgCategory={selectedBgCategory}
+                  setSelectedBgCategory={setSelectedBgCategory}
+                />
               )}
 
               {/* ACTION FOOTER */}

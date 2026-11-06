@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { SpotShape, FrameStyle, StickerItem, SpotContent, SpotLayer } from '../../types';
-import { getPhotoFilterStyle } from '../../utils/photoFilters';
+import { getPhotoFilterStyle, getCleanFontFamily } from '../../utils/photoFilters';
 
 export interface SpotCardProps {
   tier?: 'mini_pop' | 'big_pop';
@@ -48,9 +48,13 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   drawingCanvasOverlay,
   className = '',
 }) => {
-  // Canonical dimensions to ensure 100% WYSIWYG parity everywhere
-  const cardWidth = width || (tier === 'big_pop' ? 260 : 180);
-  const cardHeight = height || (tier === 'big_pop' ? 320 : 180);
+  // Canonical dimensions matching "Forever Dusk" standard (170x210 for Big Pop, 170x170 for Mini Pop)
+  const isHero = shape === 'graffiti';
+  const rawWidth = width || (tier === 'big_pop' ? 170 : 170);
+  const rawHeight = height || (tier === 'big_pop' ? 210 : 170);
+  // Cap standard cards at 170x210 so no regular card ever renders oversized
+  const cardWidth = isHero ? rawWidth : Math.min(rawWidth, 170);
+  const cardHeight = isHero ? rawHeight : Math.min(rawHeight, tier === 'big_pop' ? 210 : 170);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,12 +69,20 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const startClientY = e.clientY;
     const startX = stk.x;
     const startY = stk.y;
+    let isDragging = false;
 
     const onPointerMove = (moveEvt: PointerEvent) => {
+      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
+      if (dist > 3) isDragging = true;
+      if (!isDragging) return;
+
       const dx = (moveEvt.clientX - startClientX) / scale;
       const dy = (moveEvt.clientY - startClientY) / scale;
-      const newX = Math.round(Math.max(-25, Math.min(cardWidth - 25, startX + dx)));
-      const newY = Math.round(Math.max(-25, Math.min(cardHeight - 25, startY + dy)));
+      const stkSize = stk.size || 28;
+      // Allow sticker to peek slightly outside frame, but must stay anchored/touching the container
+      const maxPeek = Math.min(stkSize * 0.35, 12);
+      const newX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - stkSize + maxPeek, startX + dx)));
+      const newY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - stkSize + maxPeek, startY + dy)));
       onUpdateSticker?.(stk.id, { x: newX, y: newY });
     };
 
@@ -140,8 +152,10 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const onPointerMove = (moveEvt: PointerEvent) => {
       const dx = (moveEvt.clientX - startClientX) / scale;
       const dy = (moveEvt.clientY - startClientY) / scale;
-      const newX = Math.round(startX + dx);
-      const newY = Math.round(startY + dy);
+      const maxPeekX = Math.min((layer.width || 40) * 0.3, 14);
+      const maxPeekY = Math.min((layer.height || 40) * 0.3, 14);
+      const newX = Math.round(Math.max(-maxPeekX, Math.min(cardWidth - (layer.width || 40) + maxPeekX, startX + dx)));
+      const newY = Math.round(Math.max(-maxPeekY, Math.min(cardHeight - (layer.height || 40) + maxPeekY, startY + dy)));
       onUpdateLayer?.(layer.id, { x: newX, y: newY });
     };
 
@@ -231,6 +245,30 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
           </svg>
         );
+      case 'cloud':
+        return (
+          <svg viewBox="0 0 24 24" className="w-full h-full">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+          </svg>
+        );
+      case 'lightning':
+        return (
+          <svg viewBox="0 0 24 24" className="w-full h-full">
+            <polygon points="7 2 17 2 12 11 18 11 7 22 9 13 4 13 7 2" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+          </svg>
+        );
+      case 'diamond':
+        return (
+          <svg viewBox="0 0 24 24" className="w-full h-full">
+            <polygon points="12 2 22 9 12 22 2 9 12 2" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+          </svg>
+        );
+      case 'flower':
+        return (
+          <svg viewBox="0 0 24 24" className="w-full h-full">
+            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6-4c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm-8 0c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm2-2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+          </svg>
+        );
       case 'speech_bubble':
         return (
           <svg viewBox="0 0 24 24" className="w-full h-full">
@@ -261,8 +299,13 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const defaultY = shape === 'polaroid' ? cardHeight - 55 : (cardHeight * 0.28);
     const startX = content.headlineX !== undefined ? content.headlineX : defaultX;
     const startY = content.headlineY !== undefined ? content.headlineY : defaultY;
+    let isDragging = false;
 
     const onPointerMove = (moveEvt: PointerEvent) => {
+      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
+      if (dist > 3) isDragging = true;
+      if (!isDragging) return;
+
       const dx = (moveEvt.clientX - startClientX) / scale;
       const dy = (moveEvt.clientY - startClientY) / scale;
       const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, startX + dx)));
@@ -313,8 +356,13 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const defaultY = shape === 'polaroid' ? cardHeight - 28 : (cardHeight * 0.58);
     const startX = content.subtextX !== undefined ? content.subtextX : defaultX;
     const startY = content.subtextY !== undefined ? content.subtextY : defaultY;
+    let isDragging = false;
 
     const onPointerMove = (moveEvt: PointerEvent) => {
+      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
+      if (dist > 3) isDragging = true;
+      if (!isDragging) return;
+
       const dx = (moveEvt.clientX - startClientX) / scale;
       const dy = (moveEvt.clientY - startClientY) / scale;
       const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, startX + dx)));
@@ -365,8 +413,13 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const defaultY = cardHeight - 24;
     const startX = content.authorX !== undefined ? content.authorX : defaultX;
     const startY = content.authorY !== undefined ? content.authorY : defaultY;
+    let isDragging = false;
 
     const onPointerMove = (moveEvt: PointerEvent) => {
+      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
+      if (dist > 3) isDragging = true;
+      if (!isDragging) return;
+
       const dx = (moveEvt.clientX - startClientX) / scale;
       const dy = (moveEvt.clientY - startClientY) / scale;
       const newX = Math.round(Math.max(5, Math.min(cardWidth - 30, startX + dx)));
@@ -499,6 +552,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   const photoFilterObj = getPhotoFilterStyle(content.photoAdjustments);
   const photoFilterCss = photoFilterObj.filter !== 'none' ? photoFilterObj.filter : undefined;
   const photoFlipTransform = photoFilterObj.transform !== 'none' ? photoFilterObj.transform : '';
+  const shouldFilterCard = (tier === 'mini_pop' || !content.imageUrl) && Boolean(photoFilterCss);
 
   // Active selection states
   const isHeadlineSelected = interactive && selectedItemId === 'headline';
@@ -616,23 +670,47 @@ export const SpotCard: React.FC<SpotCardProps> = ({
       }}
       onClick={(e) => {
         if (interactive && e.target === containerRef.current) {
-          onSelectItem?.(null);
+          e.stopPropagation();
+          onSelectItem?.('background');
         }
       }}
     >
       {/* Frame Accents (top pins/tape) */}
       {!isTransparent && renderFrameAccents(content.frameStyle)}
 
-      {/* ================= CARD BODY ================= */}
+      {/* Spot Visual Contents Wrapper (Applies filters on Mini Pop / spots without uploaded photo) */}
       <div
-        className="w-full h-full relative overflow-hidden transition-all"
-        style={getCardStyle()}
+        className="w-full h-full relative"
+        style={{
+          filter: shouldFilterCard ? photoFilterCss : undefined,
+        }}
         onClick={(e) => {
           if (interactive && e.target === e.currentTarget) {
-            onSelectItem?.(null);
+            e.stopPropagation();
+            onSelectItem?.('background');
           }
         }}
       >
+        {/* ================= CARD BODY ================= */}
+        <div
+          className="w-full h-full relative overflow-hidden transition-all"
+          style={getCardStyle()}
+          onClick={(e) => {
+            if (interactive && e.target === e.currentTarget) {
+              e.stopPropagation();
+              onSelectItem?.('background');
+            }
+          }}
+        >
+          {/* VIGNETTE FALLOFF OVERLAY */}
+          {Boolean(content.photoAdjustments?.vignette && content.photoAdjustments.vignette > 0) && (
+            <div
+              className="absolute inset-0 pointer-events-none z-20"
+              style={{
+                background: `radial-gradient(circle at center, transparent 30%, rgba(0,0,0,${((content.photoAdjustments?.vignette || 0) / 100) * 0.75}) 100%)`,
+              }}
+            />
+          )}
         {/* HOLOGRAPHIC FOIL SHIMMER OVERLAY */}
         {shape === 'holographic' && !isTransparent && (
           <div
@@ -678,6 +756,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             className={`absolute inset-0 flex items-center justify-center p-2 cursor-pointer ${
               isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
             }`}
+            onPointerDown={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('photo');
+              }
+            }}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -688,6 +772,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Cutout Art"
+              loading="lazy"
+              decoding="async"
               className="max-w-full max-h-full object-contain select-none pointer-events-none"
               style={{
                 opacity: photoOpacity,
@@ -705,6 +791,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             className={`absolute inset-0 overflow-hidden cursor-pointer ${
               isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
             }`}
+            onPointerDown={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('photo');
+              }
+            }}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -715,6 +807,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Full Bleed Artwork"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover select-none pointer-events-none"
               style={{
                 opacity: photoOpacity,
@@ -731,9 +825,18 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {/* ================= 3. POLAROID PHOTO CONTAINER ================= */}
         {shape === 'polaroid' && !isTransparent && (
           <div
-            className={`absolute top-2.5 inset-x-2.5 h-[185px] bg-slate-900 rounded-xs overflow-hidden flex items-center justify-center cursor-pointer ${
+            className={`absolute top-2.5 inset-x-2.5 bg-slate-900 rounded-xs overflow-hidden flex items-center justify-center cursor-pointer ${
               isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
             }`}
+            style={{
+              height: Math.round(cardHeight * 0.58),
+            }}
+            onPointerDown={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('photo');
+              }
+            }}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -745,6 +848,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               <img
                 src={content.imageUrl}
                 alt={content.headline || creatorName}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover select-none pointer-events-none transition-transform"
                 style={{
                   opacity: photoOpacity,
@@ -768,9 +873,18 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {/* ================= 4. FRAMED PHOTO CONTAINER FOR OTHER FRAMES (GLASS, GOLD, COMIC, STAMP, CYBER, STICKY) ================= */}
         {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && !isTransparent && content.imageUrl && (
           <div
-            className={`absolute top-2.5 inset-x-2.5 h-[140px] rounded-lg overflow-hidden bg-black/40 cursor-pointer ${
+            className={`absolute top-2.5 inset-x-2.5 rounded-lg overflow-hidden bg-black/40 cursor-pointer ${
               isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
             }`}
+            style={{
+              height: Math.round(cardHeight * 0.50),
+            }}
+            onPointerDown={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('photo');
+              }
+            }}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -781,6 +895,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Artwork"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover select-none pointer-events-none"
               style={{
                 opacity: photoOpacity,
@@ -796,6 +912,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {content.headline && (
           <div
             onPointerDown={handleHeadlinePointerDown}
+            onClick={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('headline');
+              }
+            }}
             className={`touch-none select-none ${
               interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
             } ${isCustomHeadline ? 'absolute' : 'absolute inset-x-3 text-center'} ${
@@ -806,9 +928,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               top: isCustomHeadline
                 ? content.headlineY
                 : shape === 'polaroid'
-                ? 200
+                ? Math.round(cardHeight * 0.65)
                 : shape === 'classic' && content.imageUrl
-                ? 145
+                ? Math.round(cardHeight * 0.55)
                 : Math.round(cardHeight * 0.3),
               maxWidth: isCustomHeadline ? cardWidth - 30 : undefined,
             }}
@@ -819,7 +941,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 <text
                   fill={content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')}
                   style={{
-                    fontFamily: content.fontFamily || 'Caveat',
+                    fontFamily: getCleanFontFamily(content.fontFamily),
                     fontSize: content.fontSize || 22,
                     fontWeight: 'bold',
                     opacity: textOpacity,
@@ -835,13 +957,25 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               <h3
                 className="font-bold leading-tight break-words select-none"
                 style={{
-                  fontFamily: content.fontFamily || 'Caveat',
+                  fontFamily: getCleanFontFamily(content.fontFamily),
                   fontSize: content.fontSize || 22,
-                  color: content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
+                  color: content.textGradient ? undefined : (content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')),
+                  background: content.textGradient || undefined,
+                  WebkitBackgroundClip: content.textGradient ? 'text' : undefined,
+                  WebkitTextFillColor: content.textGradient ? 'transparent' : undefined,
                   opacity: textOpacity,
                   textAlign: isCustomHeadline ? 'left' : content.alignment || 'center',
-                  textShadow: isTransparent ? '0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.9)' : undefined,
+                  textShadow: content.text3D
+                    ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.15), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3)'
+                    : content.textGlow
+                    ? `0 0 14px ${content.textGlow}`
+                    : isTransparent ? '0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.9)' : undefined,
+                  WebkitTextStroke: content.textStroke || undefined,
                   letterSpacing: content.letterSpacing ? `${content.letterSpacing}px` : undefined,
+                  lineHeight: content.lineHeight || 1.15,
+                  backgroundColor: content.badgeColor || undefined,
+                  padding: content.badgeColor ? '4px 10px' : undefined,
+                  borderRadius: content.badgeColor ? '8px' : undefined,
                 }}
               >
                 {content.headline}
@@ -868,6 +1002,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {content.text && (
           <div
             onPointerDown={handleSubtextPointerDown}
+            onClick={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('subtext');
+              }
+            }}
             className={`touch-none select-none ${
               interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
             } ${isCustomSubtext ? 'absolute' : 'absolute inset-x-3 text-center'} ${
@@ -878,9 +1018,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               top: isCustomSubtext
                 ? content.subtextY
                 : shape === 'polaroid'
-                ? 232
+                ? Math.round(cardHeight * 0.79)
                 : shape === 'classic' && content.imageUrl
-                ? 175
+                ? Math.round(cardHeight * 0.73)
                 : Math.round(cardHeight * 0.58),
               maxWidth: isCustomSubtext ? cardWidth - 30 : undefined,
             }}
@@ -888,7 +1028,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <p
               className="leading-snug break-words select-none"
               style={{
-                fontFamily: content.fontFamily || 'Caveat',
+                fontFamily: getCleanFontFamily(content.fontFamily),
                 fontSize: subtextSize,
                 color: content.textColor || (isTransparent ? '#F1F5F9' : shape === 'polaroid' ? '#475569' : '#334155'),
                 opacity: textOpacity * 0.9,
@@ -929,6 +1069,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {/* ================= FREELY DRAGGABLE & SELECTABLE CREATOR TAG ================= */}
         <div
           onPointerDown={handleAuthorPointerDown}
+          onClick={(e) => {
+            if (interactive) {
+              e.stopPropagation();
+              onSelectItem?.('author');
+            }
+          }}
           className={`touch-none select-none ${
             interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
             } ${isCustomAuthor ? 'absolute' : `absolute bottom-2 inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
@@ -986,6 +1132,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 transformOrigin: 'center center',
                 mixBlendMode: layer.blendMode || 'normal',
                 opacity: layer.opacity ?? 1,
+                boxShadow: layer.shadowColor && layer.shadowBlur ? `${layer.shadowOffsetX || 0}px ${layer.shadowOffsetY || 0}px ${layer.shadowBlur}px ${layer.shadowColor}` : undefined,
+                outline: layer.outlineColor && layer.outlineWidth ? `${layer.outlineWidth}px solid ${layer.outlineColor}` : undefined,
               }}
             >
               {/* Layer Content */}
@@ -993,7 +1141,11 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 <img
                   src={layer.content}
                   alt={layer.name || 'Layer Image'}
-                  className="w-full h-full object-cover select-none pointer-events-none rounded-xs shadow-xs"
+                  loading="lazy"
+                  decoding="async"
+                  className={`w-full h-full object-cover select-none pointer-events-none rounded-xs shadow-xs ${
+                    layer.clippingMask ? 'rounded-full' : ''
+                  }`}
                   style={{
                     filter: layerFilter.filter !== 'none' ? layerFilter.filter : undefined,
                     transform: layerFilter.transform !== 'none' ? layerFilter.transform : undefined,
@@ -1010,16 +1162,23 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
               {layer.type === 'text' && (
                 <div
-                  className="w-full h-full flex items-center justify-center pointer-events-none font-bold"
+                  className="w-full h-full flex items-center justify-center pointer-events-none font-bold select-none text-center"
                   style={{
-                    fontFamily: layer.fontFamily || 'Caveat',
+                    fontFamily: getCleanFontFamily(layer.fontFamily),
                     fontSize: layer.fontSize || 20,
-                    color: layer.textColor || '#FFFFFF',
-                    textShadow: layer.textGlow ? `0 0 12px ${layer.textGlow}` : '0 2px 8px rgba(0,0,0,0.7)',
+                    color: layer.textGradient ? undefined : (layer.textColor || '#FFFFFF'),
+                    background: layer.textGradient || undefined,
+                    WebkitBackgroundClip: layer.textGradient ? 'text' : undefined,
+                    WebkitTextFillColor: layer.textGradient ? 'transparent' : undefined,
+                    textShadow: layer.text3D
+                      ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #aaa, 0 5px 2px rgba(0,0,0,.3)'
+                      : layer.textGlow ? `0 0 12px ${layer.textGlow}` : '0 2px 8px rgba(0,0,0,0.7)',
                     WebkitTextStroke: layer.textStroke || undefined,
                     letterSpacing: layer.letterSpacing ? `${layer.letterSpacing}px` : undefined,
-                    textAlign: 'center',
-                    lineHeight: 1.1,
+                    lineHeight: layer.lineHeight || 1.1,
+                    backgroundColor: layer.bgBadgeColor || undefined,
+                    padding: layer.bgBadgeColor ? '2px 8px' : undefined,
+                    borderRadius: layer.bgBadgeColor ? '6px' : undefined,
                   }}
                 >
                   {layer.content}
@@ -1081,6 +1240,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         <img
           src={content.drawingData}
           alt="Spot Drawing"
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none z-25 select-none"
           style={{ opacity: drawingOpacity }}
           draggable={false}
@@ -1096,17 +1257,28 @@ export const SpotCard: React.FC<SpotCardProps> = ({
       {content.stickers?.map((stk) => {
         const isSelected = interactive && selectedItemId === stk.id;
         const stkOpacity = stk.opacity ?? 1;
+        const stkSize = stk.size || 28;
+        const maxPeek = Math.min(stkSize * 0.35, 12);
+        // Ensure element always stays anchored and touching the frame
+        const clampedX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - stkSize + maxPeek, stk.x)));
+        const clampedY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - stkSize + maxPeek, stk.y)));
 
         return (
           <div
             key={stk.id}
             onPointerDown={(e) => handleStickerPointerDown(e, stk)}
+            onClick={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.(stk.id);
+              }
+            }}
             className={`absolute select-none group touch-none ${
               interactive ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
             } ${isSelected ? 'z-40' : 'z-25'}`}
             style={{
-              left: stk.x,
-              top: stk.y,
+              left: clampedX,
+              top: clampedY,
               transform: `rotate(${stk.rotation}deg)`,
               transformOrigin: 'center center',
             }}
@@ -1160,6 +1332,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

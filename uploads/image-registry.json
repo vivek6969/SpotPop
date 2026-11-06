@@ -1,0 +1,93 @@
+{
+  "assets": [
+    {
+      "hash": "569237a30c70c6a1",
+      "originalSize": 1292033,
+      "mimeType": "image/jpeg",
+      "width": 3648,
+      "height": 2052,
+      "variants": {
+        "thumb": {
+          "key": "569237a30c70c6a1/thumb.webp",
+          "url": "/uploads/images/569237a30c70c6a1/thumb.webp",
+          "size": 1790,
+          "width": 100,
+          "height": 130,
+          "format": "webp"
+        },
+        "preview": {
+          "key": "569237a30c70c6a1/preview.webp",
+          "url": "/uploads/images/569237a30c70c6a1/preview.webp",
+          "size": 11448,
+          "width": 340,
+          "height": 420,
+          "format": "webp"
+        },
+        "highres": {
+          "key": "569237a30c70c6a1/highres.webp",
+          "url": "/uploads/images/569237a30c70c6a1/highres.webp",
+          "size": 36040,
+          "width": 800,
+          "height": 1000,
+          "format": "webp"
+        },
+        "original": {
+          "key": "569237a30c70c6a1/original.jpeg",
+          "url": "/uploads/images/569237a30c70c6a1/original.jpeg",
+          "size": 1292033,
+          "width": 3648,
+          "height": 2052,
+          "format": "jpeg"
+        }
+      },
+      "refCount": 2,
+      "createdAt": "2026-11-05T13:13:09.332Z"
+    },
+    {
+      "hash": "fc23fa62fc89df81",
+      "originalSize": 43322,
+      "mimeType": "image/jpeg",
+      "width": 413,
+      "height": 413,
+      "variants": {
+        "thumb": {
+          "key": "fc23fa62fc89df81/thumb.webp",
+          "url": "/uploads/images/fc23fa62fc89df81/thumb.webp",
+          "size": 1508,
+          "width": 100,
+          "height": 130,
+          "format": "webp"
+        },
+        "preview": {
+          "key": "fc23fa62fc89df81/preview.webp",
+          "url": "/uploads/images/fc23fa62fc89df81/preview.webp",
+          "size": 9980,
+          "width": 340,
+          "height": 420,
+          "format": "webp"
+        },
+        "highres": {
+          "key": "fc23fa62fc89df81/highres.webp",
+          "url": "/uploads/images/fc23fa62fc89df81/highres.webp",
+          "size": 13460,
+          "width": 413,
+          "height": 413,
+          "format": "webp"
+        },
+        "original": {
+          "key": "fc23fa62fc89df81/original.jpeg",
+          "url": "/uploads/images/fc23fa62fc89df81/original.jpeg",
+          "size": 43322,
+          "width": 413,
+          "height": 413,
+          "format": "jpeg"
+        }
+      },
+      "refCount": 5,
+      "createdAt": "2026-11-05T13:13:09.368Z"
+    }
+  ],
+  "duplicateAvoidedCount": 5,
+  "duplicateBytesSaved": 1465321,
+  "updatedAt": "2026-11-05T13:39:54.216Z"
+}

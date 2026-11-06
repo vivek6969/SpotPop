@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
+import { SpatialIndex } from './spatialIndex.ts';
 
 interface DatabaseSchema {
   users: User[];
@@ -96,8 +97,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: -240,
     y: -140,
-    width: 220,
-    height: 270,
+    width: 170,
+    height: 210,
     rotation: -4,
     shape: 'polaroid',
     background: '#FFFFFF',
@@ -131,8 +132,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: 180,
     y: -180,
-    width: 230,
-    height: 280,
+    width: 170,
+    height: 210,
     rotation: 3,
     shape: 'classic',
     background: '#1F2438',
@@ -148,8 +149,8 @@ const INITIAL_SPOTS: Spot[] = [
       imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=600&q=80',
       stickers: [
         { id: 'stk_glasses', emojiOrIcon: '🕶️', x: 80, y: 70, size: 38, rotation: 0 },
-        { id: 'stk_bubble', emojiOrIcon: '🫧', x: 110, y: 110, size: 32, rotation: 0 },
-        { id: 'stk_heart_8bit', emojiOrIcon: '❤️‍🔥', x: 180, y: 22, size: 26, rotation: 12 },
+        { id: 'stk_bubble', emojiOrIcon: '🫧', x: 105, y: 95, size: 30, rotation: 0 },
+        { id: 'stk_heart_8bit', emojiOrIcon: '❤️‍🔥', x: 130, y: 22, size: 26, rotation: 12 },
       ],
       frameStyle: 'washi',
     },
@@ -167,8 +168,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: 230,
     y: 110,
-    width: 190,
-    height: 240,
+    width: 170,
+    height: 210,
     rotation: -3,
     shape: 'polaroid',
     background: '#FFFFFF',
@@ -329,8 +330,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: 440,
     y: 70,
-    width: 210,
-    height: 290,
+    width: 170,
+    height: 210,
     rotation: 2,
     shape: 'classic',
     background: '#181424',
@@ -345,7 +346,7 @@ const INITIAL_SPOTS: Spot[] = [
       imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80',
       stickers: [
         { id: 'stk_hp', emojiOrIcon: '🎧', x: 20, y: 20, size: 28, rotation: -10 },
-        { id: 'stk_game', emojiOrIcon: '🎮', x: 160, y: 240, size: 26, rotation: 10 },
+        { id: 'stk_game', emojiOrIcon: '🎮', x: 130, y: 165, size: 26, rotation: 10 },
       ],
       frameStyle: 'neon',
     },
@@ -363,8 +364,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: -30,
     y: -40,
-    width: 180,
-    height: 200,
+    width: 170,
+    height: 210,
     rotation: -1,
     shape: 'cutout',
     background: '#FFFAED',
@@ -463,8 +464,8 @@ const INITIAL_SPOTS: Spot[] = [
     tier: 'big_pop',
     x: -380,
     y: -80,
-    width: 200,
-    height: 190,
+    width: 170,
+    height: 210,
     rotation: -3,
     shape: 'classic',
     background: '#0F172A',
@@ -686,9 +687,16 @@ const INITIAL_ACTIVITY: ActivityEvent[] = [
 
 class Database {
   private data: DatabaseSchema;
+  private spatialIndex: SpatialIndex = new SpatialIndex(500);
 
   constructor() {
     this.data = this.load();
+    this.rebuildSpatialIndex();
+  }
+
+  private rebuildSpatialIndex() {
+    this.spatialIndex.clear();
+    this.spatialIndex.bulkInsert(this.data.spots);
   }
 
   private load(): DatabaseSchema {
@@ -741,6 +749,7 @@ class Database {
 
   addSpot(spot: Spot): Spot {
     this.data.spots.push(spot);
+    this.spatialIndex.insert(spot);
     // Add activity
     this.addActivity({
       id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -759,8 +768,54 @@ class Database {
     const idx = this.data.spots.findIndex(s => s.id === id);
     if (idx === -1) return null;
     this.data.spots[idx] = { ...this.data.spots[idx], ...updates };
+    this.spatialIndex.insert(this.data.spots[idx]);
     this.save();
     return this.data.spots[idx];
+  }
+
+  deleteSpot(id: string): boolean {
+    const initialLen = this.data.spots.length;
+    this.data.spots = this.data.spots.filter(s => s.id !== id);
+    if (this.data.spots.length !== initialLen) {
+      this.spatialIndex.remove(id);
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  deleteSpots(ids: string[]): number {
+    const idsSet = new Set(ids);
+    const initialLen = this.data.spots.length;
+    this.data.spots = this.data.spots.filter(s => !idsSet.has(s.id));
+    const deletedCount = initialLen - this.data.spots.length;
+    if (deletedCount > 0) {
+      for (const id of ids) {
+        this.spatialIndex.remove(id);
+      }
+      this.save();
+    }
+    return deletedCount;
+  }
+
+  deleteAllSpots(): number {
+    const total = this.data.spots.length;
+    this.data.spots = [];
+    this.spatialIndex.clear();
+    this.save();
+    return total;
+  }
+
+  queryViewport(minX: number, minY: number, maxX: number, maxY: number, limit: number = 2000): Spot[] {
+    return this.spatialIndex.queryBBox(minX, minY, maxX, maxY, limit);
+  }
+
+  reserveCoordinate(x: number, y: number, width: number, height: number, ttlMs: number = 300000): string {
+    return this.spatialIndex.reserveCoordinate(x, y, width, height, ttlMs);
+  }
+
+  releaseReservation(id: string): void {
+    this.spatialIndex.releaseReservation(id);
   }
 
   incrementSpotViews(id: string) {
@@ -862,29 +917,13 @@ class Database {
     this.save();
   }
 
-  // Placement Algorithm: Find next available coordinate with guaranteed non-overlapping spacing
-  allocateCoordinate(width: number, height: number): { x: number; y: number; rotation: number } {
-    const spots = this.data.spots.filter(s => s.status !== 'hidden');
+  // High-performance $O(1)$ placement engine with spatial hash collision detection & concurrency reservation
+  allocateCoordinate(
+    width: number,
+    height: number,
+    autoReserve: boolean = false
+  ): { x: number; y: number; rotation: number; reservationId?: string } {
     const PADDING = 28; // consistent gap between spots
-
-    // Helper to check overlap with existing spots
-    const checkCollision = (cx: number, cy: number, w: number, h: number) => {
-      const left1 = cx - w / 2 - PADDING;
-      const right1 = cx + w / 2 + PADDING;
-      const top1 = cy - h / 2 - PADDING;
-      const bottom1 = cy + h / 2 + PADDING;
-
-      for (const s of spots) {
-        const left2 = s.x - s.width / 2;
-        const right2 = s.x + s.width / 2;
-        const top2 = s.y - s.height / 2;
-        const bottom2 = s.y + s.height / 2;
-
-        const overlaps = !(left1 > right2 || right1 < left2 || top1 > bottom2 || bottom1 < top2);
-        if (overlaps) return true;
-      }
-      return false;
-    };
 
     // Spiral search outward starting from slight random offset near center
     let angle = Math.random() * Math.PI * 2;
@@ -896,10 +935,15 @@ class Database {
       const x = Math.round(Math.cos(angle) * radius);
       const y = Math.round(Math.sin(angle) * radius);
 
-      if (!checkCollision(x, y, width, height)) {
+      // Blazing fast O(1) collision check against local spatial cells & active reservations
+      if (!this.spatialIndex.checkCollision(x, y, width, height, PADDING)) {
         // Subtle organic rotation angle (-3.5 to +3.5 deg)
         const rotation = Math.round((Math.random() * 7 - 3.5) * 10) / 10;
-        return { x, y, rotation };
+        let reservationId: string | undefined;
+        if (autoReserve) {
+          reservationId = this.spatialIndex.reserveCoordinate(x, y, width, height);
+        }
+        return { x, y, rotation, reservationId };
       }
 
       angle += stepAngle;
@@ -909,10 +953,19 @@ class Database {
     // Fallback outer ring placement
     const fallbackRadius = 800 + Math.random() * 300;
     const fallbackAngle = Math.random() * Math.PI * 2;
+    const fallbackX = Math.round(Math.cos(fallbackAngle) * fallbackRadius);
+    const fallbackY = Math.round(Math.sin(fallbackAngle) * fallbackRadius);
+    const fallbackRot = Math.round((Math.random() * 6 - 3) * 10) / 10;
+
+    let reservationId: string | undefined;
+    if (autoReserve) {
+      reservationId = this.spatialIndex.reserveCoordinate(fallbackX, fallbackY, width, height);
+    }
     return {
-      x: Math.round(Math.cos(fallbackAngle) * fallbackRadius),
-      y: Math.round(Math.sin(fallbackAngle) * fallbackRadius),
-      rotation: Math.round((Math.random() * 6 - 3) * 10) / 10,
+      x: fallbackX,
+      y: fallbackY,
+      rotation: fallbackRot,
+      reservationId,
     };
   }
 

@@ -19,8 +19,8 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
     tagline: 'A cute, affordable personal space',
     priceINR: 29,
     pricePaise: 2900,
-    width: 180,
-    height: 180,
+    width: 170,
+    height: 170,
     features: [
       'Sticky note or classic mini card',
       'Custom text & personal message',
@@ -40,11 +40,11 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
   big_pop: {
     id: 'big_pop',
     name: 'Big Pop',
-    tagline: 'Larger, expressive photo & artwork canvas',
+    tagline: 'Photo & artwork canvas matching classic card size',
     priceINR: 99,
     pricePaise: 9900,
-    width: 260,
-    height: 320,
+    width: 170,
+    height: 210,
     features: [
       '2.5× larger canvas space',
       'Photo upload with free crop & zoom',
@@ -114,11 +114,32 @@ export interface PhotoAdjustments {
   vignette?: number;   // 0 to 100
   grain?: number;      // 0 to 100
   blur?: number;       // 0 to 30
+  blurType?: 'gaussian' | 'motion' | 'radial' | 'background';
   sharpen?: number;    // 0 to 100
-  filter?: 'none' | 'cinematic' | 'vintage' | 'retro' | 'noir' | 'cyberpunk' | 'pastel' | 'glitch' | 'sketch' | 'warm';
+  highlights?: number; // -100 to 100
+  shadows?: number;    // -100 to 100
+  filter?: string;
+  effect?: 'none' | 'glitch' | 'sketch' | 'magic' | 'halftone' | 'pixelate' | 'artistic' | 'duotone';
   flipH?: boolean;
   flipV?: boolean;
-  retouchSmooth?: number; // 0 to 100
+  rotationAngle?: number; // 0, 90, 180, 270 or free angle
+  aspectRatio?: 'free' | '1:1' | '4:5' | '9:16' | '16:9';
+  perspectiveSkewX?: number; // -30 to 30
+  perspectiveSkewY?: number; // -30 to 30
+  // Retouch & Beautify
+  retouchSmooth?: number; // 0 to 100 (Skin smoothing)
+  blemishRemoval?: number; // 0 to 100 (Blemish softening)
+  faceGlow?: number; // 0 to 100 (Face & portrait enhancement)
+  teethWhitening?: number; // 0 to 100
+  reshapeAmount?: number; // -50 to 50
+  hairTint?: string; // hex color or preset
+  // HSL Color adjustments
+  hslRed?: number; // -100 to 100
+  hslGreen?: number;
+  hslBlue?: number;
+  hslYellow?: number;
+  // Curves
+  curveRgb?: string; // e.g. 'linear' | 'punch' | 'matte' | 'cross' | 'deep_black'
 }
 
 export interface SpotLayer {
@@ -152,14 +173,19 @@ export interface SpotLayer {
   strokeWidth?: number;
   shadowColor?: string;
   shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  outlineColor?: string;
+  outlineWidth?: number;
   textGlow?: string | boolean;
   textStroke?: string;
+  text3D?: boolean;
   curved?: boolean;
   curveRadius?: number;
   bgBadgeColor?: string;
   alignment?: 'left' | 'center' | 'right';
   // Shape layer specific
-  shapeType?: 'rectangle' | 'circle' | 'heart' | 'star' | 'speech_bubble' | 'arrow';
+  shapeType?: 'rectangle' | 'circle' | 'heart' | 'star' | 'speech_bubble' | 'arrow' | 'cloud' | 'diamond' | 'flower' | 'lightning';
   fillColor?: string;
   borderColor?: string;
   borderWidth?: number;
@@ -167,6 +193,9 @@ export interface SpotLayer {
   emojiOrIcon?: string;
   // Drawing layer specific
   drawingData?: string;
+  // Masking
+  clippingMask?: boolean;
+  layerMask?: string;
 }
 
 export interface SpotContent {
@@ -177,7 +206,13 @@ export interface SpotContent {
   curveRadius?: number;
   textStroke?: string;
   textGlow?: string;
+  text3D?: boolean;
+  textGradient?: string;
+  circularText?: boolean;
+  badgeColor?: string;
+  customFontUrl?: string;
   letterSpacing?: number;
+  lineHeight?: number;
   text?: string;
   subtextX?: number;
   subtextY?: number;

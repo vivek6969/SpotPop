@@ -3,9 +3,32 @@ import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationR
 const API_BASE = '/api';
 
 export const api = {
-  async getSpots(): Promise<{ spots: Spot[]; stats: CanvasStats }> {
-    const res = await fetch(`${API_BASE}/spots`);
+  async getSpots(bbox?: { minX: number; minY: number; maxX: number; maxY: number; zoom?: number }): Promise<{ spots: Spot[]; stats: CanvasStats }> {
+    const url = bbox
+      ? `${API_BASE}/spots?minX=${bbox.minX}&minY=${bbox.minY}&maxX=${bbox.maxX}&maxY=${bbox.maxY}&zoom=${bbox.zoom || 1}`
+      : `${API_BASE}/spots`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch spots');
+    return res.json();
+  },
+
+  async getViewportSpots(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+    zoom: number = 1,
+    signal?: AbortSignal
+  ): Promise<{ spots: Spot[]; stats: CanvasStats; count: number }> {
+    const params = new URLSearchParams({
+      minX: Math.round(minX).toString(),
+      minY: Math.round(minY).toString(),
+      maxX: Math.round(maxX).toString(),
+      maxY: Math.round(maxY).toString(),
+      zoom: zoom.toFixed(2),
+    });
+    const res = await fetch(`${API_BASE}/spots/viewport?${params}`, { signal });
+    if (!res.ok) throw new Error('Failed to fetch viewport spots');
     return res.json();
   },
 
@@ -167,6 +190,42 @@ export const api = {
     return res.json();
   },
 
+  async deleteAdminSpot(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/spots/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete spot');
+    return res.json();
+  },
+
+  async deleteAdminSpotsBatch(ids: string[]): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/spots/batch-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) throw new Error('Failed to delete selected spots');
+    return res.json();
+  },
+
+  async deleteAllAdminSpots(): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/spots/delete-all`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error('Failed to delete all spots');
+    return res.json();
+  },
+
+  async createAdminSpot(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/spots/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create admin spot');
+    return res.json();
+  },
+
   async getAdminReports(): Promise<{ reports: ModerationReport[] }> {
     const res = await fetch(`${API_BASE}/admin/reports`);
     if (!res.ok) throw new Error('Failed to load reports');
@@ -192,6 +251,25 @@ export const api = {
   async getAdminUsers(): Promise<{ users: User[] }> {
     const res = await fetch(`${API_BASE}/admin/users`);
     if (!res.ok) throw new Error('Failed to load users');
+    return res.json();
+  },
+
+  async getStorageStats(): Promise<{
+    totalUploads: number;
+    uniqueAssets: number;
+    totalStorageBytes: number;
+    originalStorageBytes: number;
+    previewStorageBytes: number;
+    thumbStorageBytes: number;
+    highResStorageBytes: number;
+    avgImageSizeBytes: number;
+    duplicateAvoidedCount: number;
+    duplicateBytesSaved: number;
+    estimatedMonthlyCostUSD: number;
+    storageProviderName: string;
+  }> {
+    const res = await fetch(`${API_BASE}/admin/storage-stats`);
+    if (!res.ok) throw new Error('Failed to load storage report');
     return res.json();
   },
 };
