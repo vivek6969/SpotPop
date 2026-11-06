@@ -45,7 +45,7 @@ const INITIAL_SPOTS: Spot[] = [
       fontSize: 34,
       alignment: 'center',
       stickers: [
-        { id: 'stk_1', emojiOrIcon: '👑', x: 20, y: 15, size: 28, rotation: -12 },
+        { id: 'stk_1', emojiOrIcon: '🎯', x: 20, y: 15, size: 28, rotation: -12 },
         { id: 'stk_2', emojiOrIcon: '✨', x: 245, y: 85, size: 24, rotation: 15 },
       ],
       frameStyle: 'neon',
@@ -64,7 +64,7 @@ const INITIAL_SPOTS: Spot[] = [
     slug: 'riya-kabir-2024',
     tier: 'mini_pop',
     x: -30,
-    y: -300,
+    y: -377,
     width: 175,
     height: 175,
     rotation: 2.5,
@@ -95,8 +95,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Vivek',
     slug: 'vivek-vibes',
     tier: 'big_pop',
-    x: -240,
-    y: -140,
+    x: -233,
+    y: -161,
     width: 170,
     height: 210,
     rotation: -4,
@@ -130,7 +130,7 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Renaissance Pop',
     slug: 'david-shades-bubblegum',
     tier: 'big_pop',
-    x: 180,
+    x: 169,
     y: -180,
     width: 170,
     height: 210,
@@ -166,8 +166,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Just a Cat',
     slug: 'just-a-cat-glasses',
     tier: 'big_pop',
-    x: 230,
-    y: 110,
+    x: 244,
+    y: 135,
     width: 170,
     height: 210,
     rotation: -3,
@@ -199,8 +199,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Aryan',
     slug: 'naruto-forever',
     tier: 'mini_pop',
-    x: -180,
-    y: 140,
+    x: -226,
+    y: 151,
     width: 170,
     height: 160,
     rotation: -5,
@@ -231,8 +231,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Pooja',
     slug: 'from-ahmedabad',
     tier: 'mini_pop',
-    x: 80,
-    y: 80,
+    x: 94,
+    y: 11,
     width: 165,
     height: 165,
     rotation: 1,
@@ -263,8 +263,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Dev',
     slug: 'good-vibes-only',
     tier: 'mini_pop',
-    x: 320,
-    y: -40,
+    x: 316,
+    y: -31,
     width: 155,
     height: 155,
     rotation: 4,
@@ -297,7 +297,7 @@ const INITIAL_SPOTS: Spot[] = [
     slug: 'chasing-dreams',
     tier: 'mini_pop',
     x: 410,
-    y: -170,
+    y: -167,
     width: 170,
     height: 150,
     rotation: -2,
@@ -328,8 +328,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Akira',
     slug: 'anime-art-girl',
     tier: 'big_pop',
-    x: 440,
-    y: 70,
+    x: 412,
+    y: 134,
     width: 170,
     height: 210,
     rotation: 2,
@@ -362,8 +362,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Doge Cadet',
     slug: 'doge-in-space',
     tier: 'big_pop',
-    x: -30,
-    y: -40,
+    x: -58,
+    y: -10,
     width: 170,
     height: 210,
     rotation: -1,
@@ -397,7 +397,7 @@ const INITIAL_SPOTS: Spot[] = [
     slug: 'golden-sunset-couple',
     tier: 'big_pop',
     x: -80,
-    y: -180,
+    y: -204,
     width: 170,
     height: 210,
     rotation: 3,
@@ -429,8 +429,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Pepe',
     slug: 'pepe-cool-chill',
     tier: 'mini_pop',
-    x: -330,
-    y: 110,
+    x: -375,
+    y: 140,
     width: 160,
     height: 160,
     rotation: 4,
@@ -462,7 +462,7 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Kanagawa Wave',
     slug: 'the-great-wave',
     tier: 'big_pop',
-    x: -380,
+    x: -396,
     y: -80,
     width: 170,
     height: 210,
@@ -498,7 +498,7 @@ const INITIAL_SPOTS: Spot[] = [
     slug: 'retro-game-pad',
     tier: 'mini_pop',
     x: -80,
-    y: 190,
+    y: 287,
     width: 170,
     height: 120,
     rotation: 5,
@@ -529,8 +529,8 @@ const INITIAL_SPOTS: Spot[] = [
     creatorName: 'Shadow',
     slug: 'gengar-grin',
     tier: 'mini_pop',
-    x: -330,
-    y: 20,
+    x: -249,
+    y: 1,
     width: 160,
     height: 150,
     rotation: -4,
@@ -852,6 +852,10 @@ class Database {
     return this.data.users.find(u => u.id === id);
   }
 
+  getUserByUsername(username: string): User | undefined {
+    return this.data.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  }
+
   getUserByEmail(email: string): User | undefined {
     return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
   }
@@ -860,6 +864,14 @@ class Database {
     this.data.users.push(user);
     this.save();
     return user;
+  }
+
+  updateUser(id: string, updates: Partial<User>): User | null {
+    const idx = this.data.users.findIndex(u => u.id === id);
+    if (idx === -1) return null;
+    this.data.users[idx] = { ...this.data.users[idx], ...updates };
+    this.save();
+    return this.data.users[idx];
   }
 
   // Orders

@@ -19,16 +19,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
   setSelectedFontCategory,
 }) => {
   const [activeSubTool, setActiveSubTool] = useState<TextSubTool>('font');
-  const [customFontInput, setCustomFontInput] = useState('');
   const [activeCaptionCategory, setActiveCaptionCategory] = useState(CAPTION_PRESETS[0].category);
-
-  const handleImportCustomFont = () => {
-    if (!customFontInput.trim()) return;
-    const fontName = customFontInput.trim();
-    loadGoogleFont(fontName);
-    updateDraft({ fontFamily: fontName });
-    setCustomFontInput('');
-  };
 
   const GRADIENTS = [
     { label: 'None', value: '' },
@@ -241,25 +232,6 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
                   </button>
                 );
               })}
-            </div>
-
-            {/* Custom Google Font input */}
-            <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-              <input
-                type="text"
-                value={customFontInput}
-                onChange={(e) => setCustomFontInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleImportCustomFont()}
-                placeholder="Import any Google Font name..."
-                className="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/15 text-white text-xs focus:outline-none placeholder:text-slate-500"
-              />
-              <button
-                type="button"
-                onClick={handleImportCustomFont}
-                className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-colors"
-              >
-                Import
-              </button>
             </div>
           </div>
         )}

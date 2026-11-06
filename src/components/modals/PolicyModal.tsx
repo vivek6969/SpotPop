@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SpotPopLogo } from '../brand/SpotPopLogo';
 
 interface PolicyModalProps {
   isOpen: boolean;
@@ -21,8 +22,8 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
         
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2E93]" />
+          <div className="flex items-center gap-2.5">
+            <SpotPopLogo variant="icon" size={24} />
             <h3 className="font-outfit font-bold text-base text-white">SpotPop Policies & Transparency</h3>
           </div>
           <button

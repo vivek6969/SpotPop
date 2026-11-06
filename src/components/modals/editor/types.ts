@@ -6,7 +6,18 @@ import {
   SpotLayer,
   PhotoAdjustments,
   BlendMode,
+  SpotAudio,
 } from '../../../types';
+
+export interface AudioDraft {
+  blob: Blob;
+  previewUrl: string;
+  duration: number; // in seconds
+  mimeType: string;
+  size: number;     // in bytes
+  type: 'voice' | 'music';
+  filename?: string;
+}
 
 export type BrushStyle =
   | 'neon'
@@ -61,6 +72,8 @@ export interface PlanDraft {
   letterSpacing?: number;
   lineHeight?: number;
   customFontUrl?: string;
+  audioDraft?: AudioDraft | null;
+  audio?: SpotAudio | null;
 }
 
 export interface ShapeOption {

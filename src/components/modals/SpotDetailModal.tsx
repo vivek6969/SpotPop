@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
+import { SpotAudioPlayer } from '../audio/SpotAudioPlayer';
 
 interface SpotDetailModalProps {
   spot: Spot | null;
   onClose: () => void;
   onOpenShareKit: (spot: Spot) => void;
   onFlyToSpot: (spot: Spot) => void;
+  onOpenCreatorProfile?: (username: string) => void;
 }
 
 export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
@@ -15,6 +17,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   onClose,
   onOpenShareKit,
   onFlyToSpot,
+  onOpenCreatorProfile,
 }) => {
   if (!spot) return null;
 
@@ -56,13 +59,23 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
         
         {/* Top Header */}
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2E93]" />
-            <h3 className="font-outfit font-bold text-base text-white truncate max-w-[240px]">
-              {spot.creatorName}&apos;s Spot
-            </h3>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2E93] shrink-0" />
+            <button
+              onClick={() => {
+                if (onOpenCreatorProfile) {
+                  onClose();
+                  onOpenCreatorProfile(spot.creatorName);
+                }
+              }}
+              className="font-outfit font-bold text-base text-white hover:text-[#FF5EAA] truncate max-w-[200px] sm:max-w-[260px] text-left transition-colors flex items-center gap-1 group"
+              title="View Creator Profile"
+            >
+              <span>{spot.creatorName}&apos;s Spot</span>
+              <span className="text-xs text-slate-500 group-hover:text-white transition-colors">↗</span>
+            </button>
             {spot.tier === 'big_pop' && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 shrink-0">
                 BIG POP
               </span>
             )}
@@ -98,6 +111,14 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
 
         {/* Details & Metadata */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+          {/* Optional Voice Message / Sound Clip (Big Pop Exclusive) */}
+          {spot.content?.audio && (
+            <SpotAudioPlayer
+              audio={spot.content.audio}
+              creatorName={spot.creatorName}
+            />
+          )}
+
           {/* Stats strip */}
           <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div>

@@ -678,6 +678,17 @@ export const SpotCard: React.FC<SpotCardProps> = ({
       {/* Frame Accents (top pins/tape) */}
       {!isTransparent && renderFrameAccents(content.frameStyle)}
 
+      {/* Audio Memory Indicator Badge (Big Pop Only) */}
+      {content.audio && (
+        <div
+          className="absolute top-2 right-2 z-35 px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md pointer-events-none select-none"
+          title={`${content.audio.type === 'voice' ? 'Voice Note' : 'Original Sound'} (${content.audio.duration}s)`}
+        >
+          <span className="text-[10px]">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
+          <span className="text-[8px] font-mono font-bold opacity-90">{Math.round(content.audio.duration)}s</span>
+        </div>
+      )}
+
       {/* Spot Visual Contents Wrapper (Applies filters on Mini Pop / spots without uploaded photo) */}
       <div
         className="w-full h-full relative"

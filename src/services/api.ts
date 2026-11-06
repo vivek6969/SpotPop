@@ -50,10 +50,75 @@ export const api = {
     return res.json();
   },
 
-  async search(query: string, filter: string = 'all'): Promise<{ results: Spot[] }> {
+  async search(query: string, filter: string = 'all'): Promise<{
+    results: Spot[];
+    spots: Spot[];
+    creators: Array<{
+      username: string;
+      displayName: string;
+      avatarUrl?: string;
+      bio?: string;
+      spotCount: number;
+      totalViews: number;
+    }>;
+    total: number;
+  }> {
     const params = new URLSearchParams({ q: query, filter });
     const res = await fetch(`${API_BASE}/search?${params}`);
     if (!res.ok) throw new Error('Search failed');
+    return res.json();
+  },
+
+  async getExploreSpots(params: {
+    sort?: string;
+    tier?: string;
+    category?: string;
+    time?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ spots: Spot[]; total: number; hasMore: boolean }> {
+    const searchParams = new URLSearchParams();
+    if (params.sort) searchParams.set('sort', params.sort);
+    if (params.tier) searchParams.set('tier', params.tier);
+    if (params.category) searchParams.set('category', params.category);
+    if (params.time) searchParams.set('time', params.time);
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.offset) searchParams.set('offset', params.offset.toString());
+
+    const res = await fetch(`${API_BASE}/spots/explore?${searchParams}`);
+    if (!res.ok) throw new Error('Failed to load explore spots');
+    return res.json();
+  },
+
+  async getCreatorProfile(username: string): Promise<{
+    user: User;
+    stats: { totalSpots: number; totalViews: number; totalShares: number };
+    spots: Spot[];
+  }> {
+    const res = await fetch(`${API_BASE}/creators/${encodeURIComponent(username)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Creator not found');
+    }
+    return res.json();
+  },
+
+  async updateCreatorProfile(
+    token: string,
+    updates: { displayName?: string; bio?: string; avatarUrl?: string }
+  ): Promise<{ user: User }> {
+    const res = await fetch(`${API_BASE}/creators/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update profile');
+    }
     return res.json();
   },
 
@@ -113,6 +178,24 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to upload image');
+    }
+    return res.json();
+  },
+
+  async uploadAudio(params: {
+    audioBase64: string;
+    duration: number;
+    mimeType: string;
+    type: 'voice' | 'music';
+  }): Promise<{ success: boolean; audio: import('../types').SpotAudio }> {
+    const res = await fetch(`${API_BASE}/upload-audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to upload audio');
     }
     return res.json();
   },

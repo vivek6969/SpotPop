@@ -4,6 +4,7 @@ import { createRazorpayOrder, verifyPaymentSignature } from './razorpay.ts';
 import type { ProductTier, Spot, Order, User, ModerationReport } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
 import { imageService } from './imageService.ts';
+import { audioService } from './audioService.ts';
 
 export const apiRouter = Router();
 
@@ -131,6 +132,77 @@ apiRouter.get('/images/thumbnail', (req: Request, res: Response) => {
   }
 });
 
+// =================== EXPLORE FILTERS ===================
+
+apiRouter.get('/spots/explore', (req: Request, res: Response) => {
+  try {
+    const sort = (req.query.sort as string) || 'newest';
+    const tier = (req.query.tier as string) || 'all';
+    const category = (req.query.category as string) || 'all';
+    const time = (req.query.time as string) || 'all';
+    const limit = Math.min(100, parseInt((req.query.limit as string) || '24', 10));
+    const offset = parseInt((req.query.offset as string) || '0', 10);
+
+    let spots = db.getSpots().filter(s => s.status === 'published' && s.moderationStatus === 'approved');
+
+    // Tier filter
+    if (tier === 'mini_pop' || tier === 'mini') {
+      spots = spots.filter(s => s.tier === 'mini_pop');
+    } else if (tier === 'big_pop' || tier === 'big') {
+      spots = spots.filter(s => s.tier === 'big_pop');
+    }
+
+    // Category filter
+    if (category === 'photo' || category === 'photography') {
+      spots = spots.filter(s => !!s.content?.imageUrl);
+    } else if (category === 'art' || category === 'artwork' || category === 'drawings') {
+      spots = spots.filter(s => !!s.content?.drawingData || (s.content?.stickers && s.content.stickers.length > 1) || s.shape === 'graffiti' || s.shape === 'poster');
+    } else if (category === 'notes') {
+      spots = spots.filter(s => s.shape === 'sticky' || (!s.content?.imageUrl && !s.content?.drawingData));
+    } else if (category === 'quotes') {
+      spots = spots.filter(s => !!s.content?.author || (s.content?.text && (s.content.text.includes('"') || s.content.text.length > 20)));
+    } else if (category === 'memories') {
+      spots = spots.filter(s => (s.content?.headline?.toLowerCase().includes('memory') || s.content?.text?.toLowerCase().includes('memory') || s.shape === 'polaroid'));
+    }
+
+    // Time filter
+    if (time !== 'all') {
+      const now = Date.now();
+      let threshold = 0;
+      if (time === 'today') threshold = now - 24 * 60 * 60 * 1000;
+      else if (time === 'week') threshold = now - 7 * 24 * 60 * 60 * 1000;
+      else if (time === 'month') threshold = now - 30 * 24 * 60 * 60 * 1000;
+
+      if (threshold > 0) {
+        spots = spots.filter(s => new Date(s.createdAt).getTime() >= threshold);
+      }
+    }
+
+    // Sorting
+    if (sort === 'views') {
+      spots.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0));
+    } else if (sort === 'shares') {
+      spots.sort((a, b) => (b.sharesCount || 0) - (a.sharesCount || 0));
+    } else if (sort === 'trending') {
+      spots.sort((a, b) => ((b.viewsCount || 0) + (b.sharesCount || 0) * 3) - ((a.viewsCount || 0) + (a.sharesCount || 0) * 3));
+    } else {
+      // Newest
+      spots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    const total = spots.length;
+    const paginated = spots.slice(offset, offset + limit);
+
+    res.json({
+      spots: paginated,
+      total,
+      hasMore: offset + limit < total,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET single spot by ID or Slug
 apiRouter.get('/spots/:idOrSlug', (req: Request, res: Response) => {
   try {
@@ -173,33 +245,187 @@ apiRouter.get('/search', (req: Request, res: Response) => {
   try {
     const q = ((req.query.q as string) || '').toLowerCase().trim();
     const filter = (req.query.filter as string) || 'all';
+    const limit = Math.min(100, parseInt((req.query.limit as string) || '30', 10));
 
-    let spots = db.getSpots();
+    const allSpots = db.getSpots().filter(s => s.status === 'published' && s.moderationStatus === 'approved');
+    const allUsers = db.getUsers();
+
+    let matchingSpots = allSpots;
 
     if (q) {
-      spots = spots.filter(s =>
-        s.id.toLowerCase().includes(q) ||
-        s.creatorName.toLowerCase().includes(q) ||
-        s.slug.toLowerCase().includes(q) ||
-        (s.content.headline && s.content.headline.toLowerCase().includes(q)) ||
-        (s.content.text && s.content.text.toLowerCase().includes(q))
-      );
+      matchingSpots = matchingSpots.filter(s => {
+        const headline = (s.content?.headline || '').toLowerCase();
+        const text = (s.content?.text || '').toLowerCase();
+        const creator = (s.creatorName || '').toLowerCase();
+        const id = s.id.toLowerCase();
+        const slug = (s.slug || '').toLowerCase();
+        const tags = (s.content?.tags || []).map(t => t.toLowerCase()).join(' ');
+        const badge = (s.content?.badge || '').toLowerCase();
+
+        return (
+          id.includes(q) ||
+          creator.includes(q) ||
+          slug.includes(q) ||
+          headline.includes(q) ||
+          text.includes(q) ||
+          tags.includes(q) ||
+          badge.includes(q)
+        );
+      });
     }
 
     if (filter === 'mini') {
-      spots = spots.filter(s => s.tier === 'mini_pop');
+      matchingSpots = matchingSpots.filter(s => s.tier === 'mini_pop');
     } else if (filter === 'big') {
-      spots = spots.filter(s => s.tier === 'big_pop');
+      matchingSpots = matchingSpots.filter(s => s.tier === 'big_pop');
+    } else if (filter === 'photo') {
+      matchingSpots = matchingSpots.filter(s => !!s.content?.imageUrl);
+    } else if (filter === 'notes') {
+      matchingSpots = matchingSpots.filter(s => s.tier === 'mini_pop' && !s.content?.imageUrl);
     } else if (filter === 'trending') {
-      spots = spots.sort((a, b) => (b.viewsCount + b.sharesCount * 2) - (a.viewsCount + a.sharesCount * 2));
+      matchingSpots = matchingSpots.sort((a, b) => (b.viewsCount + b.sharesCount * 2) - (a.viewsCount + a.sharesCount * 2));
     } else if (filter === 'featured') {
-      spots = spots.filter(s => s.content.badge || s.tier === 'big_pop');
+      matchingSpots = matchingSpots.filter(s => s.content?.badge || s.tier === 'big_pop');
     } else {
-      // Default: newest first
-      spots = spots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      matchingSpots = matchingSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    res.json({ results: spots.slice(0, 30) });
+    // Matching creators
+    let matchingCreators: Array<{
+      username: string;
+      displayName: string;
+      avatarUrl?: string;
+      bio?: string;
+      spotCount: number;
+      totalViews: number;
+    }> = [];
+
+    if (q) {
+      const creatorMap = new Map<string, { username: string; displayName: string; avatarUrl?: string; bio?: string; spotCount: number; totalViews: number }>();
+
+      // Check registered users
+      for (const u of allUsers) {
+        if (u.username.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q)) {
+          const userSpots = allSpots.filter(s => s.ownerId === u.id || s.creatorName.toLowerCase() === u.displayName.toLowerCase() || s.creatorName.toLowerCase() === u.username.toLowerCase());
+          creatorMap.set(u.username.toLowerCase(), {
+            username: u.username,
+            displayName: u.displayName,
+            avatarUrl: u.avatarUrl,
+            bio: u.bio,
+            spotCount: userSpots.length,
+            totalViews: userSpots.reduce((acc, s) => acc + (s.viewsCount || 0), 0),
+          });
+        }
+      }
+
+      // Also check creators from spots
+      for (const s of allSpots) {
+        const cName = s.creatorName;
+        if (cName && cName.toLowerCase().includes(q)) {
+          const uname = cName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          if (!creatorMap.has(uname)) {
+            const sameCreatorSpots = allSpots.filter(sp => sp.creatorName.toLowerCase() === cName.toLowerCase());
+            creatorMap.set(uname, {
+              username: uname,
+              displayName: cName,
+              avatarUrl: s.content?.imageUrl || undefined,
+              spotCount: sameCreatorSpots.length,
+              totalViews: sameCreatorSpots.reduce((acc, sp) => acc + (sp.viewsCount || 0), 0),
+            });
+          }
+        }
+      }
+
+      matchingCreators = Array.from(creatorMap.values()).slice(0, 8);
+    }
+
+    res.json({
+      results: matchingSpots.slice(0, limit),
+      spots: matchingSpots.slice(0, limit),
+      creators: matchingCreators,
+      total: matchingSpots.length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================== CREATOR PROFILES ===================
+
+apiRouter.get('/creators/:username', (req: Request, res: Response) => {
+  try {
+    const rawUsername = (req.params.username || '').trim().replace(/^@/, '');
+    if (!rawUsername) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    const allUsers = db.getUsers();
+    const allSpots = db.getSpots().filter(s => s.status === 'published' && s.moderationStatus === 'approved');
+
+    // Find matched user
+    const user = allUsers.find(
+      u => u.username.toLowerCase() === rawUsername.toLowerCase() ||
+           u.displayName.toLowerCase() === rawUsername.toLowerCase()
+    );
+
+    // Find all spots belonging to this creator
+    const creatorSpots = allSpots.filter(s => {
+      if (user && s.ownerId === user.id) return true;
+      if (s.creatorName.toLowerCase() === rawUsername.toLowerCase()) return true;
+      if (user && s.creatorName.toLowerCase() === user.displayName.toLowerCase()) return true;
+      return false;
+    });
+
+    if (!user && creatorSpots.length === 0) {
+      return res.status(404).json({ error: 'Creator not found' });
+    }
+
+    const displayName = user?.displayName || (creatorSpots[0]?.creatorName) || rawUsername;
+    const username = user?.username || rawUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const avatarUrl = user?.avatarUrl || creatorSpots.find(s => s.content?.imageUrl)?.content?.imageUrl;
+    const bio = user?.bio || `Creator on SpotPop. Claimed ${creatorSpots.length} spot${creatorSpots.length === 1 ? '' : 's'} on the permanent canvas.`;
+    const createdAt = user?.createdAt || creatorSpots[creatorSpots.length - 1]?.createdAt || new Date().toISOString();
+
+    const totalViews = creatorSpots.reduce((sum, s) => sum + (s.viewsCount || 0), 0);
+    const totalShares = creatorSpots.reduce((sum, s) => sum + (s.sharesCount || 0), 0);
+
+    res.json({
+      user: {
+        id: user?.id || `usr_${username}`,
+        username,
+        displayName,
+        avatarUrl,
+        bio,
+        createdAt,
+        role: user?.role || 'user',
+      },
+      stats: {
+        totalSpots: creatorSpots.length,
+        totalViews,
+        totalShares,
+      },
+      spots: creatorSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.put('/creators/me', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { displayName, bio, avatarUrl } = req.body;
+    const updates: Partial<User> = {};
+    if (displayName && typeof displayName === 'string') updates.displayName = displayName.trim().slice(0, 40);
+    if (bio !== undefined && typeof bio === 'string') updates.bio = bio.trim().slice(0, 280);
+    if (avatarUrl && typeof avatarUrl === 'string') updates.avatarUrl = avatarUrl.trim();
+
+    const updated = db.updateUser(user.id, updates);
+    res.json({ user: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -439,6 +665,7 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         drawingOpacity: draft.content?.drawingOpacity ?? 1,
         frameStyle: draft.content?.frameStyle || 'tape',
         badge: 'NEW',
+        audio: order.productId === 'big_pop' ? draft.content?.audio : undefined,
       },
       createdAt: new Date().toISOString(),
       status: 'published',
@@ -501,6 +728,49 @@ apiRouter.post('/upload', async (req: Request, res: Response) => {
       isDuplicate: result.isDuplicate,
       filename: filename || 'user_upload.webp',
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// High-performance, isolated audio upload for Big Pop voice messages & sound clips
+// Strictly enforces max 15 seconds and max 500 KB limits
+apiRouter.post('/upload-audio', async (req: Request, res: Response) => {
+  try {
+    const { audioBase64, duration, mimeType, type } = req.body;
+    if (!audioBase64) {
+      return res.status(400).json({ error: 'Audio data is required' });
+    }
+
+    const audio = await audioService.processAndStoreAudio(
+      audioBase64,
+      typeof duration === 'number' ? duration : 0,
+      mimeType || 'audio/webm',
+      type === 'music' ? 'music' : 'voice'
+    );
+
+    res.json({
+      success: true,
+      audio,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Audio upload failed' });
+  }
+});
+
+// Admin endpoint: safely delete orphaned audio not referenced by any published Big Pop
+apiRouter.delete('/admin/clean-orphaned-audio', (req: Request, res: Response) => {
+  try {
+    const spots = db.getSpots();
+    const activeKeys = new Set<string>();
+    for (const s of spots) {
+      if (s.content?.audio?.storageKey) {
+        activeKeys.add(s.content.audio.storageKey);
+      }
+    }
+
+    const result = audioService.cleanOrphanedAudio(activeKeys);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

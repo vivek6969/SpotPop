@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spot, ModerationReport, Order, User, ProductTier, SpotShape } from '../../types';
 import { api } from '../../services/api';
+import { SpotPopLogo } from '../brand/SpotPopLogo';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -202,7 +203,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
         {/* Top Header */}
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <SpotPopLogo variant="icon" size={26} />
             <span className="px-2 py-0.5 rounded-md bg-yellow-400 text-black text-xs font-black uppercase tracking-wider">
               Admin Console
             </span>

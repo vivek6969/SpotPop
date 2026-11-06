@@ -11,6 +11,7 @@ const MAX_CLIENT_CACHE = 3000;
 interface SpotCanvasProps {
   spots: Spot[];
   selectedSpotId?: string | null;
+  highlightedSpotId?: string | null;
   onSelectSpot: (spot: Spot) => void;
   showMinimap: boolean;
   onToggleMinimap: () => void;
@@ -20,6 +21,7 @@ interface SpotCanvasProps {
 export const SpotCanvas: React.FC<SpotCanvasProps> = ({
   spots,
   selectedSpotId,
+  highlightedSpotId,
   onSelectSpot,
   showMinimap,
   onToggleMinimap,
@@ -172,10 +174,10 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
   // Wheel Zoom towards cursor
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
-    
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+
     setCamera(prev => {
-      const newZoom = Math.min(2.5, Math.max(0.25, prev.zoom * zoomFactor));
+      const newZoom = Math.min(2.5, Math.max(0.04, prev.zoom * zoomFactor));
       if (newZoom === prev.zoom) return prev;
 
       if (!containerRef.current) return { ...prev, zoom: newZoom };
@@ -237,7 +239,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
       setCamera(prev => ({
         ...prev,
-        zoom: Math.min(2.5, Math.max(0.25, prev.zoom * scale)),
+        zoom: Math.min(2.5, Math.max(0.04, prev.zoom * scale)),
       }));
     }
   };
@@ -263,8 +265,168 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
   // Zoom control helpers
   const zoomIn = () => setCamera(prev => ({ ...prev, zoom: Math.min(2.5, prev.zoom * 1.3) }));
-  const zoomOut = () => setCamera(prev => ({ ...prev, zoom: Math.max(0.25, prev.zoom * 0.75) }));
+  const zoomOut = () => setCamera(prev => ({ ...prev, zoom: Math.max(0.04, prev.zoom * 0.75) }));
   const resetCenter = () => setCamera({ x: 0, y: 0, zoom: 0.85 });
+
+  // Dynamic world bounding box calculated across all spots in memory
+  const mapBounds = useMemo(() => {
+    if (!spots || spots.length === 0) {
+      return {
+        minX: -4000,
+        maxX: 4000,
+        minY: -4000,
+        maxY: 4000,
+        width: 8000,
+        height: 8000,
+        centerX: 0,
+        centerY: 0,
+      };
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      if (s.x < minX) minX = s.x;
+      if (s.x > maxX) maxX = s.x;
+      if (s.y < minY) minY = s.y;
+      if (s.y > maxY) maxY = s.y;
+    }
+
+    // Add 12% padding around outermost spots so they never touch the edge of the minimap
+    const spanX = Math.max(2000, maxX - minX);
+    const spanY = Math.max(2000, maxY - minY);
+    const padX = spanX * 0.12;
+    const padY = spanY * 0.12;
+
+    const bMinX = minX - padX;
+    const bMaxX = maxX + padX;
+    const bMinY = minY - padY;
+    const bMaxY = maxY + padY;
+
+    return {
+      minX: bMinX,
+      maxX: bMaxX,
+      minY: bMinY,
+      maxY: bMaxY,
+      width: bMaxX - bMinX,
+      height: bMaxY - bMinY,
+      centerX: (minX + maxX) / 2,
+      centerY: (minY + maxY) / 2,
+    };
+  }, [spots]);
+
+  // Fit All Spots into screen viewport
+  const fitAllSpots = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+
+    const cW = containerRef.current?.clientWidth || 1200;
+    const cH = containerRef.current?.clientHeight || 800;
+
+    // Calculate zoom needed to comfortably show all spots
+    const targetZoom = Math.max(0.04, Math.min(2.5, Math.min(cW / mapBounds.width, cH / mapBounds.height) * 0.9));
+    const destX = mapBounds.centerX;
+    const destY = mapBounds.centerY;
+
+    const startX = camera.x;
+    const startY = camera.y;
+    const startZoom = camera.zoom;
+    const startTime = performance.now();
+    const duration = 800;
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = easeOutCubic(progress);
+
+      setCamera({
+        x: startX + (destX - startX) * eased,
+        y: startY + (destY - startY) * eased,
+        zoom: startZoom + (targetZoom - startZoom) * eased,
+      });
+
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+  };
+
+  // Minimap Canvas reference & high-performance raster rendering
+  const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isMinimapInteractingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!showMinimap) return;
+    const canvas = minimapCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth || 240;
+    const height = canvas.clientHeight || 150;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Clear background
+    ctx.fillStyle = '#0B0D14';
+    ctx.fillRect(0, 0, width, height);
+
+    // Coordinate grid overlay
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // World bounds mapping
+    const { minX, minY, width: bW, height: bH } = mapBounds;
+    if (bW <= 0 || bH <= 0) return;
+
+    // Draw all spots onto canvas
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      const normX = (s.x - minX) / bW;
+      const normY = (s.y - minY) / bH;
+      const px = normX * width;
+      const py = normY * height;
+
+      if (s.id === 'sp_spotpop_hero') {
+        // Hero Origin spot
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (s.tier === 'big_pop') {
+        // Big Pop: Neon pink
+        ctx.fillStyle = '#FF2E93';
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Mini Pop: Gold/yellow
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }, [spots, mapBounds, showMinimap]);
 
   // Viewport culling: calculate items within or near visible boundary using spatial index
   const containerW = containerRef.current?.clientWidth || 1200;
@@ -473,6 +635,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         {/* Spots Rendered on Canvas */}
         {visibleSpots.map((spot) => {
           const isSelected = selectedSpotId === spot.id;
+          const isHighlighted = highlightedSpotId === spot.id;
           const { content } = spot;
           const isHero = spot.id === 'sp_spotpop_hero';
           const spotW = isHero ? spot.width : Math.min(spot.width || 170, 170);
@@ -488,7 +651,11 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                 }
               }}
               className={`absolute pointer-events-auto cursor-pointer transition-transform duration-150 ease-out hover:z-30 hover:scale-[1.04] ${
-                isSelected ? 'z-40 ring-4 ring-[#FF2E93] ring-offset-2 ring-offset-black scale-105 shadow-2xl' : 'z-10'
+                isHighlighted
+                  ? 'z-50 ring-4 ring-[#FF2E93] ring-offset-4 ring-offset-[#090A0F] scale-110 shadow-[0_0_40px_rgba(255,46,147,0.85)] animate-pulse'
+                  : isSelected
+                  ? 'z-40 ring-4 ring-[#FF2E93] ring-offset-2 ring-offset-black scale-105 shadow-2xl'
+                  : 'z-10'
               }`}
               style={{
                 left: spot.x - spotW / 2,
@@ -497,7 +664,15 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                 height: spotH,
               }}
             >
-              {camera.zoom < 0.28 && !isHero ? (
+              {camera.zoom < 0.12 && !isHero ? (
+                <div
+                  className="w-full h-full rounded-xs shadow-xs select-none"
+                  style={{
+                    background: spot.background,
+                    border: spot.borderColor ? `1px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
+                  }}
+                />
+              ) : camera.zoom < 0.28 && !isHero ? (
                 <div
                   className="w-full h-full rounded-xs flex flex-col items-center justify-center p-1 text-center shadow-xs overflow-hidden select-none transition-opacity"
                   style={{
@@ -537,15 +712,15 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
       </div>
 
       {/* Floating Canvas HUD Controls (Top-Right) */}
-      <div className="absolute top-20 right-4 z-30 flex flex-col gap-2">
+      <div className="absolute top-24 right-4 z-30 flex flex-col gap-2">
         <button
           onClick={onToggleMinimap}
-          className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-lg active:scale-95 ${
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 ${
             showMinimap
-              ? 'bg-[#FF2E93] text-white shadow-pink-500/30'
-              : 'bg-black/60 text-slate-300 hover:text-white border border-white/10'
+              ? 'bg-[#FF2E93] text-white shadow-pink-500/30 ring-2 ring-[#FF2E93]/50'
+              : 'bg-black/60 backdrop-blur-md text-slate-300 hover:text-white border border-white/10'
           }`}
-          title="Toggle MiniMap"
+          title="Toggle World Map"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -569,6 +744,16 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         </button>
 
         <button
+          onClick={fitAllSpots}
+          className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-slate-200 hover:text-white border border-white/10 flex items-center justify-center shadow-lg active:scale-95 transition-all"
+          title="Fit Entire Map"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+
+        <button
           onClick={resetCenter}
           className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-slate-200 hover:text-white border border-white/10 flex items-center justify-center shadow-lg active:scale-95 transition-all"
           title="Center Canvas"
@@ -579,61 +764,100 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         </button>
       </div>
 
-      {/* Floating Interactive MiniMap (Bottom-Left) */}
+      {/* Floating Interactive World Radar MiniMap (Bottom-Left) */}
       {showMinimap && (
-        <div
-          className="absolute bottom-24 left-4 z-30 w-36 h-28 sm:w-44 sm:h-34 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 p-1.5 shadow-2xl overflow-hidden animate-fade-in"
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clickPercentX = (e.clientX - rect.left) / rect.width - 0.5;
-            const clickPercentY = (e.clientY - rect.top) / rect.height - 0.5;
-            // Map bounds approx -1500 to +1500
-            setCamera(prev => ({
-              ...prev,
-              x: clickPercentX * 2400,
-              y: clickPercentY * 2000,
-            }));
-          }}
-        >
-          <div className="relative w-full h-full bg-[#0E1017] rounded-lg overflow-hidden border border-white/5">
-            {/* Spot Dots on Minimap */}
-            {spots.map((s) => {
-              const miniX = ((s.x + 1200) / 2400) * 100;
-              const miniY = ((s.y + 1000) / 2000) * 100;
-              if (miniX < 0 || miniX > 100 || miniY < 0 || miniY > 100) return null;
-              return (
-                <div
-                  key={s.id}
-                  className="absolute rounded-full -translate-x-1/2 -translate-y-1/2"
-                  style={{
-                    left: `${miniX}%`,
-                    top: `${miniY}%`,
-                    width: s.tier === 'big_pop' ? 5 : 3,
-                    height: s.tier === 'big_pop' ? 5 : 3,
-                    backgroundColor: s.tier === 'big_pop' ? '#FF2E93' : '#FFD700',
-                  }}
-                />
-              );
-            })}
+        <div className="absolute bottom-20 left-4 sm:bottom-16 sm:left-6 z-30 w-52 sm:w-64 rounded-2xl bg-[#0B0D14]/90 backdrop-blur-xl border border-white/15 shadow-2xl overflow-hidden animate-fade-in flex flex-col">
+          {/* Header Bar */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5 select-none">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-slate-200">
+              <span className="w-2 h-2 rounded-full bg-[#FF2E93] animate-pulse" />
+              <span className="uppercase tracking-wider">World Map</span>
+              <span className="text-slate-400 font-mono text-[10px] font-normal">
+                ({spots.length.toLocaleString()})
+              </span>
+            </div>
+            <button
+              onClick={fitAllSpots}
+              className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-[#FF2E93] hover:text-white text-slate-300 text-[10px] font-semibold transition-colors cursor-pointer"
+              title="Zoom out to fit all spots"
+            >
+              Fit All
+            </button>
+          </div>
 
-            {/* Viewport Box Indicator */}
+          {/* Map Surface with HTML5 Canvas & Live Viewport indicator */}
+          <div
+            className="relative w-full h-32 sm:h-40 bg-[#090A0F] cursor-crosshair overflow-hidden touch-none select-none"
+            onPointerDown={(e) => {
+              isMinimapInteractingRef.current = true;
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratioX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              const ratioY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+              setCamera(prev => ({
+                ...prev,
+                x: mapBounds.minX + ratioX * mapBounds.width,
+                y: mapBounds.minY + ratioY * mapBounds.height,
+              }));
+            }}
+            onPointerMove={(e) => {
+              if (!isMinimapInteractingRef.current) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratioX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              const ratioY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+              setCamera(prev => ({
+                ...prev,
+                x: mapBounds.minX + ratioX * mapBounds.width,
+                y: mapBounds.minY + ratioY * mapBounds.height,
+              }));
+            }}
+            onPointerUp={(e) => {
+              isMinimapInteractingRef.current = false;
+              try {
+                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+              } catch {}
+            }}
+            onPointerCancel={() => {
+              isMinimapInteractingRef.current = false;
+            }}
+          >
+            <canvas
+              ref={minimapCanvasRef}
+              className="w-full h-full block pointer-events-none"
+            />
+
+            {/* Live Viewport Indicator Rectangle ("Where User Is") */}
             {(() => {
-              const boxW = Math.max(16, ((containerW / camera.zoom) / 2400) * 100);
-              const boxH = Math.max(12, ((containerH / camera.zoom) / 2000) * 100);
-              const boxLeft = ((camera.x + 1200) / 2400) * 100 - boxW / 2;
-              const boxTop = ((camera.y + 1000) / 2000) * 100 - boxH / 2;
+              const viewWorldW = containerW / camera.zoom;
+              const viewWorldH = containerH / camera.zoom;
+              const viewWorldLeft = camera.x - viewWorldW / 2;
+              const viewWorldTop = camera.y - viewWorldH / 2;
+
+              const vpLeftPercent = ((viewWorldLeft - mapBounds.minX) / mapBounds.width) * 100;
+              const vpTopPercent = ((viewWorldTop - mapBounds.minY) / mapBounds.height) * 100;
+              const vpWidthPercent = (viewWorldW / mapBounds.width) * 100;
+              const vpHeightPercent = (viewWorldH / mapBounds.height) * 100;
+
+              // Clamped bounds for visual indicator
+              const renderW = Math.max(3, Math.min(100, vpWidthPercent));
+              const renderH = Math.max(3, Math.min(100, vpHeightPercent));
+              const renderLeft = Math.max(0, Math.min(100 - renderW, vpLeftPercent));
+              const renderTop = Math.max(0, Math.min(100 - renderH, vpTopPercent));
 
               return (
                 <div
-                  className="absolute border border-white/90 bg-white/10 rounded-xs pointer-events-none transition-all duration-75"
+                  className="absolute border-2 border-[#FF2E93] bg-[#FF2E93]/20 rounded-xs pointer-events-none transition-all duration-75"
                   style={{
-                    left: `${Math.max(0, Math.min(100 - boxW, boxLeft))}%`,
-                    top: `${Math.max(0, Math.min(100 - boxH, boxTop))}%`,
-                    width: `${Math.min(100, boxW)}%`,
-                    height: `${Math.min(100, boxH)}%`,
-                    boxShadow: '0 0 10px rgba(255,46,147,0.5)',
+                    left: `${renderLeft}%`,
+                    top: `${renderTop}%`,
+                    width: `${renderW}%`,
+                    height: `${renderH}%`,
+                    boxShadow: '0 0 12px rgba(255,46,147,0.7), inset 0 0 6px rgba(255,46,147,0.3)',
                   }}
-                />
+                >
+                  {/* Center Crosshair Dot */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                </div>
               );
             })()}
           </div>

@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode } from '../../types';
+import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode, SpotAudio } from '../../types';
 import { api } from '../../services/api';
+import { checkImageSafety } from '../../services/nsfwSafety';
 import { SpotCard } from '../canvas/SpotCard';
+import { SpotPopLogo } from '../brand/SpotPopLogo';
 import { PhotoCropTab } from './editor/PhotoCropTab';
 import { AdjustTab } from './editor/AdjustTab';
 import { RetouchTab } from './editor/RetouchTab';
@@ -11,6 +13,7 @@ import { StickersStockTab } from './editor/StickersStockTab';
 import { DrawStudioTab } from './editor/DrawStudioTab';
 import { FramesTab } from './editor/FramesTab';
 import { ThemesTab } from './editor/ThemesTab';
+import { AudioStudioTab } from './editor/AudioStudioTab';
 import { BrushStyle, PlanDraft } from './editor/types';
 import {
   FILTER_PRESETS,
@@ -467,7 +470,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   // Active Tool Tab in Editor
   const [activeEditorTab, setActiveEditorTab] = useState<
-    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes'
+    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes' | 'audio'
   >('photo');
   const [selectedBgCategory, setSelectedBgCategory] = useState<'all' | 'halloween' | 'christmas' | 'love' | 'retro' | 'classic'>('all');
   const [selectedFontCategory, setSelectedFontCategory] = useState<string>('All');
@@ -655,9 +658,30 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     updateDraft({ layers: list });
   };
 
-  const handleCustomStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomStickerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setIsScanningImage(true);
+    setErrorMessage(null);
+
+    try {
+      const safety = await checkImageSafety(file);
+      if (!safety.safe) {
+        setErrorMessage(
+          safety.reason ||
+          'This sticker was flagged by our safety filter (prohibited adult or explicit content detected).'
+        );
+        e.target.value = '';
+        setIsScanningImage(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Sticker safety check error:', err);
+    } finally {
+      setIsScanningImage(false);
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -749,6 +773,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   const [upiId, setUpiId] = useState('user@okhdfcbank');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isScanningImage, setIsScanningImage] = useState(false);
 
   // Switch Plan with Complete Isolation
   const handleSelectPlan = (newTier: ProductTier) => {
@@ -954,8 +979,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     updateDraft({ drawingDataUrl: null });
   };
 
-  // Image File Upload for Big Pop
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image File Upload for Big Pop with Local Client-Side MobileNetV2 Nudity Prevention
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -966,6 +991,27 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     if (file.size > 8 * 1024 * 1024) {
       setErrorMessage('Image size must be less than 8MB');
       return;
+    }
+
+    setErrorMessage(null);
+    setIsScanningImage(true);
+
+    try {
+      // 1. Perform local classification before upload
+      const safety = await checkImageSafety(file);
+      if (!safety.safe) {
+        setErrorMessage(
+          safety.reason ||
+          'This image was flagged by our safety filter (adult or explicit content detected). Please choose another photo or artwork!'
+        );
+        e.target.value = ''; // Reset input to allow choosing a different image
+        setIsScanningImage(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Safety classification notice:', err);
+    } finally {
+      setIsScanningImage(false);
     }
 
     const reader = new FileReader();
@@ -1023,6 +1069,34 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         }
       }
 
+      // Convert and upload audio object only after user confirms and saves (Big Pop only)
+      let finalAudio: SpotAudio | undefined = undefined;
+      if (tier === 'big_pop' && currentDraft.audioDraft?.blob) {
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(currentDraft.audioDraft!.blob);
+          });
+          const audioBase64 = await base64Promise;
+
+          const uploadRes = await api.uploadAudio({
+            audioBase64,
+            duration: currentDraft.audioDraft.duration,
+            mimeType: currentDraft.audioDraft.mimeType,
+            type: currentDraft.audioDraft.type,
+          });
+
+          if (uploadRes?.audio) {
+            finalAudio = uploadRes.audio;
+          }
+        } catch (err: any) {
+          console.warn('Audio upload error:', err);
+          throw new Error(err.message || 'Audio upload failed. Ensure recording is within 15s and 500 KB.');
+        }
+      }
+
       const draftSpot: Partial<Spot> = {
         shape: currentDraft.shape,
         background: currentDraft.backgroundColor,
@@ -1061,6 +1135,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           textStroke: currentDraft.textStroke,
           textGlow: currentDraft.textGlow,
           letterSpacing: currentDraft.letterSpacing,
+          audio: finalAudio,
         },
       };
 
@@ -1114,8 +1189,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
         {/* Top Header */}
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">✨</span>
+          <div className="flex items-center gap-2.5">
+            <SpotPopLogo variant="icon" size={24} />
             <h3 className="font-outfit font-bold text-base sm:text-lg text-white">
               Studio Spot Creator
             </h3>
@@ -1135,9 +1210,26 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 no-scrollbar space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <span>⚠️</span>
-              <span>{errorMessage}</span>
+            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-fade-in">
+              <div className="flex items-center gap-2.5">
+                <span className="text-base shrink-0">🛡️</span>
+                <span className="leading-relaxed font-medium">{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {isScanningImage && (
+            <div className="p-3 rounded-2xl bg-[#FF2E93]/15 border border-[#FF2E93]/40 text-white text-xs flex items-center justify-center gap-2.5 shadow-lg animate-pulse">
+              <span className="w-4 h-4 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin shrink-0" />
+              <span className="font-semibold">🛡️ Scanning image safety with MobileNetV2 locally in browser...</span>
             </div>
           )}
 
@@ -1470,6 +1562,28 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   <span>🌈</span>
                   <span>Background</span>
                 </button>
+
+                {/* Audio Memory Tab - Big Pop Exclusive */}
+                {tier === 'big_pop' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveEditorTab('audio');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                      activeEditorTab === 'audio' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-black shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🎙️</span>
+                    <span>Audio</span>
+                    {currentDraft.audioDraft && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* TAB 1: TOOLS (CROP & PHOTO - BIG POP ONLY) */}
@@ -1559,6 +1673,14 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   updateDraft={updateDraft}
                   selectedBgCategory={selectedBgCategory}
                   setSelectedBgCategory={setSelectedBgCategory}
+                />
+              )}
+
+              {/* TAB 10: AUDIO MEMORY (BIG POP ONLY) */}
+              {activeEditorTab === 'audio' && tier === 'big_pop' && !isDrawingMode && (
+                <AudioStudioTab
+                  currentDraft={currentDraft}
+                  updateDraft={updateDraft}
                 />
               )}
 

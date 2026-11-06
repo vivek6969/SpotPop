@@ -3,16 +3,19 @@ import { Spot, CanvasStats, ProductTier, User } from './types';
 import { api } from './services/api';
 import { SpotCanvas } from './components/canvas/SpotCanvas';
 import { Header } from './components/header/Header';
+import { ExploreBar } from './components/explore/ExploreBar';
 import { BottomDock } from './components/dock/BottomDock';
 import { CreateSpotModal } from './components/modals/CreateSpotModal';
 import { SpotDetailModal } from './components/modals/SpotDetailModal';
 import { ViralShareKitModal } from './components/modals/ViralShareKitModal';
 import { SearchDrawer } from './components/modals/SearchDrawer';
 import { ActivityDrawer } from './components/modals/ActivityDrawer';
+import { CreatorProfileModal } from './components/modals/CreatorProfileModal';
 import { UserAccountModal } from './components/modals/UserAccountModal';
 import { AdminPanelModal } from './components/modals/AdminPanelModal';
 import { PolicyModal } from './components/modals/PolicyModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
+import { SpotPopLogo } from './components/brand/SpotPopLogo';
 
 export function App() {
   // Main Data States
@@ -23,6 +26,7 @@ export function App() {
 
   // Canvas Camera and Target
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [highlightedSpotId, setHighlightedSpotId] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [targetFocus, setTargetFocus] = useState<{ x: number; y: number; zoom?: number; timestamp: number } | null>(null);
 
@@ -35,6 +39,8 @@ export function App() {
   const [shareKitSpot, setShareKitSpot] = useState<Spot | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [selectedCreatorUsername, setSelectedCreatorUsername] = useState<string | null>(null);
+  const [unreadActivityCount, setUnreadActivityCount] = useState<number>(0);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [policyModal, setPolicyModal] = useState<{ isOpen: boolean; tab: 'terms' | 'privacy' | 'refund' | 'content' }>({
@@ -49,14 +55,27 @@ export function App() {
       setSpots(data.spots || []);
       setStats(data.stats || null);
 
-      // Check deep link via URL query param: ?spot=slug
+      // Check deep link via URL query param: ?spot=slug or ?creator=username or /@username
       const urlParams = new URLSearchParams(window.location.search);
       const spotParam = urlParams.get('spot');
+      const creatorParam = urlParams.get('creator');
+
+      if (creatorParam) {
+        setSelectedCreatorUsername(creatorParam);
+      } else {
+        const pathMatch = window.location.pathname.match(/^\/@([a-zA-Z0-9_-]+)/);
+        if (pathMatch) {
+          setSelectedCreatorUsername(pathMatch[1]);
+        }
+      }
+
       if (spotParam && data.spots) {
         const found = data.spots.find(s => s.id === spotParam || s.slug === spotParam);
         if (found) {
           setSelectedSpot(found);
+          setHighlightedSpotId(found.id);
           setTargetFocus({ x: found.x, y: found.y, zoom: 1.25, timestamp: Date.now() });
+          setTimeout(() => setHighlightedSpotId(null), 3500);
         }
       }
     } catch (e) {
@@ -92,15 +111,19 @@ export function App() {
     setIsAccountOpen(false);
   };
 
-  // Flying Camera Helper
+  // Flying Camera Helper with dynamic pulsing neon highlight
   const flyToSpot = (spot: Spot) => {
     setSelectedSpot(spot);
+    setHighlightedSpotId(spot.id);
     setTargetFocus({
       x: spot.x,
       y: spot.y,
       zoom: 1.25,
       timestamp: Date.now(),
     });
+    setTimeout(() => {
+      setHighlightedSpotId(prev => (prev === spot.id ? null : prev));
+    }, 3500);
   };
 
   // Open Creation flow
@@ -133,6 +156,7 @@ export function App() {
       <SpotCanvas
         spots={spots}
         selectedSpotId={selectedSpot?.id}
+        highlightedSpotId={highlightedSpotId}
         onSelectSpot={(spot) => {
           setSelectedSpot(spot);
         }}
@@ -145,11 +169,15 @@ export function App() {
       <Header
         stats={stats}
         currentUser={currentUser}
+        unreadActivityCount={unreadActivityCount}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenActivity={() => setIsActivityOpen(true)}
         onOpenAccount={() => setIsAccountOpen(true)}
         onOpenAdmin={() => setIsAdminOpen(true)}
       />
+
+      {/* Floating Canvas Explore Filter Bar */}
+      <ExploreBar onSelectSpot={flyToSpot} />
 
       {/* Bottom Floating Action Dock */}
       <BottomDock
@@ -158,32 +186,44 @@ export function App() {
         onChangeSelectedTier={setSelectedTier}
       />
 
-      {/* Subtle Policy Links in Corner */}
-      <div className="fixed bottom-1.5 left-4 z-20 hidden md:flex items-center gap-3 text-[10px] text-slate-500">
+      {/* Footer Branding (Logo + Text) & Policy Links */}
+      <div className="fixed bottom-2 left-4 z-20 hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] text-slate-400 shadow-lg select-none">
+        <div
+          className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => window.location.href = '/'}
+          title="SpotPop Home"
+        >
+          <SpotPopLogo variant="icon" size={18} />
+          <div className="flex items-center font-outfit text-xs font-black tracking-tight leading-none">
+            <span className="text-white">Spot</span>
+            <span className="text-[#FF1493]">Pop</span>
+          </div>
+        </div>
+        <span className="text-white/20">|</span>
         <button
           onClick={() => setPolicyModal({ isOpen: true, tab: 'terms' })}
-          className="hover:text-slate-300 transition-colors"
+          className="hover:text-slate-200 transition-colors"
         >
           Terms
         </button>
         <span>·</span>
         <button
           onClick={() => setPolicyModal({ isOpen: true, tab: 'privacy' })}
-          className="hover:text-slate-300 transition-colors"
+          className="hover:text-slate-200 transition-colors"
         >
           Privacy
         </button>
         <span>·</span>
         <button
           onClick={() => setPolicyModal({ isOpen: true, tab: 'refund' })}
-          className="hover:text-slate-300 transition-colors"
+          className="hover:text-slate-200 transition-colors"
         >
           Refunds
         </button>
         <span>·</span>
         <button
           onClick={() => setPolicyModal({ isOpen: true, tab: 'content' })}
-          className="hover:text-slate-300 transition-colors"
+          className="hover:text-slate-200 transition-colors"
         >
           Content Policy
         </button>
@@ -208,6 +248,9 @@ export function App() {
           setShareKitSpot(spot);
         }}
         onFlyToSpot={flyToSpot}
+        onOpenCreatorProfile={(username) => {
+          setSelectedCreatorUsername(username);
+        }}
       />
 
       {/* Viral Share Kit Modal */}
@@ -219,12 +262,15 @@ export function App() {
         />
       )}
 
-      {/* Search & Discovery Drawer */}
+      {/* Universal Search & Discovery Drawer */}
       <SearchDrawer
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onSelectSpot={(spot) => {
           flyToSpot(spot);
+        }}
+        onSelectCreator={(username) => {
+          setSelectedCreatorUsername(username);
         }}
       />
 
@@ -232,11 +278,26 @@ export function App() {
       <ActivityDrawer
         isOpen={isActivityOpen}
         onClose={() => setIsActivityOpen(false)}
+        onUpdateUnreadCount={setUnreadActivityCount}
         onSelectSpotById={(spotId) => {
           const spot = spots.find(s => s.id === spotId);
           if (spot) flyToSpot(spot);
         }}
       />
+
+      {/* Creator Profile Modal */}
+      {selectedCreatorUsername && (
+        <CreatorProfileModal
+          username={selectedCreatorUsername}
+          currentUser={currentUser}
+          authToken={authToken}
+          onClose={() => setSelectedCreatorUsername(null)}
+          onSelectSpot={flyToSpot}
+          onProfileUpdated={(updated) => {
+            setCurrentUser(prev => prev ? { ...prev, ...updated } : prev);
+          }}
+        />
+      )}
 
       {/* User Account / Login Drawer */}
       <UserAccountModal

@@ -198,6 +198,15 @@ export interface SpotLayer {
   layerMask?: string;
 }
 
+export interface SpotAudio {
+  url: string;           // Asset URL (e.g. /uploads/audio/aud_xxx.webm)
+  storageKey: string;    // Object storage identifier (e.g. aud_xxx.webm)
+  duration: number;      // Duration in seconds (max 15.0)
+  mimeType: string;      // MIME type (audio/webm, audio/mp4, etc.)
+  size: number;          // Size in bytes (max 500 KB)
+  type: 'voice' | 'music'; // 'voice' for personal recording, 'music' for short sound clip
+}
+
 export interface SpotContent {
   headline?: string;
   headlineX?: number;
@@ -241,6 +250,7 @@ export interface SpotContent {
   frameStyle: FrameStyle;
   badge?: string;
   tags?: string[];
+  audio?: SpotAudio; // Optional voice note or sound clip (Big Pop only)
 }
 
 export interface Spot {
@@ -272,6 +282,7 @@ export interface User {
   username: string;
   displayName: string;
   avatarUrl?: string;
+  bio?: string;
   role: 'user' | 'admin';
   createdAt: string;
   ownedSpotIds: string[];

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import QRCode from 'qrcode';
+import React, { useState } from 'react';
 import { Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
+import { SpotPopLogo } from '../brand/SpotPopLogo';
 
 interface ViralShareKitModalProps {
   isOpen: boolean;
@@ -27,28 +27,12 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
   if (!isOpen) return null;
 
   const [activeFormat, setActiveFormat] = useState<ShareFormat>('story');
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isGeneratingDownload, setIsGeneratingDownload] = useState(false);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // Generate public link
+  // Generate public link & short vanity display link
   const publicUrl = `${window.location.origin}?spot=${spot.slug || spot.id}`;
-
-  // Generate QR Code on mount
-  useEffect(() => {
-    QRCode.toDataURL(publicUrl, {
-      width: 256,
-      margin: 1,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF',
-      },
-    })
-      .then((url) => setQrCodeDataUrl(url))
-      .catch((err) => console.error('QR code error', err));
-  }, [publicUrl]);
+  const shortDisplayUrl = `spotpop.in/${spot.slug || spot.id}`;
 
   // Record share event
   const trackShare = () => {
@@ -70,7 +54,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
       try {
         await navigator.share({
           title: `SpotPop — ${spot.creatorName}'s Spot`,
-          text: `Check out my spot on the public SpotPop canvas! #SpotPop`,
+          text: `I claimed my spot on the internet! 🌟 Check it out here:`,
           url: publicUrl,
         });
       } catch (err) {
@@ -90,12 +74,16 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
-  // Download high-resolution PNG rendering
+  // Download high-resolution PNG rendering matching the aesthetic story style
   const handleDownloadImage = async () => {
     setIsGeneratingDownload(true);
     trackShare();
 
     try {
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+
       const cfg = FORMATS[activeFormat];
       const canvas = document.createElement('canvas');
       canvas.width = cfg.width;
@@ -103,69 +91,153 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Background gradient
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, cfg.height);
-      bgGrad.addColorStop(0, '#0E1017');
-      bgGrad.addColorStop(0.5, '#161926');
-      bgGrad.addColorStop(1, '#090A0F');
+      const W = cfg.width;
+      const H = cfg.height;
+
+      // 1. Deep cinematic background gradient
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, '#10131F');
+      bgGrad.addColorStop(0.4, '#0B0D15');
+      bgGrad.addColorStop(0.8, '#06070B');
+      bgGrad.addColorStop(1, '#030406');
       ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, cfg.width, cfg.height);
+      ctx.fillRect(0, 0, W, H);
 
-      // Pink & gold glowing orbs
-      const glowGrad = ctx.createRadialGradient(
-        cfg.width / 2, cfg.height / 2, 50,
-        cfg.width / 2, cfg.height / 2, cfg.width * 0.7
-      );
-      glowGrad.addColorStop(0, 'rgba(255, 46, 147, 0.25)');
-      glowGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = glowGrad;
-      ctx.fillRect(0, 0, cfg.width, cfg.height);
+      // 2. Sunset & neon ambient glows in corners
+      // Top-left sunset glow
+      const sunsetGlow = ctx.createRadialGradient(0, 0, 80, 0, 0, W * 0.7);
+      sunsetGlow.addColorStop(0, 'rgba(255, 115, 0, 0.32)');
+      sunsetGlow.addColorStop(0.5, 'rgba(255, 46, 147, 0.18)');
+      sunsetGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = sunsetGlow;
+      ctx.fillRect(0, 0, W, H);
 
-      // Header Branding: SpotPop
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 72px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Spot', cfg.width / 2 - 60, cfg.height > 1200 ? 220 : 160);
+      // Bottom-right purple/magenta glow
+      const purpleGlow = ctx.createRadialGradient(W, H, 100, W, H, W * 0.75);
+      purpleGlow.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+      purpleGlow.addColorStop(0.5, 'rgba(255, 46, 147, 0.22)');
+      purpleGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = purpleGlow;
+      ctx.fillRect(0, 0, W, H);
 
-      ctx.fillStyle = '#FF2E93';
-      ctx.fillText('Pop', cfg.width / 2 + 70, cfg.height > 1200 ? 220 : 160);
+      // 3. Top Header: SP Sticky Note Emblem + SpotPop Brand Logo
+      const headerY = H > 1400 ? 160 : 110;
 
-      // Tagline
-      ctx.fillStyle = '#94A3B8';
-      ctx.font = '32px Plus Jakarta Sans, sans-serif';
-      ctx.fillText('CLAIM YOUR SPOT ON THE INTERNET', cfg.width / 2, cfg.height > 1200 ? 280 : 210);
-
-      // Draw the Spot in the Center
-      const spotW = 540;
-      const spotH = spot.tier === 'big_pop' ? 640 : 480;
-      const spotX = (cfg.width - spotW) / 2;
-      const spotY = (cfg.height - spotH) / 2 - (cfg.height > 1200 ? 40 : 20);
-
-      // Spot card background
+      // Draw SP sticky note emblem on canvas
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 40;
-      ctx.shadowOffsetY = 20;
+      const logoX = W / 2 - 135;
+      const logoY = headerY - 32;
+      const logoSize = 64;
 
+      ctx.translate(logoX + logoSize / 2, logoY + logoSize / 2);
+      ctx.rotate(-0.09); // -5.5 deg
+
+      // Sticky note body
+      ctx.fillStyle = '#FF1493';
+      ctx.beginPath();
+      ctx.roundRect(-logoSize / 2, -logoSize / 2, logoSize, logoSize, 12);
+      ctx.fill();
+
+      // Folded corner
+      ctx.fillStyle = '#FFB3D4';
+      ctx.beginPath();
+      ctx.moveTo(logoSize / 2 - 16, logoSize / 2);
+      ctx.lineTo(logoSize / 2, logoSize / 2 - 16);
+      ctx.lineTo(logoSize / 2 - 16, logoSize / 2 - 16);
+      ctx.closePath();
+      ctx.fill();
+
+      // Translucent Tape at top
+      ctx.fillStyle = 'rgba(255, 224, 237, 0.85)';
+      ctx.beginPath();
+      ctx.roundRect(-14, -logoSize / 2 - 6, 28, 12, 3);
+      ctx.fill();
+
+      // "SP" letters
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 30px Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SP', 0, 3);
+      ctx.restore();
+
+      // SpotPop Brand typography
+      ctx.font = '900 68px Outfit, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText('Spot', W / 2 - 55, headerY + 12);
+
+      ctx.fillStyle = '#FF1493';
+      ctx.fillText('Pop', W / 2 + 80, headerY + 12);
+
+      // 4. Headline: "I Claimed My Spot on the Internet!"
+      const titleY = headerY + 110;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 88px Caveat, cursive';
+      ctx.fillText('I Claimed My', W / 2, titleY);
+      ctx.fillText('Spot on the Internet!', W / 2, titleY + 95);
+
+      // Hot pink underline brush stroke
+      ctx.strokeStyle = '#FF2E93';
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - 270, titleY + 125);
+      ctx.quadraticCurveTo(W / 2, titleY + 112, W / 2 + 280, titleY + 122);
+      ctx.stroke();
+
+      // Yellow accent rays top-right
+      ctx.strokeStyle = '#FACC15';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(W / 2 + 370, titleY - 40);
+      ctx.lineTo(W / 2 + 420, titleY - 75);
+      ctx.moveTo(W / 2 + 395, titleY - 15);
+      ctx.lineTo(W / 2 + 445, titleY - 40);
+      ctx.stroke();
+
+      // Sparkle star on left
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.fillText('✧', W / 2 - 380, titleY + 20);
+      ctx.restore();
+
+      // 5. Center: The User's Spot Card
+      const spotW = 600;
+      const spotH = spot.tier === 'big_pop' ? 720 : 600;
+      const spotX = (W - spotW) / 2;
+      const spotY = H > 1400 ? 520 : 410;
+
+      ctx.save();
+      // Slight organic tilt
+      const rotDeg = -1.8;
+      ctx.translate(W / 2, spotY + spotH / 2);
+      ctx.rotate((rotDeg * Math.PI) / 180);
+      ctx.translate(-W / 2, -(spotY + spotH / 2));
+
+      // Card Drop Shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = 55;
+      ctx.shadowOffsetY = 28;
+
+      // Card Background
       ctx.fillStyle = spot.shape === 'polaroid' ? '#FFFFFF' : spot.background || '#FEF08A';
       ctx.beginPath();
-      ctx.roundRect(spotX, spotY, spotW, spotH, 16);
+      ctx.roundRect(spotX, spotY, spotW, spotH, 12);
       ctx.fill();
       ctx.restore();
 
-      // Spot text content
-      ctx.fillStyle = spot.content.textColor || '#1E293B';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 44px Caveat, cursive';
-      ctx.fillText(spot.content.headline || spot.creatorName, cfg.width / 2, spotY + (spot.tier === 'big_pop' ? 560 : 220));
+      // Re-apply rotation context for contents
+      ctx.save();
+      ctx.translate(W / 2, spotY + spotH / 2);
+      ctx.rotate((rotDeg * Math.PI) / 180);
+      ctx.translate(-W / 2, -(spotY + spotH / 2));
 
-      if (spot.content.text) {
-        ctx.font = '32px Caveat, cursive';
-        ctx.fillStyle = spot.content.textColor || '#475569';
-        ctx.fillText(spot.content.text, cfg.width / 2, spotY + (spot.tier === 'big_pop' ? 605 : 280));
-      }
-
-      // If photo exists, render photo
+      // Polaroid photo image if present
+      const pad = 28;
+      const photoSize = spotW - pad * 2;
       if (spot.content.imageUrl) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -175,11 +247,16 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           img.src = spot.content.imageUrl!;
         });
         if (img.complete && img.naturalWidth > 0) {
-          ctx.drawImage(img, spotX + 24, spotY + 24, spotW - 48, spotW - 48);
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(spotX + pad, spotY + pad, photoSize, photoSize, 4);
+          ctx.clip();
+          ctx.drawImage(img, spotX + pad, spotY + pad, photoSize, photoSize);
+          ctx.restore();
         }
       }
 
-      // If drawing exists, render drawing layer
+      // Drawing layer if present
       if (spot.content.drawingData) {
         const drawImg = new Image();
         drawImg.crossOrigin = 'anonymous';
@@ -189,45 +266,146 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           drawImg.src = spot.content.drawingData!;
         });
         if (drawImg.complete && drawImg.naturalWidth > 0) {
-          ctx.drawImage(drawImg, spotX + 24, spotY + 24, spotW - 48, spotW - 48);
+          ctx.drawImage(drawImg, spotX + pad, spotY + pad, photoSize, photoSize);
         }
       }
 
-      // Render stickers on canvas export
-      if (spot.content.stickers && spot.content.stickers.length > 0) {
-        ctx.save();
-        for (const stk of spot.content.stickers) {
-          ctx.font = `${Math.round(stk.size * 2)}px sans-serif`;
-          ctx.fillText(stk.emojiOrIcon, spotX + stk.x * 2.2, spotY + stk.y * 2.2 + 25);
-        }
-        ctx.restore();
-      }
-
-      // Footer: Creator Claim statement & QR Code
-      const qrSize = cfg.height > 1200 ? 160 : 130;
-      const footerY = cfg.height - (cfg.height > 1200 ? 320 : 220);
-
-      if (qrCodeDataUrl) {
-        const qrImg = new Image();
-        await new Promise((res) => {
-          qrImg.onload = res;
-          qrImg.src = qrCodeDataUrl;
-        });
-        ctx.drawImage(qrImg, (cfg.width - qrSize) / 2, footerY, qrSize, qrSize);
-      }
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 36px Plus Jakarta Sans, sans-serif';
+      // Card Headline
+      ctx.fillStyle = spot.content.textColor || (spot.shape === 'polaroid' ? '#111827' : '#1E293B');
       ctx.textAlign = 'center';
-      ctx.fillText(`“I claimed my spot on spotpop.in”`, cfg.width / 2, footerY + qrSize + 48);
+      ctx.font = 'bold 54px Caveat, cursive';
+      const textCenterY = spot.content.imageUrl ? spotY + pad + photoSize + 60 : spotY + spotH * 0.42;
+      ctx.fillText(spot.content.headline || spot.creatorName, W / 2, textCenterY);
 
-      ctx.fillStyle = '#94A3B8';
+      // Card Subtext
+      if (spot.content.text) {
+        ctx.font = '36px Caveat, cursive';
+        ctx.fillStyle = spot.content.textColor || (spot.shape === 'polaroid' ? '#4B5563' : '#334155');
+        ctx.fillText(spot.content.text, W / 2, textCenterY + 48);
+      }
+
+      // Card Author
       ctx.font = '26px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(`By @${spot.creatorName} · Spot #${spot.slug}`, cfg.width / 2, footerY + qrSize + 88);
+      ctx.fillStyle = spot.content.textColor || '#6B7280';
+      ctx.fillText(`${spot.creatorName} ♡`, W / 2, textCenterY + 92);
 
-      // Download trigger
+      // Top Scotch Tape Accent
+      ctx.fillStyle = 'rgba(235, 230, 215, 0.78)';
+      ctx.shadowColor = 'rgba(0,0,0,0.18)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+      ctx.beginPath();
+      ctx.roundRect(W / 2 - 80, spotY - 18, 160, 36, 3);
+      ctx.fill();
+      ctx.restore();
+
+      // 6. Whimsical Doodles around the Card
+      ctx.save();
+      // Paper plane on left
+      ctx.font = '64px sans-serif';
+      ctx.fillText('✈️', spotX - 85, spotY + spotH * 0.5);
+
+      // Dashed trail for paper plane
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(spotX - 45, spotY + spotH * 0.52);
+      ctx.bezierCurveTo(spotX - 110, spotY + spotH * 0.65, spotX - 60, spotY + spotH * 0.75, spotX - 40, spotY + spotH * 0.85);
+      ctx.stroke();
+
+      // Doodle Pink Heart top-right
+      ctx.fillStyle = '#FB7185';
+      ctx.font = 'bold 50px Caveat, cursive';
+      ctx.fillText('♡', spotX + spotW - 5, spotY + 30);
+
+      // Curved hand-drawn arrow pointing down on bottom-right
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      const arrX = spotX + spotW + 15;
+      const arrY = spotY + spotH - 30;
+      ctx.moveTo(arrX - 20, arrY - 80);
+      ctx.quadraticCurveTo(arrX + 35, arrY - 20, arrX - 35, arrY + 40);
+      ctx.stroke();
+
+      // Arrow head
+      ctx.beginPath();
+      ctx.moveTo(arrX - 50, arrY + 20);
+      ctx.lineTo(arrX - 35, arrY + 42);
+      ctx.lineTo(arrX - 15, arrY + 30);
+      ctx.stroke();
+      ctx.restore();
+
+      // 7. Bottom CTA: Torn Paper Note + Neon Link Pill (NO QR CODE!)
+      const ctaY = H > 1400 ? H - 340 : H - 260;
+
+      // Yellow Torn Paper Note
+      ctx.save();
+      ctx.translate(W / 2, ctaY);
+      ctx.rotate((-2.2 * Math.PI) / 180);
+      ctx.translate(-W / 2, -ctaY);
+
+      const noteW = 480;
+      const noteH = 115;
+      const noteX = (W - noteW) / 2;
+
+      ctx.shadowColor = 'rgba(0,0,0,0.45)';
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 12;
+
+      ctx.fillStyle = '#FEF08A';
+      ctx.strokeStyle = '#FDE047';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(noteX, ctaY, noteW, noteH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowColor = 'transparent';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#18181B';
+      ctx.font = 'bold 40px Caveat, cursive';
+      ctx.fillText('Find My Spot on', W / 2, ctaY + 48);
+
+      ctx.font = '900 48px Outfit, sans-serif';
+      ctx.fillStyle = '#090A0F';
+      ctx.fillText('Spot', W / 2 - 44, ctaY + 96);
+      ctx.fillStyle = '#FF2E93';
+      ctx.fillText('Pop!', W / 2 + 52, ctaY + 96);
+      ctx.restore();
+
+      // Neon Link Pill
+      const pillY = ctaY + 145;
+      const pillW = 600;
+      const pillH = 76;
+      const pillX = (W - pillW) / 2;
+
+      ctx.save();
+      // Glowing neon border
+      ctx.shadowColor = '#FF2E93';
+      ctx.shadowBlur = 28;
+      ctx.fillStyle = 'rgba(9, 10, 15, 0.95)';
+      ctx.strokeStyle = '#FF2E93';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillY, pillW, pillH, 38);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowColor = 'transparent';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 32px monospace';
+      ctx.fillStyle = '#FBCFE8';
+      ctx.fillText(`🔗 ${shortDisplayUrl}`, W / 2, pillY + 49);
+      ctx.restore();
+
+      // 8. Download trigger
       const link = document.createElement('a');
-      link.download = `spotpop_${spot.slug}_${activeFormat}.png`;
+      link.download = `spotpop_${spot.slug || spot.id}_${activeFormat}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -239,7 +417,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
+      <div className="relative w-full max-w-xl max-h-[94vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
         
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
@@ -252,7 +430,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -264,7 +442,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
             <button
               key={fmt}
               onClick={() => setActiveFormat(fmt)}
-              className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeFormat === fmt
                   ? 'bg-[#FF2E93] text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -275,27 +453,68 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           ))}
         </div>
 
-        {/* Visual Live Preview Card */}
-        <div className="flex-1 overflow-y-auto p-5 no-scrollbar flex flex-col items-center justify-center space-y-4">
+        {/* Visual Live Preview Card (Matching Reference: No QR Code, Viral Story Aesthetic) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 no-scrollbar flex flex-col items-center justify-center space-y-4">
           <div
-            className={`w-full max-w-[280px] ${FORMATS[activeFormat].aspect} rounded-2xl bg-gradient-to-b from-[#181A26] to-[#0A0B10] border border-white/15 p-4 flex flex-col items-center justify-between text-center shadow-2xl relative overflow-hidden`}
+            className={`w-full max-w-[315px] ${FORMATS[activeFormat].aspect} rounded-3xl bg-gradient-to-b from-[#131522] via-[#0A0C14] to-[#040508] border border-white/20 p-5 flex flex-col items-center justify-between text-center shadow-2xl relative overflow-hidden select-none`}
           >
-            {/* Ambient glow */}
-            <div className="absolute top-1/4 w-40 h-40 rounded-full bg-[#FF2E93]/20 filter blur-2xl pointer-events-none" />
+            {/* Ambient sunset & neon corner glows */}
+            <div className="absolute -top-12 -left-12 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/30 to-pink-500/20 filter blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tl from-purple-600/35 via-pink-600/25 to-transparent filter blur-2xl pointer-events-none" />
 
-            {/* Header: SpotPop */}
-            <div className="z-10 pt-1">
-              <div className="flex items-center justify-center gap-1 font-outfit text-lg font-black leading-none">
-                <span className="text-white">Spot</span>
-                <span className="text-[#FF2E93]">Pop</span>
+            {/* Subtle paper edge accents top & bottom */}
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#FF2E93]/25 to-transparent pointer-events-none" />
+
+            {/* Top Header & Brand */}
+            <div className="z-10 pt-1 flex flex-col items-center w-full">
+              {/* SP Sticky Note Logo + SpotPop Wordmark */}
+              <div className="mb-1">
+                <SpotPopLogo variant="full" size={26} />
               </div>
-              <p className="text-[9px] text-slate-400 tracking-wider uppercase mt-0.5">
-                Claim your spot on the internet
-              </p>
+
+              {/* Expressive Viral Headline */}
+              <div className="relative mt-0.5">
+                {/* Sparkle rays top right */}
+                <span className="absolute -top-1 -right-3 text-amber-300 text-xs font-bold select-none">//</span>
+                {/* Star sparkle left */}
+                <span className="absolute top-2 -left-3.5 text-white/80 text-[10px] select-none">✦</span>
+                <h2 className="font-caveat text-2xl sm:text-[27px] font-black text-white leading-[1.05] tracking-wide -rotate-1">
+                  I Claimed My Spot<br />
+                  <span className="relative inline-block mt-0.5">
+                    on the Internet!
+                    <svg className="absolute -bottom-1 left-0 w-full h-2 text-[#FF2E93] overflow-visible" viewBox="0 0 100 10" preserveAspectRatio="none">
+                      <path d="M 0 5 Q 50 1 100 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </h2>
+              </div>
             </div>
 
-            {/* Middle: The User's Actual Spot */}
-            <div className="z-10 w-full flex items-center justify-center py-2 overflow-visible">
+            {/* Middle: The User's Actual Spot with Decorative Doodles */}
+            <div className="z-10 w-full flex items-center justify-center relative my-auto py-2">
+              {/* Paper airplane with dashed trail on left */}
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none opacity-85">
+                <span className="text-lg -rotate-45">✈️</span>
+                <svg className="w-8 h-10 text-white/50 overflow-visible" viewBox="0 0 30 40" fill="none">
+                  <path d="M 15 0 C 0 15, 30 25, 15 40" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+                </svg>
+              </div>
+
+              {/* Floating pink doodle heart on top-right */}
+              <div className="absolute right-2 top-1 text-rose-400 text-base font-bold rotate-12 pointer-events-none">
+                ♡
+              </div>
+
+              {/* Curved pointing arrow on bottom right */}
+              <div className="absolute -right-1 bottom-0 pointer-events-none">
+                <svg className="w-8 h-10 text-white/85" viewBox="0 0 40 50" fill="none">
+                  <path d="M 10 5 Q 35 15, 20 40" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                  <path d="M 15 35 L 20 42 L 27 38" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {/* The Spot Card */}
               <SpotCard
                 tier={spot.tier}
                 shape={spot.shape}
@@ -303,29 +522,25 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
                 borderColor={spot.borderColor}
                 content={spot.content}
                 creatorName={spot.creatorName}
-                rotation={spot.rotation || -1}
+                rotation={spot.rotation || -1.5}
                 width={spot.width}
                 height={spot.height}
-                scale={spot.tier === 'big_pop' ? 0.6 : 0.78}
+                scale={spot.tier === 'big_pop' ? 0.68 : 0.82}
               />
             </div>
 
-            {/* Bottom: QR Code & Viral Quote */}
-            <div className="z-10 flex flex-col items-center gap-1 pb-1">
-              {qrCodeDataUrl ? (
-                <img
-                  src={qrCodeDataUrl}
-                  alt="QR Code"
-                  className="w-16 h-16 rounded-lg p-1 bg-white shadow-md"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-lg bg-white/20 animate-pulse" />
-              )}
-              <div className="text-[11px] font-bold text-white mt-1">
-                “I claimed my spot on SpotPop”
+            {/* Bottom: Torn Paper Callout & Neon Link Pill (NO QR CODE!) */}
+            <div className="z-10 flex flex-col items-center gap-2 pb-1 w-full">
+              {/* Yellow Torn Paper Note */}
+              <div className="px-3.5 py-1 rounded-sm bg-[#FEF08A] text-black shadow-lg -rotate-2 border border-yellow-300 font-caveat text-sm font-black leading-tight flex items-center gap-1.5">
+                <span>Find My Spot on</span>
+                <span className="font-outfit font-black text-[#FF2E93]">SpotPop!</span>
               </div>
-              <div className="text-[9px] text-slate-400">
-                scan to visit on canvas
+
+              {/* Neon Pill with Link */}
+              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/90 border-2 border-[#FF2E93] text-pink-200 text-[11px] font-mono font-bold shadow-md shadow-pink-500/25 max-w-[95%]">
+                <span className="text-pink-400">🔗</span>
+                <span className="truncate">{shortDisplayUrl}</span>
               </div>
             </div>
           </div>
@@ -337,7 +552,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
             </span>
             <button
               onClick={handleCopyLink}
-              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 copiedLink
                   ? 'bg-emerald-500 text-white'
                   : 'bg-white/10 hover:bg-white/20 text-white'
@@ -354,7 +569,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           <button
             onClick={handleDownloadImage}
             disabled={isGeneratingDownload}
-            className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             {isGeneratingDownload ? (
               <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
@@ -366,7 +581,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           {/* WhatsApp Share */}
           <button
             onClick={handleWhatsAppShare}
-            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>💬 WhatsApp</span>
           </button>
@@ -374,7 +589,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
           {/* Native Share */}
           <button
             onClick={handleNativeShare}
-            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-pink-500/25"
+            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-pink-500/25 cursor-pointer"
           >
             <span>📤 Share Spot</span>
           </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Spot } from '../../types';
 import { api } from '../../services/api';
+import { SpotPopLogo } from '../brand/SpotPopLogo';
 
 interface UserAccountModalProps {
   isOpen: boolean;
@@ -71,8 +72,8 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
         
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2E93]" />
+          <div className="flex items-center gap-2.5">
+            <SpotPopLogo variant="icon" size={24} />
             <h3 className="font-outfit font-bold text-base text-white">
               {currentUser ? 'Your SpotPop Account' : 'Welcome to SpotPop'}
             </h3>
