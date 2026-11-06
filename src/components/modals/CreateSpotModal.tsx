@@ -16,7 +16,6 @@ import {
   FILTER_PRESETS,
   EFFECT_PRESETS,
   CURVE_PRESETS,
-  AI_CAPTION_PRESETS,
   loadGoogleFont,
   speakText,
 } from '../../utils/photoFilters';
