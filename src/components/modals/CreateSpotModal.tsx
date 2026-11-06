@@ -500,9 +500,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     }
   };
 
-  // Sticker search & AI prompt
+  // Sticker search
   const [stickerSearchQuery, setStickerSearchQuery] = useState('');
-  const [aiStickerPrompt, setAiStickerPrompt] = useState('');
 
   // Photo Adjustments update helper
   const updatePhotoAdjustments = (updates: Partial<PhotoAdjustments>) => {
@@ -668,12 +667,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleAiStickerCreate = () => {
-    if (!aiStickerPrompt.trim()) return;
-    const tag = aiStickerPrompt.trim();
-    handleAddSticker(`✨ ${tag}`);
-    setAiStickerPrompt('');
-  };
 
   const activeSelectedLayer = (currentDraft.layers || []).find(l => l.id === selectedItemId);
 
