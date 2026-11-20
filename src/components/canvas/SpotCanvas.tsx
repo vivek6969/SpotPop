@@ -6,7 +6,8 @@ import { getCleanFontFamily, getPhotoFilterStyle } from '../../utils/photoFilter
 
 const CELL_SIZE = 500;
 const CHUNK_SIZE = 1500;
-const MAX_CLIENT_CACHE = 3000;
+const MAX_CLIENT_CACHE = 50000;
+const ZOOM_LOD_THRESHOLD = 0.35; // Canvas overview below this; interactive DOM above this
 
 interface SpotCanvasProps {
   spots: Spot[];
@@ -88,6 +89,16 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     cameraY: 0,
   });
   const hasMovedSignificantlyRef = useRef(false);
+  const pendingCameraRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
+  const rafCameraRef = useRef<number | null>(null);
+
+  const applyPendingCamera = useCallback(() => {
+    if (pendingCameraRef.current) {
+      setCamera(pendingCameraRef.current);
+      pendingCameraRef.current = null;
+    }
+    rafCameraRef.current = null;
+  }, []);
 
   // Multi-touch pinch state
   const touchDistanceRef = useRef<number | null>(null);
@@ -150,7 +161,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     };
   };
 
-  // Handle Mouse Move
+  // Handle Mouse Move (RAF-throttled for silky 60-120 FPS panning)
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingRef.current) return;
     const dx = e.clientX - dragStartRef.current.clientX;
@@ -160,15 +171,21 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
       hasMovedSignificantlyRef.current = true;
     }
 
-    setCamera(prev => ({
-      ...prev,
-      x: dragStartRef.current.cameraX - dx / prev.zoom,
-      y: dragStartRef.current.cameraY - dy / prev.zoom,
-    }));
+    const nextX = dragStartRef.current.cameraX - dx / camera.zoom;
+    const nextY = dragStartRef.current.cameraY - dy / camera.zoom;
+
+    pendingCameraRef.current = { x: nextX, y: nextY, zoom: camera.zoom };
+    if (!rafCameraRef.current) {
+      rafCameraRef.current = requestAnimationFrame(applyPendingCamera);
+    }
   };
 
   const handleMouseUp = () => {
     isDraggingRef.current = false;
+    if (rafCameraRef.current) {
+      cancelAnimationFrame(rafCameraRef.current);
+      applyPendingCamera();
+    }
   };
 
   // Wheel Zoom towards cursor
@@ -177,7 +194,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
 
     setCamera(prev => {
-      const newZoom = Math.min(2.5, Math.max(0.04, prev.zoom * zoomFactor));
+      const newZoom = Math.min(3.5, Math.max(0.04, prev.zoom * zoomFactor));
       if (newZoom === prev.zoom) return prev;
 
       if (!containerRef.current) return { ...prev, zoom: newZoom };
@@ -224,11 +241,13 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         hasMovedSignificantlyRef.current = true;
       }
 
-      setCamera(prev => ({
-        ...prev,
-        x: dragStartRef.current.cameraX - dx / prev.zoom,
-        y: dragStartRef.current.cameraY - dy / prev.zoom,
-      }));
+      const nextX = dragStartRef.current.cameraX - dx / camera.zoom;
+      const nextY = dragStartRef.current.cameraY - dy / camera.zoom;
+
+      pendingCameraRef.current = { x: nextX, y: nextY, zoom: camera.zoom };
+      if (!rafCameraRef.current) {
+        rafCameraRef.current = requestAnimationFrame(applyPendingCamera);
+      }
     } else if (e.touches.length === 2 && touchDistanceRef.current !== null) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
@@ -239,7 +258,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
       setCamera(prev => ({
         ...prev,
-        zoom: Math.min(2.5, Math.max(0.04, prev.zoom * scale)),
+        zoom: Math.min(3.5, Math.max(0.04, prev.zoom * scale)),
       }));
     }
   };
@@ -247,6 +266,10 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
   const handleTouchEnd = () => {
     isDraggingRef.current = false;
     touchDistanceRef.current = null;
+    if (rafCameraRef.current) {
+      cancelAnimationFrame(rafCameraRef.current);
+      applyPendingCamera();
+    }
   };
 
   // Double click / tap to zoom in
@@ -259,12 +282,12 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     setCamera(prev => ({
       x: clickX,
       y: clickY,
-      zoom: Math.min(2.2, prev.zoom * 1.5),
+      zoom: Math.min(3.0, prev.zoom * 1.5),
     }));
   };
 
   // Zoom control helpers
-  const zoomIn = () => setCamera(prev => ({ ...prev, zoom: Math.min(2.5, prev.zoom * 1.3) }));
+  const zoomIn = () => setCamera(prev => ({ ...prev, zoom: Math.min(3.5, prev.zoom * 1.3) }));
   const zoomOut = () => setCamera(prev => ({ ...prev, zoom: Math.max(0.04, prev.zoom * 0.75) }));
   const resetCenter = () => setCamera({ x: 0, y: 0, zoom: 0.85 });
 
@@ -359,6 +382,53 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isMinimapInteractingRef = useRef<boolean>(false);
 
+  // Container dimensions & Viewport calculation
+  const containerW = containerRef.current?.clientWidth || 1200;
+  const containerH = containerRef.current?.clientHeight || 800;
+
+  // Minimap visible world boundaries calculation (adapts dynamically to camera zoom & pan)
+  const minimapViewBounds = useMemo(() => {
+    const canvas = minimapCanvasRef.current;
+    const mW = canvas?.clientWidth || 240;
+    const mH = canvas?.clientHeight || 150;
+    const aspect = Math.max(0.1, mW / mH);
+
+    const worldW = mapBounds.width;
+    const worldH = mapBounds.height;
+    const fitWorldW = Math.max(worldW * 1.08, worldH * 1.08 * aspect);
+    const fitWorldH = fitWorldW / aspect;
+
+    if (worldW <= 0 || worldH <= 0) {
+      return {
+        viewMinX: mapBounds.centerX - fitWorldW / 2,
+        viewMinY: mapBounds.centerY - fitWorldH / 2,
+        viewWidth: fitWorldW,
+        viewHeight: fitWorldH,
+        isZoomed: false,
+      };
+    }
+
+    const screenWorldW = containerW / camera.zoom;
+    const screenWorldH = containerH / camera.zoom;
+
+    // Radius multiplier: shows ~3.2 screens worth of context around current view
+    const desiredW = Math.max(screenWorldW * 3.2, screenWorldH * 3.2 * aspect);
+    const clampedW = Math.max(1400, Math.min(fitWorldW, desiredW));
+    const clampedH = clampedW / aspect;
+    const isZoomed = clampedW < fitWorldW * 0.95;
+
+    const viewMinX = camera.x - clampedW / 2;
+    const viewMinY = camera.y - clampedH / 2;
+
+    return {
+      viewMinX,
+      viewMinY,
+      viewWidth: clampedW,
+      viewHeight: clampedH,
+      isZoomed,
+    };
+  }, [mapBounds, camera.x, camera.y, camera.zoom, containerW, containerH]);
+
   useEffect(() => {
     if (!showMinimap) return;
     const canvas = minimapCanvasRef.current;
@@ -394,48 +464,88 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
       ctx.stroke();
     }
 
-    // World bounds mapping
-    const { minX, minY, width: bW, height: bH } = mapBounds;
-    if (bW <= 0 || bH <= 0) return;
+    const { viewMinX, viewMinY, viewWidth, viewHeight, isZoomed } = minimapViewBounds;
+    if (viewWidth <= 0 || viewHeight <= 0) return;
 
-    // Draw all spots onto canvas
+    // Dot scale based on zoom level: larger dots when zoomed in
+    const zoomRatio = Math.max(0, Math.min(1, (camera.zoom - 0.1) / (2.0 - 0.1)));
+    const dotScale = isZoomed ? 1 + zoomRatio * 1.6 : 1;
+
+    // Margin for culling
+    const cullMargin = 60;
+    const minX = viewMinX - cullMargin;
+    const maxX = viewMinX + viewWidth + cullMargin;
+    const minY = viewMinY - cullMargin;
+    const maxY = viewMinY + viewHeight + cullMargin;
+
+    const bigR = 2.5 * dotScale;
+    const miniR = 1.8 * dotScale;
+
+    // 1. Draw Big Pops in one batched GPU path (Ultra-high performance)
+    ctx.fillStyle = '#FF2E93';
+    ctx.beginPath();
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
-      const normX = (s.x - minX) / bW;
-      const normY = (s.y - minY) / bH;
+      if (s.tier !== 'big_pop' || s.id === 'sp_spotpop_hero') continue;
+      if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
+
+      const normX = (s.x - viewMinX) / viewWidth;
+      const normY = (s.y - viewMinY) / viewHeight;
       const px = normX * width;
       const py = normY * height;
-
-      if (s.id === 'sp_spotpop_hero') {
-        // Hero Origin spot
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(px, py, 4, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (s.tier === 'big_pop') {
-        // Big Pop: Neon pink
-        ctx.fillStyle = '#FF2E93';
-        ctx.beginPath();
-        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        // Mini Pop: Gold/yellow
-        ctx.fillStyle = '#FFD700';
-        ctx.beginPath();
-        ctx.arc(px, py, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.moveTo(px + bigR, py);
+      ctx.arc(px, py, bigR, 0, Math.PI * 2);
     }
-  }, [spots, mapBounds, showMinimap]);
+    ctx.fill();
+
+    // 2. Draw Mini Pops in one batched GPU path
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      if (s.tier === 'big_pop' || s.id === 'sp_spotpop_hero') continue;
+      if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
+
+      const normX = (s.x - viewMinX) / viewWidth;
+      const normY = (s.y - viewMinY) / viewHeight;
+      const px = normX * width;
+      const py = normY * height;
+      ctx.moveTo(px + miniR, py);
+      ctx.arc(px, py, miniR, 0, Math.PI * 2);
+    }
+    ctx.fill();
+
+    // 3. Draw Hero Origin spot prominently
+    const heroSpot = spots.find(s => s.id === 'sp_spotpop_hero');
+    if (heroSpot && heroSpot.x >= minX && heroSpot.x <= maxX && heroSpot.y >= minY && heroSpot.y <= maxY) {
+      const normX = (heroSpot.x - viewMinX) / viewWidth;
+      const normY = (heroSpot.y - viewMinY) / viewHeight;
+      const px = normX * width;
+      const py = normY * height;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(px, py, 4.5 * dotScale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FF2E93';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }, [spots, minimapViewBounds, showMinimap, camera.zoom]);
 
   // Viewport culling: calculate items within or near visible boundary using spatial index
-  const containerW = containerRef.current?.clientWidth || 1200;
-  const containerH = containerRef.current?.clientHeight || 800;
   const halfViewW = (containerW / 2) / camera.zoom + 250;
   const halfViewH = (containerH / 2) / camera.zoom + 250;
 
   // Query spots in visible viewport via client-side spatial hash grid
   const visibleSpots = useMemo(() => {
+    // When zoomed out, Overview Canvas handles all rendering for silky smooth 60-120FPS
+    if (camera.zoom < ZOOM_LOD_THRESHOLD) {
+      if (selectedSpotId || highlightedSpotId) {
+        return spots.filter(s => s.id === selectedSpotId || s.id === highlightedSpotId);
+      }
+      return [];
+    }
+
     const minX = camera.x - halfViewW;
     const maxX = camera.x + halfViewW;
     const minY = camera.y - halfViewH;
@@ -477,10 +587,14 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     }
 
     return results;
-  }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, cacheRevision, spots]);
+  }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, cacheRevision, spots, selectedSpotId, highlightedSpotId]);
 
   // Dynamic Viewport Chunk Loader with Request Deduplication & Memory Management
   useEffect(() => {
+    // If all spots are already in memory, avoid unnecessary network polling
+    if (spots && spots.length > 0 && spotCacheRef.current.size >= spots.length) {
+      return;
+    }
     const minX = camera.x - halfViewW;
     const maxX = camera.x + halfViewW;
     const minY = camera.y - halfViewH;
@@ -594,6 +708,167 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     };
   }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, indexSpot]);
 
+  // Hardware-accelerated Canvas for zoomed-out overview (60-120 FPS performance)
+  const overviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (camera.zoom >= ZOOM_LOD_THRESHOLD) return;
+    const canvas = overviewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const cW = containerW;
+    const cH = containerH;
+
+    if (canvas.width !== cW * dpr || canvas.height !== cH * dpr) {
+      canvas.width = cW * dpr;
+      canvas.height = cH * dpr;
+    }
+    ctx.resetTransform?.();
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, cW, cH);
+
+    const zoom = camera.zoom;
+    const camX = camera.x;
+    const camY = camera.y;
+    const halfCW = cW / 2;
+    const halfCH = cH / 2;
+
+    const isVeryLowZoom = zoom < 0.12;
+
+    // Draw spots
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      if (s.status === 'hidden') continue;
+
+      const isHero = s.id === 'sp_spotpop_hero';
+      const spotW = isHero ? (s.width || 340) : (s.width || 170);
+      const spotH = isHero ? (s.height || 340) : (s.height || (s.tier === 'big_pop' ? 210 : 170));
+
+      // Screen coordinates
+      const screenX = (s.x - camX) * zoom + halfCW;
+      const screenY = (s.y - camY) * zoom + halfCH;
+      const screenW = spotW * zoom;
+      const screenH = spotH * zoom;
+
+      // Culling against screen viewport
+      if (
+        screenX + screenW / 2 < -20 ||
+        screenX - screenW / 2 > cW + 20 ||
+        screenY + screenH / 2 < -20 ||
+        screenY - screenH / 2 > cH + 20
+      ) {
+        continue;
+      }
+
+      const drawX = screenX - screenW / 2;
+      const drawY = screenY - screenH / 2;
+      const isSelected = selectedSpotId === s.id;
+      const isHighlighted = highlightedSpotId === s.id;
+
+      if (isHero) {
+        // Hero Origin Spot
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(drawX, drawY, screenW, screenH, Math.max(4, 8 * zoom));
+        } else {
+          ctx.rect(drawX, drawY, screenW, screenH);
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#FF2E93';
+        ctx.lineWidth = Math.max(2, 4 * zoom);
+        ctx.stroke();
+
+        // SP center mark
+        ctx.fillStyle = '#FF2E93';
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, Math.max(3, 8 * zoom), 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+
+      if (isVeryLowZoom) {
+        // Fast flat rect
+        ctx.fillStyle = s.background || '#FFF475';
+        ctx.fillRect(drawX, drawY, Math.max(1.8, screenW), Math.max(1.8, screenH));
+        if (s.borderColor || s.tier === 'big_pop') {
+          ctx.strokeStyle = s.borderColor || (s.tier === 'big_pop' ? '#FF2E93' : 'rgba(255,255,255,0.15)');
+          ctx.lineWidth = 0.6;
+          ctx.strokeRect(drawX, drawY, Math.max(1.8, screenW), Math.max(1.8, screenH));
+        }
+      } else {
+        // Slightly rotated note
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        if (s.rotation) {
+          ctx.rotate((s.rotation * Math.PI) / 180);
+        }
+
+        const halfW = screenW / 2;
+        const halfH = screenH / 2;
+
+        ctx.fillStyle = s.background || '#FFF475';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(-halfW, -halfH, screenW, screenH, Math.max(1.5, 3 * zoom));
+        } else {
+          ctx.rect(-halfW, -halfH, screenW, screenH);
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = s.borderColor || (s.tier === 'big_pop' ? '#FF2E93' : 'rgba(255,255,255,0.12)');
+        ctx.lineWidth = s.tier === 'big_pop' ? Math.max(1, 1.5 * zoom) : 0.8;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      if (isSelected || isHighlighted) {
+        ctx.strokeStyle = '#FF2E93';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(drawX - 3, drawY - 3, screenW + 6, screenH + 6);
+      }
+    }
+  }, [camera.x, camera.y, camera.zoom, containerW, containerH, spots, selectedSpotId, highlightedSpotId]);
+
+  // Handle Canvas Click (detects spot clicks when zoomed out)
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (hasMovedSignificantlyRef.current) return;
+    if (camera.zoom >= ZOOM_LOD_THRESHOLD) return;
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseScreenX = e.clientX - rect.left - rect.width / 2;
+    const mouseScreenY = e.clientY - rect.top - rect.height / 2;
+    const worldX = camera.x + mouseScreenX / camera.zoom;
+    const worldY = camera.y + mouseScreenY / camera.zoom;
+
+    for (let i = spots.length - 1; i >= 0; i--) {
+      const s = spots[i];
+      if (s.status === 'hidden') continue;
+      const isHero = s.id === 'sp_spotpop_hero';
+      const spotW = isHero ? (s.width || 340) : (s.width || 170);
+      const spotH = isHero ? (s.height || 340) : (s.height || (s.tier === 'big_pop' ? 210 : 170));
+      const halfW = spotW / 2;
+      const halfH = spotH / 2;
+
+      if (
+        worldX >= s.x - halfW &&
+        worldX <= s.x + halfW &&
+        worldY >= s.y - halfH &&
+        worldY <= s.y + halfH
+      ) {
+        onSelectSpot(s);
+        return;
+      }
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -601,6 +876,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onClick={handleCanvasClick}
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -614,9 +890,17 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         backgroundSize: '100% 100%, 36px 36px',
       }}
     >
+      {/* High-Performance Hardware-Accelerated Overview Canvas (Active when zoomed out for 60-120FPS) */}
+      <canvas
+        ref={overviewCanvasRef}
+        className="absolute inset-0 pointer-events-none w-full h-full"
+        style={{
+          display: camera.zoom < ZOOM_LOD_THRESHOLD ? 'block' : 'none',
+        }}
+      />
       {/* Canvas World Container */}
       <div
-        className="absolute top-1/2 left-1/2 w-0 h-0 pointer-events-none will-change-transform"
+        className="absolute top-1/2 left-1/2 w-0 h-0 pointer-events-none canvas-world"
         style={{
           transform: `translate3d(${-camera.x * camera.zoom}px, ${-camera.y * camera.zoom}px, 0) scale(${camera.zoom})`,
           transformOrigin: '0 0',
@@ -769,17 +1053,14 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         <div className="absolute bottom-20 left-4 sm:bottom-16 sm:left-6 z-30 w-52 sm:w-64 rounded-2xl bg-[#0B0D14]/90 backdrop-blur-xl border border-white/15 shadow-2xl overflow-hidden animate-fade-in flex flex-col">
           {/* Header Bar */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5 select-none">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-slate-200">
+            <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white">
               <span className="w-2 h-2 rounded-full bg-[#FF2E93] animate-pulse" />
-              <span className="uppercase tracking-wider">World Map</span>
-              <span className="text-slate-400 font-mono text-[10px] font-normal">
-                ({spots.length.toLocaleString()})
-              </span>
+              <span className="uppercase tracking-wider font-extrabold text-white">Pop World</span>
             </div>
             <button
               onClick={fitAllSpots}
-              className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-[#FF2E93] hover:text-white text-slate-300 text-[10px] font-semibold transition-colors cursor-pointer"
-              title="Zoom out to fit all spots"
+              className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-[#FF2E93] hover:text-white text-slate-200 text-[11px] font-semibold transition-colors cursor-pointer shadow-xs active:scale-95"
+              title="Zoom out canvas to fit all spots"
             >
               Fit All
             </button>
@@ -788,16 +1069,26 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
           {/* Map Surface with HTML5 Canvas & Live Viewport indicator */}
           <div
             className="relative w-full h-32 sm:h-40 bg-[#090A0F] cursor-crosshair overflow-hidden touch-none select-none"
+            onWheel={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+              setCamera(prev => ({
+                ...prev,
+                zoom: Math.min(3.5, Math.max(0.04, prev.zoom * zoomFactor))
+              }));
+            }}
             onPointerDown={(e) => {
               isMinimapInteractingRef.current = true;
               (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
               const rect = e.currentTarget.getBoundingClientRect();
               const ratioX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
               const ratioY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+              const { viewMinX, viewMinY, viewWidth, viewHeight } = minimapViewBounds;
               setCamera(prev => ({
                 ...prev,
-                x: mapBounds.minX + ratioX * mapBounds.width,
-                y: mapBounds.minY + ratioY * mapBounds.height,
+                x: viewMinX + ratioX * viewWidth,
+                y: viewMinY + ratioY * viewHeight,
               }));
             }}
             onPointerMove={(e) => {
@@ -805,10 +1096,11 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
               const rect = e.currentTarget.getBoundingClientRect();
               const ratioX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
               const ratioY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+              const { viewMinX, viewMinY, viewWidth, viewHeight } = minimapViewBounds;
               setCamera(prev => ({
                 ...prev,
-                x: mapBounds.minX + ratioX * mapBounds.width,
-                y: mapBounds.minY + ratioY * mapBounds.height,
+                x: viewMinX + ratioX * viewWidth,
+                y: viewMinY + ratioY * viewHeight,
               }));
             }}
             onPointerUp={(e) => {
@@ -828,19 +1120,20 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
             {/* Live Viewport Indicator Rectangle ("Where User Is") */}
             {(() => {
+              const { viewMinX, viewMinY, viewWidth, viewHeight } = minimapViewBounds;
               const viewWorldW = containerW / camera.zoom;
               const viewWorldH = containerH / camera.zoom;
               const viewWorldLeft = camera.x - viewWorldW / 2;
               const viewWorldTop = camera.y - viewWorldH / 2;
 
-              const vpLeftPercent = ((viewWorldLeft - mapBounds.minX) / mapBounds.width) * 100;
-              const vpTopPercent = ((viewWorldTop - mapBounds.minY) / mapBounds.height) * 100;
-              const vpWidthPercent = (viewWorldW / mapBounds.width) * 100;
-              const vpHeightPercent = (viewWorldH / mapBounds.height) * 100;
+              const vpLeftPercent = ((viewWorldLeft - viewMinX) / viewWidth) * 100;
+              const vpTopPercent = ((viewWorldTop - viewMinY) / viewHeight) * 100;
+              const vpWidthPercent = (viewWorldW / viewWidth) * 100;
+              const vpHeightPercent = (viewWorldH / viewHeight) * 100;
 
-              // Clamped bounds for visual indicator
-              const renderW = Math.max(3, Math.min(100, vpWidthPercent));
-              const renderH = Math.max(3, Math.min(100, vpHeightPercent));
+              // Visual indicator sizing clamped to container
+              const renderW = Math.max(4, Math.min(100, vpWidthPercent));
+              const renderH = Math.max(4, Math.min(100, vpHeightPercent));
               const renderLeft = Math.max(0, Math.min(100 - renderW, vpLeftPercent));
               const renderTop = Math.max(0, Math.min(100 - renderH, vpTopPercent));
 

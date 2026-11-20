@@ -43,6 +43,8 @@ export function App() {
   const [unreadActivityCount, setUnreadActivityCount] = useState<number>(0);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [editingSpot, setEditingSpot] = useState<Spot | null>(null);
+  const [authNoticeMessage, setAuthNoticeMessage] = useState<string | null>(null);
   const [policyModal, setPolicyModal] = useState<{ isOpen: boolean; tab: 'terms' | 'privacy' | 'refund' | 'content' }>({
     isOpen: false,
     tab: 'terms',
@@ -113,7 +115,6 @@ export function App() {
 
   // Flying Camera Helper with dynamic pulsing neon highlight
   const flyToSpot = (spot: Spot) => {
-    setSelectedSpot(spot);
     setHighlightedSpotId(spot.id);
     setTargetFocus({
       x: spot.x,
@@ -121,30 +122,85 @@ export function App() {
       zoom: 1.25,
       timestamp: Date.now(),
     });
+    // Open details if logged in
+    if (currentUser) {
+      setSelectedSpot(spot);
+    }
     setTimeout(() => {
       setHighlightedSpotId(prev => (prev === spot.id ? null : prev));
     }, 3500);
   };
 
-  // Open Creation flow
+  // Open Creation flow - requires user to be logged in
   const handleStartCreate = (tier?: ProductTier) => {
+    if (!currentUser) {
+      setAuthNoticeMessage('Sign in or create an account to claim your permanent spot on the wall!');
+      setIsAccountOpen(true);
+      return;
+    }
     const chosen = tier || selectedTier;
+    setEditingSpot(null);
     setCreateModalTier(chosen);
     setIsCreateModalOpen(true);
   };
 
-  // When spot is created and verified by backend
-  const handleSpotCreated = (newSpot: Spot) => {
-    setSpots(prev => [newSpot, ...prev]);
+  // Open Edit flow for an owned spot
+  const handleEditSpot = (spot: Spot) => {
+    if (!currentUser) {
+      setAuthNoticeMessage('Sign in to edit your Pop.');
+      setIsAccountOpen(true);
+      return;
+    }
+    setSelectedSpot(null);
+    setEditingSpot(spot);
+    setCreateModalTier(spot.tier);
+    setIsCreateModalOpen(true);
+  };
+
+  // Permanently delete a spot from canvas and backend
+  const handleDeleteSpot = async (spot: Spot) => {
+    if (!currentUser) return;
+    await api.deleteSpot(spot.id, authToken || undefined);
+    setSpots(prev => prev.filter(s => s.id !== spot.id));
+    if (selectedSpot?.id === spot.id) {
+      setSelectedSpot(null);
+    }
+    setCurrentUser(prev => prev ? {
+      ...prev,
+      ownedSpotIds: prev.ownedSpotIds?.filter(id => id !== spot.id) || [],
+    } : null);
     loadCanvasData();
+  };
 
-    // Fly smoothly directly to the newly claimed coordinate!
-    flyToSpot(newSpot);
+  // When spot is created or updated by backend
+  const handleSpotSaved = (savedSpot: Spot) => {
+    if (editingSpot) {
+      // Updated existing spot
+      setSpots(prev => prev.map(s => s.id === savedSpot.id ? savedSpot : s));
+      if (selectedSpot?.id === savedSpot.id) {
+        setSelectedSpot(savedSpot);
+      }
+      setEditingSpot(null);
+      flyToSpot(savedSpot);
+    } else {
+      // Newly created spot
+      setSpots(prev => [savedSpot, ...prev]);
+      if (currentUser) {
+        setCurrentUser(prev => prev ? {
+          ...prev,
+          ownedSpotIds: [...(prev.ownedSpotIds || []), savedSpot.id],
+        } : null);
+      }
+      loadCanvasData();
 
-    // Open Viral Share Kit immediately for maximum viral spread
-    setTimeout(() => {
-      setShareKitSpot(newSpot);
-    }, 850);
+      // Fly smoothly directly to the newly claimed coordinate!
+      flyToSpot(savedSpot);
+
+      // Open Viral Share Kit immediately for maximum viral spread
+      setTimeout(() => {
+        setShareKitSpot(savedSpot);
+      }, 850);
+    }
   };
 
   return (
@@ -158,6 +214,11 @@ export function App() {
         selectedSpotId={selectedSpot?.id}
         highlightedSpotId={highlightedSpotId}
         onSelectSpot={(spot) => {
+          if (!currentUser) {
+            setAuthNoticeMessage('Sign in to interact with pops, listen to audio memories, and connect with creators!');
+            setIsAccountOpen(true);
+            return;
+          }
           setSelectedSpot(spot);
         }}
         showMinimap={showMinimap}
@@ -231,17 +292,24 @@ export function App() {
 
       {/* ================= MODALS & DRAWERS ================= */}
 
-      {/* Creation Modal */}
+      {/* Creation / Edit Modal */}
       <CreateSpotModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setEditingSpot(null);
+        }}
         initialTier={createModalTier}
-        onSuccess={handleSpotCreated}
+        onSuccess={handleSpotSaved}
+        editSpot={editingSpot}
+        authToken={authToken}
       />
 
       {/* Spot Detail Modal */}
       <SpotDetailModal
         spot={selectedSpot}
+        currentUser={currentUser}
+        authToken={authToken}
         onClose={() => setSelectedSpot(null)}
         onOpenShareKit={(spot) => {
           setSelectedSpot(null);
@@ -251,6 +319,8 @@ export function App() {
         onOpenCreatorProfile={(username) => {
           setSelectedCreatorUsername(username);
         }}
+        onEditSpot={handleEditSpot}
+        onDeleteSpot={handleDeleteSpot}
       />
 
       {/* Viral Share Kit Modal */}
@@ -302,12 +372,19 @@ export function App() {
       {/* User Account / Login Drawer */}
       <UserAccountModal
         isOpen={isAccountOpen}
-        onClose={() => setIsAccountOpen(false)}
+        onClose={() => {
+          setIsAccountOpen(false);
+          setAuthNoticeMessage(null);
+        }}
         currentUser={currentUser}
         allSpots={spots}
+        noticeMessage={authNoticeMessage}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}
         onSelectSpot={flyToSpot}
+        onEditSpot={handleEditSpot}
+        onDeleteSpot={handleDeleteSpot}
+        onStartCreate={() => handleStartCreate()}
       />
 
       {/* Admin Panel Modal */}

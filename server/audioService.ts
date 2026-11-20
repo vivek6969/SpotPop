@@ -33,9 +33,18 @@ export class AudioService {
   ): Promise<SpotAudio> {
     this.ensureDirectory();
 
-    // Strip data URL scheme if included
-    const cleanBase64 = base64Data.replace(/^data:audio\/[^;]+;base64,/, '');
+    // Strip data URL scheme if included (robustly handles codecs like ;codecs=opus;base64,)
+    const base64Marker = ';base64,';
+    const markerIndex = base64Data.indexOf(base64Marker);
+    const cleanBase64 = markerIndex !== -1
+      ? base64Data.substring(markerIndex + base64Marker.length)
+      : base64Data.replace(/^data:[^,]+,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
+
+    // Reject empty or corrupted uploads
+    if (buffer.length < 50) {
+      throw new Error('Audio recording was empty or corrupt. Please record again.');
+    }
 
     // Strict Size Limit: Maximum 500 KB
     if (buffer.length > MAX_AUDIO_BYTES) {

@@ -85,9 +85,95 @@
       },
       "refCount": 5,
       "createdAt": "2026-11-05T13:13:09.368Z"
+    },
+    {
+      "hash": "73094c951b8201e9",
+      "originalSize": 37159,
+      "mimeType": "image/jpeg",
+      "width": 408,
+      "height": 612,
+      "variants": {
+        "thumb": {
+          "key": "73094c951b8201e9/thumb.webp",
+          "url": "/uploads/images/73094c951b8201e9/thumb.webp",
+          "size": 3086,
+          "width": 100,
+          "height": 130,
+          "format": "webp"
+        },
+        "preview": {
+          "key": "73094c951b8201e9/preview.webp",
+          "url": "/uploads/images/73094c951b8201e9/preview.webp",
+          "size": 17316,
+          "width": 340,
+          "height": 420,
+          "format": "webp"
+        },
+        "highres": {
+          "key": "73094c951b8201e9/highres.webp",
+          "url": "/uploads/images/73094c951b8201e9/highres.webp",
+          "size": 27916,
+          "width": 408,
+          "height": 612,
+          "format": "webp"
+        },
+        "original": {
+          "key": "73094c951b8201e9/original.jpeg",
+          "url": "/uploads/images/73094c951b8201e9/original.jpeg",
+          "size": 37159,
+          "width": 408,
+          "height": 612,
+          "format": "jpeg"
+        }
+      },
+      "refCount": 1,
+      "createdAt": "2026-11-20T12:45:51.051Z"
+    },
+    {
+      "hash": "e6ac0747be70d9ca",
+      "originalSize": 2173256,
+      "mimeType": "image/gif",
+      "width": 640,
+      "height": 640,
+      "variants": {
+        "thumb": {
+          "key": "e6ac0747be70d9ca/thumb.webp",
+          "url": "/uploads/images/e6ac0747be70d9ca/thumb.webp",
+          "size": 1942,
+          "width": 100,
+          "height": 130,
+          "format": "webp"
+        },
+        "preview": {
+          "key": "e6ac0747be70d9ca/preview.webp",
+          "url": "/uploads/images/e6ac0747be70d9ca/preview.webp",
+          "size": 18912,
+          "width": 340,
+          "height": 420,
+          "format": "webp"
+        },
+        "highres": {
+          "key": "e6ac0747be70d9ca/highres.webp",
+          "url": "/uploads/images/e6ac0747be70d9ca/highres.webp",
+          "size": 20628,
+          "width": 640,
+          "height": 640,
+          "format": "webp"
+        },
+        "original": {
+          "key": "e6ac0747be70d9ca/original.gif",
+          "url": "/uploads/images/e6ac0747be70d9ca/original.gif",
+          "size": 2173256,
+          "width": 640,
+          "height": 640,
+          "format": "gif"
+        }
+      },
+      "refCount": 5,
+      "createdAt": "2026-11-20T13:31:47.451Z"
     }
   ],
-  "duplicateAvoidedCount": 5,
-  "duplicateBytesSaved": 1465321,
-  "updatedAt": "2026-11-05T13:39:54.216Z"
+  "duplicateAvoidedCount": 9,
+  "duplicateBytesSaved": 10158345,
+  "updatedAt": "2026-11-20T13:50:55.706Z"
 }

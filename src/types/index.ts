@@ -123,7 +123,7 @@ export interface PhotoAdjustments {
   flipH?: boolean;
   flipV?: boolean;
   rotationAngle?: number; // 0, 90, 180, 270 or free angle
-  aspectRatio?: 'free' | '1:1' | '4:5' | '9:16' | '16:9';
+  aspectRatio?: 'free' | '1:1' | '4:5' | '9:16' | '16:9' | 'circle';
   perspectiveSkewX?: number; // -30 to 30
   perspectiveSkewY?: number; // -30 to 30
   // Retouch & Beautify

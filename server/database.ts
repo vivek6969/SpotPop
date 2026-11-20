@@ -726,7 +726,7 @@ class Database {
     return fresh;
   }
 
-  private save(data?: DatabaseSchema) {
+  public save(data?: DatabaseSchema) {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(data || this.data, null, 2), 'utf-8');
     } catch (e) {
@@ -929,25 +929,27 @@ class Database {
     this.save();
   }
 
-  // High-performance $O(1)$ placement engine with spatial hash collision detection & concurrency reservation
+  // High-performance placement engine with spatial hash collision detection & concurrency reservation
   allocateCoordinate(
     width: number,
     height: number,
     autoReserve: boolean = false
   ): { x: number; y: number; rotation: number; reservationId?: string } {
-    const PADDING = 28; // consistent gap between spots
+    // Generous gap between spots: at least 38px of breathing room on all sides
+    const PADDING = 38;
 
-    // Spiral search outward starting from slight random offset near center
+    // Spiral search outward starting from the center and expanding outward to find open pockets or frontier slots
     let angle = Math.random() * Math.PI * 2;
-    let radius = 180;
-    const stepRadius = 24;
-    const stepAngle = 0.35;
+    let radius = 220;
+    const stepAngle = 0.38;
+    const stepRadius = 3.6;
 
-    for (let i = 0; i < 600; i++) {
+    // Search up to radius ~16,000px
+    for (let i = 0; i < 4500; i++) {
       const x = Math.round(Math.cos(angle) * radius);
       const y = Math.round(Math.sin(angle) * radius);
 
-      // Blazing fast O(1) collision check against local spatial cells & active reservations
+      // Fast O(1) collision check against local spatial cells & active reservations
       if (!this.spatialIndex.checkCollision(x, y, width, height, PADDING)) {
         // Subtle organic rotation angle (-3.5 to +3.5 deg)
         const rotation = Math.round((Math.random() * 7 - 3.5) * 10) / 10;
@@ -959,16 +961,29 @@ class Database {
       }
 
       angle += stepAngle;
-      radius += stepRadius / (1 + radius / 300);
+      radius += stepRadius;
     }
 
-    // Fallback outer ring placement
-    const fallbackRadius = 800 + Math.random() * 300;
-    const fallbackAngle = Math.random() * Math.PI * 2;
-    const fallbackX = Math.round(Math.cos(fallbackAngle) * fallbackRadius);
-    const fallbackY = Math.round(Math.sin(fallbackAngle) * fallbackRadius);
-    const fallbackRot = Math.round((Math.random() * 6 - 3) * 10) / 10;
+    // Dynamic frontier placement: place outside the outermost spot extent with guaranteed gap
+    const maxExtent = this.data.spots.reduce((max, s) => {
+      if (s.status === 'hidden') return max;
+      return Math.max(max, Math.hypot(s.x, s.y));
+    }, 7500);
 
+    let fallbackRadius = maxExtent + width + PADDING * 2;
+    let fallbackAngle = Math.random() * Math.PI * 2;
+    let fallbackX = Math.round(Math.cos(fallbackAngle) * fallbackRadius);
+    let fallbackY = Math.round(Math.sin(fallbackAngle) * fallbackRadius);
+
+    // Ensure fallback also has 0 collision
+    while (this.spatialIndex.checkCollision(fallbackX, fallbackY, width, height, PADDING)) {
+      fallbackRadius += PADDING * 2;
+      fallbackAngle += 0.5;
+      fallbackX = Math.round(Math.cos(fallbackAngle) * fallbackRadius);
+      fallbackY = Math.round(Math.sin(fallbackAngle) * fallbackRadius);
+    }
+
+    const fallbackRot = Math.round((Math.random() * 6 - 3) * 10) / 10;
     let reservationId: string | undefined;
     if (autoReserve) {
       reservationId = this.spatialIndex.reserveCoordinate(fallbackX, fallbackY, width, height);

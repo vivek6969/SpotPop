@@ -10,13 +10,14 @@ import {
 } from '../../../types';
 
 export interface AudioDraft {
-  blob: Blob;
+  blob?: Blob;
   previewUrl: string;
   duration: number; // in seconds
   mimeType: string;
-  size: number;     // in bytes
+  size?: number;     // in bytes
   type: 'voice' | 'music';
   filename?: string;
+  storageKey?: string;
 }
 
 export type BrushStyle =
@@ -53,6 +54,7 @@ export interface PlanDraft {
   shape: SpotShape;
   stickers: StickerItem[];
   imageUrl?: string;
+  imageFit?: 'cover' | 'contain';
   photoOpacity?: number;
   photoZoom?: number;
   photoOffsetX?: number;

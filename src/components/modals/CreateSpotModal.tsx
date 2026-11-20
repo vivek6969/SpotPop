@@ -30,6 +30,8 @@ interface CreateSpotModalProps {
   onClose: () => void;
   initialTier: ProductTier;
   onSuccess: (newSpot: Spot) => void;
+  editSpot?: Spot | null;
+  authToken?: string | null;
 }
 
 // =================== FONTS ===================
@@ -425,6 +427,7 @@ const DEFAULT_BIG_DRAFT: PlanDraft = {
   frameStyle: 'tape',
   shape: 'polaroid',
   imageUrl: DEFAULT_SPOT_PHOTO,
+  imageFit: 'cover',
   photoOpacity: 1,
   photoZoom: 1,
   photoOffsetX: 0,
@@ -446,16 +449,80 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   onClose,
   initialTier,
   onSuccess,
+  editSpot,
+  authToken,
 }) => {
   if (!isOpen) return null;
 
   // Modal Step
   const [step, setStep] = useState<'tier' | 'editor' | 'checkout' | 'processing'>('editor');
-  const [tier, setTier] = useState<ProductTier>(initialTier);
+  const [tier, setTier] = useState<ProductTier>(editSpot ? editSpot.tier : initialTier);
 
   // COMPLETELY ISOLATED DRAFTS TO PREVENT LEAKING BETWEEN PLANS
   const [miniDraft, setMiniDraft] = useState<PlanDraft>(DEFAULT_MINI_DRAFT);
   const [bigDraft, setBigDraft] = useState<PlanDraft>(DEFAULT_BIG_DRAFT);
+
+  // Populate from editSpot when opened in edit mode
+  useEffect(() => {
+    if (editSpot) {
+      setTier(editSpot.tier);
+      const draft: PlanDraft = {
+        headline: editSpot.content?.headline || '',
+        headlineX: editSpot.content?.headlineX,
+        headlineY: editSpot.content?.headlineY,
+        secondaryText: editSpot.content?.text || '',
+        subtextX: editSpot.content?.subtextX,
+        subtextY: editSpot.content?.subtextY,
+        subtextSize: editSpot.content?.subtextSize,
+        creatorName: editSpot.creatorName || '',
+        authorX: editSpot.content?.authorX,
+        authorY: editSpot.content?.authorY,
+        authorSize: editSpot.content?.authorSize,
+        authorOpacity: editSpot.content?.authorOpacity,
+        fontFamily: editSpot.content?.fontFamily || 'Caveat',
+        fontSize: editSpot.content?.fontSize || 22,
+        textColor: editSpot.content?.textColor || '#1E293B',
+        textOpacity: editSpot.content?.textOpacity ?? 1,
+        alignment: editSpot.content?.alignment || 'center',
+        backgroundColor: editSpot.background || '#FEF08A',
+        frameStyle: editSpot.content?.frameStyle || 'tape',
+        shape: editSpot.shape || 'sticky',
+        imageUrl: editSpot.content?.imageUrl,
+        imageFit: editSpot.content?.imageFit || 'cover',
+        photoOpacity: editSpot.content?.photoOpacity ?? 1,
+        photoZoom: editSpot.content?.photoZoom ?? 1,
+        photoOffsetX: editSpot.content?.photoOffsetX ?? 0,
+        photoOffsetY: editSpot.content?.photoOffsetY ?? 0,
+        drawingDataUrl: editSpot.content?.drawingData || null,
+        drawingOpacity: editSpot.content?.drawingOpacity ?? 1,
+        stickers: editSpot.content?.stickers || [],
+        photoAdjustments: editSpot.content?.photoAdjustments || { ...DEFAULT_ADJUSTMENTS },
+        layers: editSpot.content?.layers || [],
+        isCurvedText: editSpot.content?.isCurvedText || false,
+        curveRadius: editSpot.content?.curveRadius,
+        textStroke: editSpot.content?.textStroke,
+        textGlow: editSpot.content?.textGlow,
+        letterSpacing: editSpot.content?.letterSpacing || 0,
+        audioDraft: editSpot.content?.audio
+          ? {
+              previewUrl: editSpot.content.audio.url,
+              duration: editSpot.content.audio.duration,
+              type: editSpot.content.audio.type,
+              mimeType: editSpot.content.audio.mimeType,
+              storageKey: editSpot.content.audio.storageKey,
+            }
+          : null,
+      };
+
+      if (editSpot.tier === 'big_pop') {
+        setBigDraft(draft);
+      } else {
+        setMiniDraft(draft);
+      }
+    } else {
+      setTier(initialTier);
+    }
+  }, [editSpot, initialTier, isOpen]);
 
   // Active Draft based on tier
   const currentDraft = tier === 'big_pop' ? bigDraft : miniDraft;
@@ -768,6 +835,24 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   const [rainbowHue, setRainbowHue] = useState<number>(0);
   const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
 
+  // Restore existing drawing onto HD canvas when drawing mode is entered
+  useEffect(() => {
+    if (isDrawingMode && currentDraft.drawingDataUrl && drawingCanvasRef.current) {
+      const canvas = drawingCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = currentDraft.drawingDataUrl;
+      }
+    }
+  }, [isDrawingMode, currentDraft.drawingDataUrl]);
+
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
   const [upiId, setUpiId] = useState('user@okhdfcbank');
@@ -846,13 +931,17 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const x = (clientX - rect.left) * (canvas.width / rect.width);
     const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const scaleRatio = canvas.width / 170; // HD supersampling multiplier
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     ctx.beginPath();
     ctx.moveTo(x, y);
 
     if (drawTool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = brushSize * 2.5;
+      ctx.lineWidth = brushSize * 2.5 * scaleRatio;
     } else {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = brushOpacity;
@@ -862,39 +951,39 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       if (drawTool === 'neon') {
         ctx.strokeStyle = drawColor;
         ctx.shadowColor = drawColor;
-        ctx.shadowBlur = 14;
-        ctx.lineWidth = brushSize;
+        ctx.shadowBlur = 14 * scaleRatio;
+        ctx.lineWidth = brushSize * scaleRatio;
       } else if (drawTool === 'calligraphy') {
         ctx.strokeStyle = drawColor;
         ctx.shadowBlur = 0;
-        ctx.lineWidth = brushSize * 1.5;
+        ctx.lineWidth = brushSize * 1.5 * scaleRatio;
       } else if (drawTool === 'watercolor') {
         ctx.strokeStyle = drawColor;
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = 4 * scaleRatio;
         ctx.globalAlpha = brushOpacity * 0.4;
-        ctx.lineWidth = brushSize * 2;
+        ctx.lineWidth = brushSize * 2 * scaleRatio;
       } else if (drawTool === 'highlighter') {
         ctx.strokeStyle = drawColor;
         ctx.shadowBlur = 0;
         ctx.globalAlpha = brushOpacity * 0.45;
-        ctx.lineWidth = brushSize * 2.5;
+        ctx.lineWidth = brushSize * 2.5 * scaleRatio;
       } else if (drawTool === 'pencil') {
         ctx.strokeStyle = drawColor;
         ctx.shadowBlur = 0;
         ctx.globalAlpha = brushOpacity * 0.75;
-        ctx.lineWidth = Math.max(1, brushSize * 0.8);
+        ctx.lineWidth = Math.max(1 * scaleRatio, brushSize * 0.8 * scaleRatio);
       } else if (drawTool === 'rainbow') {
         const nextHue = (rainbowHue + 15) % 360;
         setRainbowHue(nextHue);
         ctx.strokeStyle = `hsl(${nextHue}, 100%, 55%)`;
         ctx.shadowColor = `hsl(${nextHue}, 100%, 65%)`;
-        ctx.shadowBlur = 10;
-        ctx.lineWidth = brushSize;
+        ctx.shadowBlur = 10 * scaleRatio;
+        ctx.lineWidth = brushSize * scaleRatio;
       } else {
         // pen or spray
         ctx.strokeStyle = drawColor;
         ctx.shadowBlur = 0;
-        ctx.lineWidth = brushSize;
+        ctx.lineWidth = brushSize * scaleRatio;
       }
     }
 
@@ -913,18 +1002,19 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const x = (clientX - rect.left) * (canvas.width / rect.width);
     const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const scaleRatio = canvas.width / 170;
 
     if (drawTool === 'graffiti') {
-      // Stochastic spray airbrush effect
+      // Stochastic spray airbrush effect with HD density
       ctx.fillStyle = drawColor;
       ctx.globalAlpha = brushOpacity * 0.35;
-      const density = brushSize * 4;
+      const density = brushSize * 4 * scaleRatio;
       for (let i = 0; i < density; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * brushSize * 1.5;
+        const radius = Math.random() * brushSize * 1.5 * scaleRatio;
         const sprayX = x + Math.cos(angle) * radius;
         const sprayY = y + Math.sin(angle) * radius;
-        ctx.fillRect(sprayX, sprayY, 1.5, 1.5);
+        ctx.fillRect(sprayX, sprayY, 1.5 * scaleRatio, 1.5 * scaleRatio);
       }
     } else if (drawTool === 'rainbow') {
       const nextHue = (rainbowHue + 3) % 360;
@@ -938,7 +1028,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       if (Math.random() < 0.15) {
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
-        ctx.arc(x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5), 1.5, 0, Math.PI * 2);
+        ctx.arc(x + (Math.random() * 10 - 5) * scaleRatio, y + (Math.random() * 10 - 5) * scaleRatio, 1.5 * scaleRatio, 0, Math.PI * 2);
         ctx.fill();
       }
     } else {
@@ -984,8 +1074,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setErrorMessage('Please select a valid image file (JPG, PNG, WebP)');
+    if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.gif')) {
+      setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF)');
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -1060,7 +1150,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       let finalImageUrl = currentDraft.imageUrl;
       if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
         try {
-          const uploadRes = await api.uploadImage(finalImageUrl, 'photo.jpg');
+          const isGif = finalImageUrl.startsWith('data:image/gif');
+          const uploadRes = await api.uploadImage(finalImageUrl, isGif ? 'artwork.gif' : 'photo.jpg');
           if (uploadRes?.imageUrl) {
             finalImageUrl = uploadRes.imageUrl;
           }
@@ -1070,14 +1161,15 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       }
 
       // Convert and upload audio object only after user confirms and saves (Big Pop only)
-      let finalAudio: SpotAudio | undefined = undefined;
-      if (tier === 'big_pop' && currentDraft.audioDraft?.blob) {
+      let finalAudio: SpotAudio | undefined = editSpot?.content?.audio || undefined;
+      const audioBlob = currentDraft.audioDraft?.blob;
+      if (tier === 'big_pop' && currentDraft.audioDraft && audioBlob) {
         try {
           const reader = new FileReader();
           const base64Promise = new Promise<string>((resolve, reject) => {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = reject;
-            reader.readAsDataURL(currentDraft.audioDraft!.blob);
+            reader.readAsDataURL(audioBlob);
           });
           const audioBase64 = await base64Promise;
 
@@ -1120,6 +1212,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           textOpacity: currentDraft.textOpacity,
           alignment: currentDraft.alignment,
           imageUrl: finalImageUrl,
+          imageFit: currentDraft.imageFit || 'cover',
           photoOpacity: currentDraft.photoOpacity,
           photoZoom: currentDraft.photoZoom,
           photoOffsetX: currentDraft.photoOffsetX,
@@ -1139,10 +1232,40 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         },
       };
 
+      if (editSpot) {
+        // EDIT MODE: Update existing spot directly without payment
+        const updateRes = await api.updateSpot(
+          editSpot.id,
+          {
+            shape: currentDraft.shape,
+            background: currentDraft.backgroundColor,
+            creatorName: currentDraft.creatorName.trim(),
+            content: draftSpot.content,
+          },
+          authToken || undefined
+        );
+
+        if (updateRes.success && updateRes.spot) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#FF2E93', '#FFE600', '#00F0FF', '#7928CA'],
+          });
+          onSuccess(updateRes.spot);
+          onClose();
+          return;
+        } else {
+          throw new Error('Failed to update spot. Please try again.');
+        }
+      }
+
+      // CREATE MODE: Process order and payment verification
       const orderRes = await api.createOrder({
         productId: tier,
         spotDraft: draftSpot,
         creatorName: currentDraft.creatorName.trim(),
+        token: authToken || undefined,
       });
 
       const verifyRes = await api.verifyPayment({
@@ -1192,16 +1315,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           <div className="flex items-center gap-2.5">
             <SpotPopLogo variant="icon" size={24} />
             <h3 className="font-outfit font-bold text-base sm:text-lg text-white">
-              Studio Spot Creator
+              {editSpot ? '✏️ Edit Your Pop' : 'Studio Spot Creator'}
             </h3>
             <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
-              {tier === 'big_pop' ? 'Big Pop ₹99' : 'Mini Pop ₹29'}
+              {editSpot ? `Editing (${tier === 'big_pop' ? 'Big Pop' : 'Mini Pop'})` : (tier === 'big_pop' ? 'Big Pop ₹99' : 'Mini Pop ₹29')}
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -1233,33 +1356,35 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             </div>
           )}
 
-          {/* Plan Switcher Pills */}
-          <div className="flex items-center gap-2 p-1 bg-black/50 rounded-2xl border border-white/10 max-w-md mx-auto">
-            <button
-              type="button"
-              onClick={() => handleSelectPlan('mini_pop')}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                tier === 'mini_pop'
-                  ? 'bg-amber-400 text-black shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>📝</span>
-              <span>Mini Pop ₹29</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectPlan('big_pop')}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                tier === 'big_pop'
-                  ? 'bg-[#FF2E93] text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>📸</span>
-              <span>Big Pop ₹99</span>
-            </button>
-          </div>
+          {/* Plan Switcher Pills - Hidden in Edit Mode */}
+          {!editSpot && (
+            <div className="flex items-center gap-2 p-1 bg-black/50 rounded-2xl border border-white/10 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => handleSelectPlan('mini_pop')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  tier === 'mini_pop'
+                    ? 'bg-amber-400 text-black shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>📝</span>
+                <span>Mini Pop ₹29</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPlan('big_pop')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  tier === 'big_pop'
+                    ? 'bg-[#FF2E93] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>📸</span>
+                <span>Big Pop ₹99</span>
+              </button>
+            </div>
+          )}
 
           {/* ================= STUDIO WORKSPACE ================= */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -1326,6 +1451,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       textOpacity: currentDraft.textOpacity,
                       alignment: currentDraft.alignment,
                       imageUrl: tier === 'big_pop' ? currentDraft.imageUrl : undefined,
+                      imageFit: currentDraft.imageFit,
                       photoOpacity: currentDraft.photoOpacity,
                       photoZoom: currentDraft.photoZoom,
                       photoOffsetX: currentDraft.photoOffsetX,
@@ -1351,13 +1477,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     onUpdateLayer={handleUpdateLayer}
                     onDeleteLayer={handleDeleteLayer}
                     onUpdateContent={(updates) => updateDraft(updates)}
-                    // Overlay full card drawing canvas when drawing mode is toggled
+                    // Overlay full card drawing canvas when drawing mode is toggled (4x HD Retina Supersampled)
                     drawingCanvasOverlay={
                       isDrawingMode ? (
                         <canvas
                           ref={drawingCanvasRef}
-                          width={tier === 'big_pop' ? 170 : 170}
-                          height={tier === 'big_pop' ? 210 : 170}
+                          width={tier === 'big_pop' ? 680 : 680}
+                          height={tier === 'big_pop' ? 840 : 680}
                           onMouseDown={startDrawing}
                           onMouseMove={draw}
                           onMouseUp={stopDrawing}
@@ -1687,9 +1813,11 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
               {/* ACTION FOOTER */}
               <div className="pt-2 flex items-center justify-between gap-3 border-t border-white/10">
                 <div className="flex flex-col">
-                  <span className="text-[11px] text-slate-400">Total Placement Fee:</span>
+                  <span className="text-[11px] text-slate-400">
+                    {editSpot ? 'Save Changes:' : 'Total Placement Fee:'}
+                  </span>
                   <span className="text-lg font-bold text-white">
-                    {tier === 'big_pop' ? '₹99 One-Time' : '₹29 One-Time'}
+                    {editSpot ? 'Free (Owner)' : (tier === 'big_pop' ? '₹99 One-Time' : '₹29 One-Time')}
                   </span>
                 </div>
 
@@ -1697,7 +1825,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors"
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1705,20 +1833,22 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     type="button"
                     disabled={isSubmitting}
                     onClick={handleProceedToPayment}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 ${
-                      tier === 'big_pop'
-                        ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90'
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 cursor-pointer ${
+                      editSpot
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
+                        : tier === 'big_pop'
+                        ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
                         : 'bg-amber-400 text-black hover:bg-amber-300'
                     }`}
                   >
                     {isSubmitting ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>Publishing Spot...</span>
+                        <span>{editSpot ? 'Saving Changes...' : 'Publishing Spot...'}</span>
                       </>
                     ) : (
                       <>
-                        <span>Claim & Place Spot ({tier === 'big_pop' ? '₹99' : '₹29'}) →</span>
+                        <span>{editSpot ? '💾 Save Changes' : `Claim & Place Spot (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
                       </>
                     )}
                   </button>

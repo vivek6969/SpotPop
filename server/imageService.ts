@@ -159,26 +159,64 @@ export class ImageService {
     const originalHeight = meta.height;
     const mimeType = meta.format ? `image/${meta.format}` : 'image/jpeg';
 
+    // SPECIAL HANDLING: Full Animated GIF Support
+    // Preserves 100% of animation frames, loop counts, and timing for animated GIFs
+    const isGif = meta.format === 'gif' || filename.toLowerCase().endsWith('.gif') || buffer.slice(0, 3).toString() === 'GIF';
+    if (isGif) {
+      const gifKey = `${hash}/animated.gif`;
+      const gifUrl = await storage.save(gifKey, buffer, 'image/gif');
+
+      const record: ImageAssetRecord = {
+        hash,
+        originalSize: buffer.length,
+        mimeType: 'image/gif',
+        width: originalWidth,
+        height: originalHeight,
+        variants: {
+          thumb: { key: gifKey, url: gifUrl, size: buffer.length, width: originalWidth, height: originalHeight, format: 'gif' },
+          preview: { key: gifKey, url: gifUrl, size: buffer.length, width: originalWidth, height: originalHeight, format: 'gif' },
+          highres: { key: gifKey, url: gifUrl, size: buffer.length, width: originalWidth, height: originalHeight, format: 'gif' },
+          original: { key: gifKey, url: gifUrl, size: buffer.length, width: originalWidth, height: originalHeight, format: 'gif' },
+        },
+        refCount: 1,
+        createdAt: new Date().toISOString(),
+      };
+
+      this.registry.set(hash, record);
+      this.saveRegistry();
+
+      return {
+        imageUrl: gifUrl,
+        thumbnailUrl: gifUrl,
+        highResUrl: gifUrl,
+        hash,
+        width: originalWidth,
+        height: originalHeight,
+        size: buffer.length,
+        isDuplicate: false,
+      };
+    }
+
     // 3. Smart Multi-Resolution Variants:
-    // A) Thumbnail: 100x130 WebP (~8-18 KB) for zoomed-out overview
+    // A) Thumbnail: 160x200 WebP (~8-18 KB) for zoomed-out overview
     const thumbBuffer = await sharp(buffer)
       .rotate()
-      .resize(100, 130, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 72, effort: 4 })
+      .resize(160, 200, { fit: 'cover', withoutEnlargement: true })
+      .webp({ quality: 75, effort: 4 })
       .toBuffer();
 
-    // B) Canvas Preview: 340x420 WebP (~20-55 KB, exact 2x retina size for 170x210 card frame)
+    // B) Canvas Preview: 800x1000 WebP (~35-70 KB, crystal sharp for 4K / Retina and max zoom)
     const previewBuffer = await sharp(buffer)
       .rotate()
-      .resize(340, 420, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 80, effort: 4 })
+      .resize(800, 1000, { fit: 'cover', withoutEnlargement: true })
+      .webp({ quality: 88, effort: 4 })
       .toBuffer();
 
-    // C) High-Res: 800x1000 WebP (~70-130 KB) for detail modal inspection & share kits
+    // C) High-Res: 1600x2000 WebP (~90-180 KB) for detail modal inspection & share kits
     const highresBuffer = await sharp(buffer)
       .rotate()
-      .resize(800, 1000, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 85, effort: 4 })
+      .resize(1600, 2000, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 90, effort: 4 })
       .toBuffer();
 
     // 4. Save Variants in Content-Addressed Object Storage

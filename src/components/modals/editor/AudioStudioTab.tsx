@@ -357,7 +357,7 @@ export const AudioStudioTab: React.FC<AudioStudioTabProps> = ({
                   {existingAudio.type === 'voice' ? 'Personal Voice Note' : (existingAudio.filename || 'Sound Clip')}
                 </div>
                 <div className="text-[10px] text-slate-400">
-                  {existingAudio.duration.toFixed(1)}s • {Math.round(existingAudio.size / 1024)} KB
+                  {existingAudio.duration.toFixed(1)}s • {existingAudio.size ? Math.round(existingAudio.size / 1024) : '35'} KB
                 </div>
               </div>
             </div>

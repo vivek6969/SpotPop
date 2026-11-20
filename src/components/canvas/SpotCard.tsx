@@ -458,6 +458,49 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     window.addEventListener('pointerup', onPointerUp);
   };
 
+  // Direct Photo Pan & Crop Drag Handler
+  const handlePhotoPointerDown = (e: React.PointerEvent) => {
+    if (!interactive) return;
+    e.stopPropagation();
+    onSelectItem?.('photo');
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const startOffsetX = content.photoOffsetX ?? 0;
+    const startOffsetY = content.photoOffsetY ?? 0;
+    let isDragging = false;
+
+    const onPointerMove = (moveEvt: PointerEvent) => {
+      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
+      if (dist > 2) isDragging = true;
+      if (!isDragging) return;
+
+      const dx = (moveEvt.clientX - startClientX) / scale;
+      const dy = (moveEvt.clientY - startClientY) / scale;
+      const newX = Math.round(startOffsetX + dx);
+      const newY = Math.round(startOffsetY + dy);
+      onUpdateContent?.({ photoOffsetX: newX, photoOffsetY: newY });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  // Photo Wheel Zoom Handler
+  const handlePhotoWheel = (e: React.WheelEvent) => {
+    if (!interactive) return;
+    e.stopPropagation();
+    const currentZoom = content.photoZoom ?? 1;
+    const delta = e.deltaY < 0 ? 0.05 : -0.05;
+    const newZoom = Math.min(3.5, Math.max(0.5, Number((currentZoom + delta).toFixed(2))));
+    onUpdateContent?.({ photoZoom: newZoom });
+  };
+
   // =================== FRAME ACCENTS RENDERING ===================
 
   const renderFrameAccents = (frameStyle: FrameStyle) => {
@@ -566,6 +609,16 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   const isCustomAuthor = content.authorX !== undefined && content.authorY !== undefined;
 
   const isTransparent = shape === 'transparent' || background === 'transparent';
+  const imageFit = content.imageFit || 'cover';
+  const isGif = Boolean(
+    content.imageUrl && (
+      content.imageUrl.toLowerCase().includes('.gif') ||
+      content.imageUrl.startsWith('data:image/gif') ||
+      content.imageUrl.includes('image/gif')
+    )
+  );
+  const photoCropRatio = content.photoAdjustments?.aspectRatio || 'free';
+  const isCircleCrop = photoCropRatio === 'circle';
 
   // Card shape specific styling
   const getCardStyle = (): React.CSSProperties => {
@@ -764,15 +817,15 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         {/* ================= 1. TRANSPARENT CUTOUT PNG / ARTWORK (PNG ONLY MODE) ================= */}
         {isTransparent && content.imageUrl && (
           <div
-            className={`absolute inset-0 flex items-center justify-center p-2 cursor-pointer ${
-              isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
+            className={`absolute inset-0 flex items-center justify-center p-2 ${
+              interactive
+                ? isPhotoSelected
+                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                : 'pointer-events-none z-10'
             }`}
-            onPointerDown={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
+            onPointerDown={handlePhotoPointerDown}
+            onWheel={handlePhotoWheel}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -780,12 +833,20 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
+            {isGif && (
+              <div className="absolute top-2 left-2 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                GIF
+              </div>
+            )}
             <img
               src={content.imageUrl}
               alt="Cutout Art"
               loading="lazy"
               decoding="async"
-              className="max-w-full max-h-full object-contain select-none pointer-events-none"
+              className={`max-w-full max-h-full select-none pointer-events-none transition-transform duration-75 ${
+                imageFit === 'contain' ? 'object-contain' : 'object-cover'
+              }`}
               style={{
                 opacity: photoOpacity,
                 filter: photoFilterCss ? `${photoFilterCss} drop-shadow(0 12px 24px rgba(0,0,0,0.6))` : 'drop-shadow(0 12px 24px rgba(0,0,0,0.6))',
@@ -793,21 +854,28 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }}
               draggable={false}
             />
+            {interactive && isPhotoSelected && (
+              <div className="absolute inset-2 pointer-events-none z-20 border border-dashed border-[#FF2E93]/70 rounded-lg flex items-end justify-center pb-1">
+                <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded shadow-sm font-sans font-medium">
+                  Drag to pan • Scroll zoom
+                </span>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= 2. FULL-BLEED FRAMELESS PHOTO (EDGE-TO-EDGE) ================= */}
         {(shape === 'frameless' || shape === 'poster') && content.imageUrl && !isTransparent && (
           <div
-            className={`absolute inset-0 overflow-hidden cursor-pointer ${
-              isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
+            className={`absolute inset-0 overflow-hidden ${
+              interactive
+                ? isPhotoSelected
+                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                : 'pointer-events-none z-10'
             }`}
-            onPointerDown={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
+            onPointerDown={handlePhotoPointerDown}
+            onWheel={handlePhotoWheel}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -815,12 +883,20 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
+            {isGif && (
+              <div className="absolute top-2.5 left-2.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                GIF
+              </div>
+            )}
             <img
               src={content.imageUrl}
               alt="Full Bleed Artwork"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover select-none pointer-events-none"
+              className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
+                imageFit === 'contain' ? 'object-contain' : 'object-cover'
+              }`}
               style={{
                 opacity: photoOpacity,
                 filter: photoFilterCss,
@@ -830,24 +906,54 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             />
             {/* Scrim gradient so text is readable over full bleed artwork */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
+            {interactive && isPhotoSelected && (
+              <div className="absolute inset-0 pointer-events-none z-20 grid grid-cols-3 grid-rows-3 border-2 border-[#FF2E93]">
+                <div className="border-r border-b border-white/20" />
+                <div className="border-r border-b border-white/20" />
+                <div className="border-b border-white/20" />
+                <div className="border-r border-b border-white/20" />
+                <div className="border-r border-b border-white/20" />
+                <div className="border-b border-white/20" />
+                <div className="border-r border-b border-white/20" />
+                <div className="border-r border-b border-white/20" />
+                <div />
+                <div className="absolute bottom-2 inset-x-0 flex justify-center">
+                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
+                    Drag to crop • Scroll zoom
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= 3. POLAROID PHOTO CONTAINER ================= */}
         {shape === 'polaroid' && !isTransparent && (
           <div
-            className={`absolute top-2.5 inset-x-2.5 bg-slate-900 rounded-xs overflow-hidden flex items-center justify-center cursor-pointer ${
-              isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
+            className={`absolute top-2.5 inset-x-2.5 bg-slate-900 overflow-hidden flex items-center justify-center ${
+              isCircleCrop ? 'rounded-full' : 'rounded-xs'
+            } ${
+              interactive
+                ? isPhotoSelected
+                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                : 'pointer-events-none z-10'
             }`}
             style={{
-              height: Math.round(cardHeight * 0.58),
+              height: isCircleCrop
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                : photoCropRatio === '1:1'
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                : photoCropRatio === '16:9'
+                ? Math.round((cardWidth - 20) * 9 / 16)
+                : Math.round(cardHeight * 0.58),
+              width: isCircleCrop
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                : undefined,
+              margin: isCircleCrop ? '0 auto' : undefined,
             }}
-            onPointerDown={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
+            onPointerDown={handlePhotoPointerDown}
+            onWheel={handlePhotoWheel}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -855,13 +961,21 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
+            {isGif && content.imageUrl && (
+              <div className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                GIF
+              </div>
+            )}
             {content.imageUrl ? (
               <img
                 src={content.imageUrl}
                 alt={content.headline || creatorName}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover select-none pointer-events-none transition-transform"
+                className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
+                  imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                }`}
                 style={{
                   opacity: photoOpacity,
                   filter: photoFilterCss,
@@ -878,24 +992,58 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 <span className="text-[11px] text-white/80 font-bold mt-1 tracking-wide">Big Pop Photo</span>
               </div>
             )}
+            {interactive && isPhotoSelected && (
+              <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-xs'}`}>
+                {!isCircleCrop && (
+                  <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div />
+                  </div>
+                )}
+                <div className="absolute bottom-1 inset-x-0 flex justify-center">
+                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
+                    Drag to crop • Scroll zoom
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= 4. FRAMED PHOTO CONTAINER FOR OTHER FRAMES (GLASS, GOLD, COMIC, STAMP, CYBER, STICKY) ================= */}
         {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && !isTransparent && content.imageUrl && (
           <div
-            className={`absolute top-2.5 inset-x-2.5 rounded-lg overflow-hidden bg-black/40 cursor-pointer ${
-              isPhotoSelected ? 'ring-2 ring-[#FF2E93] z-25' : 'z-10'
+            className={`absolute top-2.5 inset-x-2.5 bg-black/40 overflow-hidden ${
+              isCircleCrop ? 'rounded-full' : 'rounded-lg'
+            } ${
+              interactive
+                ? isPhotoSelected
+                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                : 'pointer-events-none z-10'
             }`}
             style={{
-              height: Math.round(cardHeight * 0.50),
+              height: isCircleCrop
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                : photoCropRatio === '1:1'
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                : photoCropRatio === '16:9'
+                ? Math.round((cardWidth - 20) * 9 / 16)
+                : Math.round(cardHeight * 0.50),
+              width: isCircleCrop
+                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                : undefined,
+              margin: isCircleCrop ? '0 auto' : undefined,
             }}
-            onPointerDown={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
+            onPointerDown={handlePhotoPointerDown}
+            onWheel={handlePhotoWheel}
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
@@ -903,12 +1051,20 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
+            {isGif && (
+              <div className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                GIF
+              </div>
+            )}
             <img
               src={content.imageUrl}
               alt="Artwork"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover select-none pointer-events-none"
+              className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
+                imageFit === 'contain' ? 'object-contain' : 'object-cover'
+              }`}
               style={{
                 opacity: photoOpacity,
                 filter: photoFilterCss,
@@ -916,6 +1072,28 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }}
               draggable={false}
             />
+            {interactive && isPhotoSelected && (
+              <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-lg'}`}>
+                {!isCircleCrop && (
+                  <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div className="border-r border-b border-white/20" />
+                    <div />
+                  </div>
+                )}
+                <div className="absolute bottom-1 inset-x-0 flex justify-center">
+                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
+                    Drag to crop • Scroll zoom
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -41,8 +41,9 @@ export const SpotAudioPlayer: React.FC<SpotAudioPlayerProps> = ({
 
     // Audio is lazy-loaded ONLY after visitor taps Play
     if (!audioRef.current) {
-      const el = new Audio(audio.url);
-      el.preload = 'none'; // NEVER preload or download audio before user interaction
+      const el = new Audio();
+      el.preload = 'auto';
+      el.src = audio.url;
 
       el.ontimeupdate = () => {
         if (el.duration && !isNaN(el.duration)) {
@@ -58,7 +59,7 @@ export const SpotAudioPlayer: React.FC<SpotAudioPlayerProps> = ({
       };
 
       el.onerror = () => {
-        setError('Could not load audio. Check connection.');
+        setError('Could not load audio. Tap retry.');
         setIsPlaying(false);
       };
 
@@ -77,12 +78,30 @@ export const SpotAudioPlayer: React.FC<SpotAudioPlayerProps> = ({
 
       audioRef.current.play().then(() => {
         setIsPlaying(true);
+        setError(null);
       }).catch(err => {
         console.warn('Playback error:', err);
         setIsPlaying(false);
-        setError('Playback restricted by browser.');
+        if (err.name === 'NotAllowedError') {
+          setError('Playback blocked by browser. Tap retry to allow.');
+        } else if (err.name === 'NotSupportedError') {
+          setError('Audio format not supported by browser.');
+        } else {
+          setError('Playback error. Tap retry.');
+        }
       });
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setTimeout(() => {
+      handleTogglePlay();
+    }, 50);
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -123,8 +142,8 @@ export const SpotAudioPlayer: React.FC<SpotAudioPlayerProps> = ({
         <div className="text-xs text-rose-400 py-1 flex items-center justify-between">
           <span>⚠️ {error}</span>
           <button
-            onClick={() => setError(null)}
-            className="text-[10px] underline hover:text-white"
+            onClick={handleRetry}
+            className="text-[10px] underline hover:text-white cursor-pointer"
           >
             Retry
           </button>

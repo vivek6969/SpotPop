@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
-import { Spot } from '../../types';
+import { Spot, User } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotAudioPlayer } from '../audio/SpotAudioPlayer';
 
 interface SpotDetailModalProps {
   spot: Spot | null;
+  currentUser: User | null;
+  authToken?: string | null;
   onClose: () => void;
   onOpenShareKit: (spot: Spot) => void;
   onFlyToSpot: (spot: Spot) => void;
   onOpenCreatorProfile?: (username: string) => void;
+  onEditSpot?: (spot: Spot) => void;
+  onDeleteSpot?: (spot: Spot) => void;
 }
 
 export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   spot,
+  currentUser,
+  authToken,
   onClose,
   onOpenShareKit,
   onFlyToSpot,
   onOpenCreatorProfile,
+  onEditSpot,
+  onDeleteSpot,
 }) => {
   if (!spot) return null;
 
@@ -27,6 +35,8 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const [reporterEmail, setReporterEmail] = useState('');
   const [reportStatus, setReportStatus] = useState<'idle' | 'submitting' | 'submitted'>('idle');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const publicUrl = `${window.location.origin}?spot=${spot.slug || spot.id}`;
 
@@ -34,6 +44,30 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
     navigator.clipboard.writeText(publicUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const isOwner = Boolean(
+    currentUser && (
+      currentUser.role === 'admin' ||
+      spot.ownerId === currentUser.id ||
+      currentUser.ownedSpotIds?.includes(spot.id) ||
+      spot.creatorName.toLowerCase() === currentUser.displayName.toLowerCase() ||
+      spot.creatorName.toLowerCase() === currentUser.username.toLowerCase()
+    )
+  );
+
+  const handleDelete = async () => {
+    if (!onDeleteSpot) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteSpot(spot);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete Pop');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSubmitReport = async (e: React.FormEvent) => {
@@ -68,7 +102,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   onOpenCreatorProfile(spot.creatorName);
                 }
               }}
-              className="font-outfit font-bold text-base text-white hover:text-[#FF5EAA] truncate max-w-[200px] sm:max-w-[260px] text-left transition-colors flex items-center gap-1 group"
+              className="font-outfit font-bold text-base text-white hover:text-[#FF5EAA] truncate max-w-[200px] sm:max-w-[260px] text-left transition-colors flex items-center gap-1 group cursor-pointer"
               title="View Creator Profile"
             >
               <span>{spot.creatorName}&apos;s Spot</span>
@@ -82,7 +116,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -111,6 +145,44 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
 
         {/* Details & Metadata */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+          {/* OWNER ACTION TOOLBAR */}
+          {isOwner && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-900/30 via-[#FF2E93]/20 to-pink-900/30 border border-[#FF2E93]/40 shadow-lg space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-pink-200">
+                  <span>✨</span>
+                  <span>You own this Pop</span>
+                </div>
+                <span className="text-[10px] text-slate-400">Owner Controls</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {onEditSpot && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onEditSpot(spot);
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:opacity-95 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>✏️ Edit My Pop</span>
+                  </button>
+                )}
+
+                {onDeleteSpot && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🗑️ Delete</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Optional Voice Message / Sound Clip (Big Pop Exclusive) */}
           {spot.content?.audio && (
             <SpotAudioPlayer
@@ -145,13 +217,13 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onFlyToSpot(spot)}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>🎯 Center on Canvas</span>
             </button>
             <button
               onClick={handleCopyLink}
-              className="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              className="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>{copiedLink ? 'Copied! ✓' : '🔗 Link'}</span>
             </button>
@@ -163,7 +235,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowReportForm(true)}
-                className="text-xs text-slate-500 hover:text-slate-400 underline transition-colors"
+                className="text-xs text-slate-500 hover:text-slate-400 underline transition-colors cursor-pointer"
               >
                 Report this spot for inappropriate content
               </button>
@@ -175,7 +247,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowReportForm(false)}
-                  className="text-xs text-slate-400"
+                  className="text-xs text-slate-400 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -210,7 +282,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   <button
                     type="submit"
                     disabled={reportStatus === 'submitting'}
-                    className="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
+                    className="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs cursor-pointer"
                   >
                     {reportStatus === 'submitting' ? 'Submitting...' : 'Submit Report'}
                   </button>
@@ -224,12 +296,54 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
         <div className="p-4 border-t border-white/10 bg-black/40 flex items-center gap-2 shrink-0">
           <button
             onClick={() => onOpenShareKit(spot)}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-outfit font-bold text-sm shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-outfit font-bold text-sm shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>🚀 Open Viral Share Kit</span>
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-[#171A29] border border-rose-500/30 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <span className="text-2xl">🗑️</span>
+              <h4 className="font-outfit font-bold text-base text-white">Delete Your Pop?</h4>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to permanently delete this Pop from the canvas? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete Pop</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

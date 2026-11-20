@@ -8,9 +8,13 @@ interface UserAccountModalProps {
   onClose: () => void;
   currentUser: User | null;
   allSpots: Spot[];
+  noticeMessage?: string | null;
   onLoginSuccess: (user: User, token: string) => void;
   onLogout: () => void;
   onSelectSpot: (spot: Spot) => void;
+  onEditSpot?: (spot: Spot) => void;
+  onDeleteSpot?: (spot: Spot) => void;
+  onStartCreate?: () => void;
 }
 
 export const UserAccountModal: React.FC<UserAccountModalProps> = ({
@@ -18,18 +22,33 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   onClose,
   currentUser,
   allSpots,
+  noticeMessage,
   onLoginSuccess,
   onLogout,
   onSelectSpot,
+  onEditSpot,
+  onDeleteSpot,
+  onStartCreate,
 }) => {
   if (!isOpen) return null;
 
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Register fields
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Deletion confirmation dialog
+  const [spotToDelete, setSpotToDelete] = useState<Spot | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +56,31 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login(email);
+      const res = await api.login(email, password || undefined);
+      if (rememberMe) {
+        localStorage.setItem('spotpop_token', res.token);
+      }
       onLoginSuccess(res.user, res.token);
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemoLogin = async (demoEmail: string) => {
+    setError(null);
+    setEmail(demoEmail);
+    setPassword('demo123');
+    setLoading(true);
+    try {
+      const res = await api.login(demoEmail, 'demo123');
+      if (rememberMe) {
+        localStorage.setItem('spotpop_token', res.token);
+      }
+      onLoginSuccess(res.user, res.token);
+    } catch (err: any) {
+      setError(err.message || 'Quick demo login failed.');
     } finally {
       setLoading(false);
     }
@@ -48,39 +88,81 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !username || !displayName) return;
+    if (!email || !username || !displayName) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+    if (password && confirmPassword && password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      const res = await api.register({ email, username, displayName });
+      const res = await api.register({
+        email,
+        username,
+        displayName,
+        password: password || undefined,
+      });
+      if (rememberMe) {
+        localStorage.setItem('spotpop_token', res.token);
+      }
       onLoginSuccess(res.user, res.token);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!spotToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (onDeleteSpot) {
+        await onDeleteSpot(spotToDelete);
+      }
+      setSpotToDelete(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete Pop.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Find user's owned spots
   const userSpots = currentUser
-    ? allSpots.filter(s => s.ownerId === currentUser.id || currentUser.ownedSpotIds?.includes(s.id))
+    ? allSpots.filter(s =>
+        s.ownerId === currentUser.id ||
+        currentUser.ownedSpotIds?.includes(s.id) ||
+        s.creatorName.toLowerCase() === currentUser.displayName.toLowerCase() ||
+        s.creatorName.toLowerCase() === currentUser.username.toLowerCase()
+      )
     : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
+      <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
         
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40">
           <div className="flex items-center gap-2.5">
-            <SpotPopLogo variant="icon" size={24} />
-            <h3 className="font-outfit font-bold text-base text-white">
-              {currentUser ? 'Your SpotPop Account' : 'Welcome to SpotPop'}
-            </h3>
+            <SpotPopLogo variant="icon" size={26} />
+            <div>
+              <h3 className="font-outfit font-bold text-base text-white leading-tight">
+                {currentUser ? 'Your SpotPop Account' : 'Welcome to SpotPop'}
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {currentUser
+                  ? 'Manage your personal spots and canvas profile'
+                  : 'Join thousands of creators leaving their mark'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -88,68 +170,191 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+          {/* Guest Action Prompt Banner if directed from an action */}
+          {!currentUser && noticeMessage && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#FF2E93]/20 to-purple-600/20 border border-[#FF2E93]/40 text-pink-100 text-xs flex items-center gap-3 shadow-lg">
+              <span className="text-xl shrink-0">🔒</span>
+              <div className="font-medium leading-relaxed">{noticeMessage}</div>
+            </div>
+          )}
+
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-              {error}
+            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="text-rose-300 hover:text-white text-xs"
+              >
+                ✕
+              </button>
             </div>
           )}
 
           {currentUser ? (
-            // LOGGED IN USER PROFILE
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#FF2E93] to-amber-400 flex items-center justify-center text-xl font-bold text-white shadow-md">
+            // ================= LOGGED IN USER VIEW =================
+            <div className="space-y-5">
+              {/* Profile Card */}
+              <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white/5 border border-white/10">
+                <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#FF2E93] via-purple-500 to-amber-400 flex items-center justify-center text-xl font-bold text-white shadow-md shrink-0">
                   {currentUser.displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white text-base leading-tight truncate">
-                    {currentUser.displayName}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-base truncate">
+                      {currentUser.displayName}
+                    </span>
+                    {currentUser.role === 'admin' ? (
+                      <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase shrink-0">
+                        👑 Admin
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 text-[10px] font-bold uppercase shrink-0">
+                        Pop Creator
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-slate-400 truncate">
+                  <div className="text-xs text-slate-400 truncate mt-0.5">
                     @{currentUser.username} · {currentUser.email}
                   </div>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Member since {new Date(currentUser.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
-                {currentUser.role === 'admin' && (
-                  <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase">
-                    Admin
-                  </span>
-                )}
               </div>
 
-              {/* Owned Spots List */}
+              {/* Owned Spots List Header */}
               <div>
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Your Claimed Spots ({userSpots.length})
-                </h4>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <span>Your Claimed Pops</span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#FF2E93]/20 text-[#FF5EAA] text-[10px] font-bold">
+                      {userSpots.length}
+                    </span>
+                  </h4>
+
+                  {onStartCreate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onStartCreate();
+                      }}
+                      className="text-xs font-bold text-[#FF2E93] hover:text-[#FF5EAA] transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>+ Create Another Pop</span>
+                    </button>
+                  )}
+                </div>
+
                 {userSpots.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-white/5 text-center text-xs text-slate-400">
-                    You haven&apos;t claimed a spot yet. Click &quot;Add Your Spot&quot; below to claim one!
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/5 text-center space-y-3">
+                    <div className="text-2xl">🎨</div>
+                    <div className="text-xs text-slate-300 font-medium">
+                      You haven&apos;t claimed a spot yet!
+                    </div>
+                    <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                      Place your permanent note, photo, drawing, or voice message on the world canvas.
+                    </p>
+                    {onStartCreate && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onStartCreate();
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-bold text-xs shadow-lg shadow-pink-500/20 active:scale-95 transition-all cursor-pointer"
+                      >
+                        Claim Your First Spot →
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
                     {userSpots.map((spot) => (
                       <div
                         key={spot.id}
-                        onClick={() => {
-                          onSelectSpot(spot);
-                          onClose();
-                        }}
-                        className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                        className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/10 transition-all flex items-center justify-between gap-3 group"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base">{spot.tier === 'big_pop' ? '📸' : '📝'}</span>
-                          <div>
-                            <div className="font-bold text-white text-xs truncate max-w-[180px]">
+                        {/* Spot Info */}
+                        <div
+                          className="flex items-center gap-3 min-w-0 cursor-pointer flex-1"
+                          onClick={() => {
+                            onSelectSpot(spot);
+                            onClose();
+                          }}
+                          title="Fly to this spot on canvas"
+                        >
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border border-white/15 shadow-sm"
+                            style={{
+                              background: spot.background?.startsWith('#') ? spot.background : '#1E293B',
+                            }}
+                          >
+                            {spot.tier === 'big_pop' ? (spot.content.imageUrl ? '📸' : '🎨') : '📝'}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-white text-xs truncate group-hover:text-[#FF5EAA] transition-colors">
                               {spot.content.headline || spot.creatorName}
                             </div>
-                            <div className="text-[10px] text-slate-400">
-                              {spot.tier === 'big_pop' ? 'Big Pop (₹99)' : 'Mini Pop (₹29)'}
+                            <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                              <span className="font-semibold text-slate-300">
+                                {spot.tier === 'big_pop' ? 'Big Pop' : 'Mini Pop'}
+                              </span>
+                              <span>•</span>
+                              <span>{(spot.viewsCount || 0).toLocaleString()} views</span>
+                              {spot.content.audio && <span>• 🎙️ Audio</span>}
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs text-[#FF2E93] font-semibold group-hover:translate-x-0.5 transition-transform">
-                          Fly to spot →
-                        </span>
+
+                        {/* Action Buttons: Fly, Edit, Delete */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Fly to spot */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectSpot(spot);
+                              onClose();
+                            }}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs"
+                            title="Center & Highlight on Canvas"
+                          >
+                            🎯
+                          </button>
+
+                          {/* Edit spot */}
+                          {onEditSpot && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                onEditSpot(spot);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FF2E93]/20 to-purple-600/20 hover:from-[#FF2E93]/40 hover:to-purple-600/40 text-pink-200 border border-[#FF2E93]/30 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                              title="Edit headline, stickers, photo, background, and audio"
+                            >
+                              <span>✏️</span>
+                              <span className="hidden sm:inline">Edit</span>
+                            </button>
+                          )}
+
+                          {/* Delete spot */}
+                          {onDeleteSpot && (
+                            <button
+                              type="button"
+                              onClick={() => setSpotToDelete(spot)}
+                              className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 hover:text-rose-200 border border-rose-500/20 transition-colors cursor-pointer text-xs"
+                              title="Delete Pop"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -157,24 +362,33 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
               </div>
 
               {/* Sign out */}
-              <button
-                type="button"
-                onClick={onLogout}
-                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            // LOGIN / REGISTRATION FORM
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">
+                  Signed in as @{currentUser.username}
+                </span>
                 <button
                   type="button"
-                  onClick={() => setTab('login')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  onClick={onLogout}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          ) : (
+            // ================= GUEST LOGIN / REGISTER VIEW =================
+            <div className="space-y-4">
+              {/* Tab Selector */}
+              <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('login');
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                     tab === 'login'
-                      ? 'bg-white text-slate-900 shadow-sm'
+                      ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -182,10 +396,13 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTab('register')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  onClick={() => {
+                    setTab('register');
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                     tab === 'register'
-                      ? 'bg-white text-slate-900 shadow-sm'
+                      ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -194,37 +411,122 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
               </div>
 
               {tab === 'login' ? (
-                <form onSubmit={handleLogin} className="space-y-3">
+                // SIGN IN FORM
+                <form onSubmit={handleLogin} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Email Address
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Email or Username
                     </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. vivek@spotpop.in"
-                      required
-                      className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="e.g. vivek@spotpop.in or vivek"
+                        required
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:bg-white/10 focus:outline-hidden transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Password
+                      </label>
+                      <span className="text-[10px] text-slate-500">
+                        (Demo accounts can use any password)
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:bg-white/10 focus:outline-hidden transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? '👁️' : '🙈'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded-md accent-[#FF2E93] cursor-pointer"
+                      />
+                      <span className="text-xs text-slate-300 font-medium">Remember me</span>
+                    </label>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-bold text-xs shadow-lg shadow-pink-500/25 active:scale-95 transition-all"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-bold text-sm shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {loading ? 'Signing in...' : 'Sign In to SpotPop'}
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Signing In...</span>
+                      </>
+                    ) : (
+                      <span>Sign In to SpotPop →</span>
+                    )}
                   </button>
 
-                  <div className="text-[11px] text-slate-400 text-center pt-2">
-                    Demo accounts: <span className="text-white underline cursor-pointer" onClick={() => setEmail('vivek@spotpop.in')}>vivek@spotpop.in</span> or <span className="text-white underline cursor-pointer" onClick={() => setEmail('admin@spotpop.in')}>admin@spotpop.in</span>
+                  {/* 1-Click Demo Accounts */}
+                  <div className="pt-3 border-t border-white/10">
+                    <div className="text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wider text-center">
+                      Quick 1-Click Demo Sign In
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickDemoLogin('vivek@spotpop.in')}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all cursor-pointer group"
+                      >
+                        <div className="text-base group-hover:scale-110 transition-transform">⚡</div>
+                        <div className="text-xs font-bold text-white mt-0.5">Vivek</div>
+                        <div className="text-[9px] text-slate-400">Creator</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleQuickDemoLogin('admin@spotpop.in')}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all cursor-pointer group"
+                      >
+                        <div className="text-base group-hover:scale-110 transition-transform">👑</div>
+                        <div className="text-xs font-bold text-white mt-0.5">Admin</div>
+                        <div className="text-[9px] text-slate-400">Moderator</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleQuickDemoLogin('riya@spotpop.in')}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all cursor-pointer group"
+                      >
+                        <div className="text-base group-hover:scale-110 transition-transform">🌸</div>
+                        <div className="text-xs font-bold text-white mt-0.5">Riya</div>
+                        <div className="text-[9px] text-slate-400">Artist</div>
+                      </button>
+                    </div>
                   </div>
                 </form>
               ) : (
+                // REGISTER FORM
                 <form onSubmit={handleRegister} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Display Name
                     </label>
                     <input
@@ -233,26 +535,29 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="e.g. Vivek Rathod"
                       required
-                      className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Username
                     </label>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. vivek"
-                      required
-                      className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                        placeholder="vivek"
+                        required
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Email Address
                     </label>
                     <input
@@ -261,16 +566,58 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. vivek@gmail.com"
                       required
-                      className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Choose a password"
+                        className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+                      >
+                        {showPassword ? '👁️' : '🙈'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-type your password"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-bold text-xs shadow-lg shadow-pink-500/25 active:scale-95 transition-all"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-bold text-sm shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                   >
-                    {loading ? 'Creating account...' : 'Create Account'}
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Creating Account...</span>
+                      </>
+                    ) : (
+                      <span>Create Account & Join SpotPop →</span>
+                    )}
                   </button>
                 </form>
               )}
@@ -278,6 +625,49 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal Dialog */}
+      {spotToDelete && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-[#171A29] border border-rose-500/30 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <span className="text-2xl">🗑️</span>
+              <h4 className="font-outfit font-bold text-base text-white">Delete This Pop?</h4>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-white">&quot;{spotToDelete.content.headline || spotToDelete.creatorName}&quot;</strong>?
+              This will permanently remove the Pop and free up its space on the canvas. This action cannot be undone.
+            </p>
+
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setSpotToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete Pop</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

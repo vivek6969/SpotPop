@@ -216,11 +216,11 @@ export const api = {
   },
 
   // Auth
-  async login(email: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password?: string): Promise<{ user: User; token: string }> {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -229,7 +229,7 @@ export const api = {
     return res.json();
   },
 
-  async register(params: { email: string; username: string; displayName: string }): Promise<{ user: User; token: string }> {
+  async register(params: { email: string; username: string; displayName: string; password?: string }): Promise<{ user: User; token: string }> {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -247,6 +247,47 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Not authenticated');
+    return res.json();
+  },
+
+  // User Spot Management (See, Update, Delete own pops)
+  async getMySpots(token: string): Promise<{ spots: Spot[] }> {
+    const res = await fetch(`${API_BASE}/user/my-spots`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to fetch your spots');
+    }
+    return res.json();
+  },
+
+  async updateSpot(id: string, updates: Partial<Spot>, token?: string): Promise<{ success: boolean; spot: Spot }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/spots/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update Pop');
+    }
+    return res.json();
+  },
+
+  async deleteSpot(id: string, token?: string): Promise<{ success: boolean; spotId: string }> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/spots/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete Pop');
+    }
     return res.json();
   },
 

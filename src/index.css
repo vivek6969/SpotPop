@@ -37,6 +37,18 @@
   50% { opacity: 0.85; transform: scale(1.03); }
 }
 
+/* Sharp high-DPI rendering for zoomed infinite canvas elements */
+.canvas-world {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.canvas-world img {
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+}
+
 .animate-pulse-subtle {
   animation: pulse-subtle 3s ease-in-out infinite;
 }

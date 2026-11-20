@@ -106,8 +106,8 @@ apiRouter.get('/spots/viewport', (req: Request, res: Response) => {
 apiRouter.get('/images/thumbnail', (req: Request, res: Response) => {
   try {
     const rawUrl = req.query.url as string;
-    const targetWidth = parseInt((req.query.w as string) || '200', 10);
-    const quality = parseInt((req.query.q as string) || '75', 10);
+    const targetWidth = parseInt((req.query.w as string) || '800', 10);
+    const quality = parseInt((req.query.q as string) || '85', 10);
 
     if (!rawUrl) {
       return res.status(400).json({ error: 'Missing image url' });
@@ -457,23 +457,48 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
   try {
     const { email, username, displayName, password } = req.body;
     if (!email || !username || !displayName) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({ error: 'Display name, username, and email are required' });
     }
 
-    const existing = db.getUserByEmail(email);
-    if (existing) {
-      return res.status(400).json({ error: 'An account with this email already exists' });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+    if (!cleanUsername) {
+      return res.status(400).json({ error: 'Username must contain letters, numbers, or underscores' });
+    }
+
+    const existingEmail = db.getUserByEmail(cleanEmail);
+    if (existingEmail) {
+      return res.status(400).json({ error: 'An account with this email already exists. Please sign in.' });
+    }
+
+    const existingUsername = db.getUserByUsername(cleanUsername);
+    if (existingUsername) {
+      return res.status(400).json({ error: 'Username is already taken. Please choose another.' });
     }
 
     const newUser: User = {
       id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      email: email.trim().toLowerCase(),
-      username: username.trim().toLowerCase(),
+      email: cleanEmail,
+      username: cleanUsername,
       displayName: displayName.trim(),
-      role: email.includes('admin') ? 'admin' : 'user',
+      role: cleanEmail.includes('admin') ? 'admin' : 'user',
       createdAt: new Date().toISOString(),
       ownedSpotIds: [],
     };
+
+    // Attach any spots created with this name or username
+    const allSpots = db.getSpots();
+    for (const s of allSpots) {
+      if (
+        s.creatorName.toLowerCase() === newUser.displayName.toLowerCase() ||
+        s.creatorName.toLowerCase() === newUser.username.toLowerCase()
+      ) {
+        if (!newUser.ownedSpotIds.includes(s.id)) {
+          newUser.ownedSpotIds.push(s.id);
+        }
+      }
+    }
 
     db.addUser(newUser);
 
@@ -488,26 +513,49 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
 
 apiRouter.post('/auth/login', (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({ error: 'Email or username is required' });
     }
 
-    let user = db.getUserByEmail(email);
+    const query = email.trim().toLowerCase();
+    let user = db.getUserByEmail(query);
     if (!user) {
-      // Auto-provision user for seamless onboarding
-      const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      user = db.getUserByUsername(query);
+    }
+
+    if (!user) {
+      // Auto-provision user for seamless onboarding if valid email
+      const isEmail = query.includes('@');
+      const cleanUsername = (isEmail ? query.split('@')[0] : query).replace(/[^a-z0-9_]/g, '');
+      const userEmail = isEmail ? query : `${cleanUsername}@spotpop.in`;
+
       user = {
         id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        email: email.trim().toLowerCase(),
-        username: username || `user${Math.floor(Math.random() * 9000 + 1000)}`,
-        displayName: username ? (username.charAt(0).toUpperCase() + username.slice(1)) : 'Spot Creator',
-        role: email.includes('admin') ? 'admin' : 'user',
+        email: userEmail,
+        username: cleanUsername || `user${Math.floor(Math.random() * 9000 + 1000)}`,
+        displayName: cleanUsername ? (cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1)) : 'Spot Creator',
+        role: userEmail.includes('admin') ? 'admin' : 'user',
         createdAt: new Date().toISOString(),
         ownedSpotIds: [],
       };
       db.addUser(user);
     }
+
+    // Associate spots with creator name matching this user
+    const allSpots = db.getSpots();
+    for (const s of allSpots) {
+      if (
+        s.ownerId === user.id ||
+        s.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
+        s.creatorName.toLowerCase() === user.username.toLowerCase()
+      ) {
+        if (!user.ownedSpotIds.includes(s.id)) {
+          user.ownedSpotIds.push(s.id);
+        }
+      }
+    }
+    db.save();
 
     const token = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     SESSIONS.set(token, user.id);
@@ -526,11 +574,125 @@ apiRouter.get('/auth/me', (req: Request, res: Response) => {
   res.json({ user });
 });
 
+// GET all spots owned by current authenticated user
+apiRouter.get('/user/my-spots', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const allSpots = db.getSpots();
+    const mySpots = allSpots.filter(s =>
+      s.ownerId === user.id ||
+      user.ownedSpotIds?.includes(s.id) ||
+      s.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
+      s.creatorName.toLowerCase() === user.username.toLowerCase()
+    );
+    res.json({ spots: mySpots });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE user's own spot
+apiRouter.put('/spots/:id', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'You must be logged in to update your Pop' });
+    }
+
+    const spot = db.getSpotByIdOrSlug(req.params.id);
+    if (!spot) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+
+    const isOwner =
+      user.role === 'admin' ||
+      spot.ownerId === user.id ||
+      user.ownedSpotIds?.includes(spot.id) ||
+      spot.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
+      spot.creatorName.toLowerCase() === user.username.toLowerCase();
+
+    if (!isOwner) {
+      return res.status(403).json({ error: 'You do not have permission to edit this Pop' });
+    }
+
+    const { content, background, borderColor, shape, creatorName } = req.body;
+    const updates: Partial<Spot> = {};
+
+    if (background) updates.background = background;
+    if (borderColor !== undefined) updates.borderColor = borderColor;
+    if (shape) updates.shape = shape;
+    if (creatorName) updates.creatorName = creatorName.trim();
+    if (content) {
+      updates.content = {
+        ...spot.content,
+        ...content,
+      };
+    }
+
+    const updated = db.updateSpot(spot.id, updates);
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update Pop' });
+    }
+
+    res.json({ success: true, spot: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE user's own spot
+apiRouter.delete('/spots/:id', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'You must be logged in to delete your Pop' });
+    }
+
+    const spot = db.getSpotByIdOrSlug(req.params.id);
+    if (!spot) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+
+    const isOwner =
+      user.role === 'admin' ||
+      spot.ownerId === user.id ||
+      user.ownedSpotIds?.includes(spot.id) ||
+      spot.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
+      spot.creatorName.toLowerCase() === user.username.toLowerCase();
+
+    if (!isOwner) {
+      return res.status(403).json({ error: 'You do not have permission to delete this Pop' });
+    }
+
+    const deleted = db.deleteSpot(spot.id);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Failed to delete Pop from canvas' });
+    }
+
+    if (user.ownedSpotIds) {
+      user.ownedSpotIds = user.ownedSpotIds.filter(id => id !== spot.id);
+      db.save();
+    }
+
+    res.json({ success: true, spotId: spot.id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =================== PAYMENTS & ORDERS ===================
 
-// Create a pending order for Razorpay
+// Create a pending order for Razorpay - strictly enforces login
 apiRouter.post('/orders/create', (req: Request, res: Response) => {
   try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'You must be logged in to claim a spot. Please sign in or create an account.' });
+    }
+
     const { productId, spotDraft, creatorName } = req.body;
     if (!productId || !PRODUCTS[productId as ProductTier]) {
       return res.status(400).json({ error: 'Invalid product selection' });
@@ -538,8 +700,7 @@ apiRouter.post('/orders/create', (req: Request, res: Response) => {
 
     const tier = productId as ProductTier;
     const product = PRODUCTS[tier];
-    const user = getAuthenticatedUser(req);
-    const userId = user ? user.id : `anon_${Date.now()}`;
+    const userId = user.id;
 
     const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const rzpOrder = createRazorpayOrder(orderId, tier);
