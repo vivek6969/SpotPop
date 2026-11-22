@@ -591,6 +591,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   const subtextSize = content.subtextSize ?? 14;
   const authorSize = content.authorSize ?? 11;
   const authorOpacity = content.authorOpacity ?? textOpacity;
+  const authorDisplay = content.author !== undefined ? content.author : creatorName;
+  const hasAuthor = Boolean(authorDisplay && authorDisplay.trim());
 
   const photoFilterObj = getPhotoFilterStyle(content.photoAdjustments);
   const photoFilterCss = photoFilterObj.filter !== 'none' ? photoFilterObj.filter : undefined;
@@ -614,7 +616,11 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     content.imageUrl && (
       content.imageUrl.toLowerCase().includes('.gif') ||
       content.imageUrl.startsWith('data:image/gif') ||
-      content.imageUrl.includes('image/gif')
+      content.imageUrl.includes('image/gif') ||
+      content.imageUrl.includes('giphy.com') ||
+      content.imageUrl.includes('tenor.com') ||
+      content.imageUrl.includes('animated') ||
+      content.imageUrl.includes('e6ac0747be70d9ca')
     )
   );
   const photoCropRatio = content.photoAdjustments?.aspectRatio || 'free';
@@ -842,8 +848,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Cutout Art"
-              loading="lazy"
-              decoding="async"
+              loading={isGif ? 'eager' : 'lazy'}
+              decoding={isGif ? 'sync' : 'async'}
               className={`max-w-full max-h-full select-none pointer-events-none transition-transform duration-75 ${
                 imageFit === 'contain' ? 'object-contain' : 'object-cover'
               }`}
@@ -892,8 +898,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Full Bleed Artwork"
-              loading="lazy"
-              decoding="async"
+              loading={isGif ? 'eager' : 'lazy'}
+              decoding={isGif ? 'sync' : 'async'}
               className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
                 imageFit === 'contain' ? 'object-contain' : 'object-cover'
               }`}
@@ -971,8 +977,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               <img
                 src={content.imageUrl}
                 alt={content.headline || creatorName}
-                loading="lazy"
-                decoding="async"
+                loading={isGif ? 'eager' : 'lazy'}
+                decoding={isGif ? 'sync' : 'async'}
                 className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
                   imageFit === 'contain' ? 'object-contain' : 'object-cover'
                 }`}
@@ -1060,8 +1066,8 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             <img
               src={content.imageUrl}
               alt="Artwork"
-              loading="lazy"
-              decoding="async"
+              loading={isGif ? 'eager' : 'lazy'}
+              decoding={isGif ? 'sync' : 'async'}
               className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
                 imageFit === 'contain' ? 'object-contain' : 'object-cover'
               }`}
@@ -1174,6 +1180,18 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             {/* Selection Controls for Headline */}
             {isHeadlineSelected && (
               <>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    onUpdateContent?.({ headline: '' });
+                    onSelectItem?.(null);
+                  }}
+                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform cursor-pointer z-40"
+                  title="Delete Headline"
+                >
+                  ✕
+                </button>
                 {/* Corner Resize Handle */}
                 <div
                   onPointerDown={handleHeadlineResizeDown}
@@ -1256,48 +1274,64 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         )}
 
         {/* ================= FREELY DRAGGABLE & SELECTABLE CREATOR TAG ================= */}
-        <div
-          onPointerDown={handleAuthorPointerDown}
-          onClick={(e) => {
-            if (interactive) {
-              e.stopPropagation();
-              onSelectItem?.('author');
-            }
-          }}
-          className={`touch-none select-none ${
-            interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-            } ${isCustomAuthor ? 'absolute' : `absolute bottom-2 inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
-            isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
-          }`}
-          style={{
-            left: isCustomAuthor ? content.authorX : undefined,
-            top: isCustomAuthor ? content.authorY : undefined,
-          }}
-        >
-          <span
-            className="truncate font-semibold select-none flex items-center gap-1"
+        {hasAuthor && (
+          <div
+            onPointerDown={handleAuthorPointerDown}
+            onClick={(e) => {
+              if (interactive) {
+                e.stopPropagation();
+                onSelectItem?.('author');
+              }
+            }}
+            className={`touch-none select-none ${
+              interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
+              } ${isCustomAuthor ? 'absolute' : `absolute bottom-2 inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
+              isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
+            }`}
             style={{
-              color: content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
-              fontSize: authorSize,
-              opacity: authorOpacity,
-              textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+              left: isCustomAuthor ? content.authorX : undefined,
+              top: isCustomAuthor ? content.authorY : undefined,
             }}
           >
-            <span>{content.author || creatorName}</span>
-            <span>♡</span>
-          </span>
-
-          {/* Selection Controls for Creator Tag */}
-          {isAuthorSelected && (
-            <div
-              onPointerDown={handleAuthorResizeDown}
-              className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
-              title="Drag to Resize Tag"
+            <span
+              className="truncate font-semibold select-none flex items-center gap-1"
+              style={{
+                color: content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
+                fontSize: authorSize,
+                opacity: authorOpacity,
+                textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+              }}
             >
-              <div className="w-1 h-1 bg-black rounded-full" />
-            </div>
-          )}
-        </div>
+              <span>{authorDisplay}</span>
+              <span>♡</span>
+            </span>
+
+            {/* Selection Controls for Creator Tag */}
+            {isAuthorSelected && (
+              <>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    onUpdateContent?.({ author: '' });
+                    onSelectItem?.(null);
+                  }}
+                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform cursor-pointer z-40"
+                  title="Delete Author Tag"
+                >
+                  ✕
+                </button>
+                <div
+                  onPointerDown={handleAuthorResizeDown}
+                  className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                  title="Drag to Resize Tag"
+                >
+                  <div className="w-1 h-1 bg-black rounded-full" />
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* ================= MULTI-LAYER EDITING ENGINE (Unlimited Layers: Photo, Text, Shape, Sticker) ================= */}
         {content.layers?.map((layer) => {

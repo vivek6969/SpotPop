@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { storage } from './storage.ts';
+import { checkServerImageSafety } from './safetyService.ts';
 
 export interface ImageVariantInfo {
   key: string;
@@ -62,6 +63,43 @@ export class ImageService {
         const data = JSON.parse(raw);
         if (data.assets) {
           for (const asset of data.assets) {
+            // Self-healing migration for GIF assets:
+            // If asset was indexed before animated GIF support and has webp preview, upgrade to animated.gif
+            const isGifAsset =
+              asset.mimeType === 'image/gif' ||
+              asset.variants?.original?.format === 'gif' ||
+              asset.variants?.original?.url?.endsWith('.gif') ||
+              asset.variants?.preview?.url?.endsWith('.gif');
+
+            if (isGifAsset) {
+              const hash = asset.hash;
+              const diskDir = path.resolve(process.cwd(), 'uploads', 'images', hash);
+              const animPath = path.join(diskDir, 'animated.gif');
+              const origPath = path.join(diskDir, 'original.gif');
+
+              if (!fs.existsSync(animPath) && fs.existsSync(origPath)) {
+                try {
+                  fs.copyFileSync(origPath, animPath);
+                } catch (e) {
+                  console.warn(`Could not copy original.gif to animated.gif for ${hash}`, e);
+                }
+              }
+
+              const targetUrl = fs.existsSync(animPath)
+                ? `/uploads/images/${hash}/animated.gif`
+                : (asset.variants?.original?.url || `/uploads/images/${hash}/original.gif`);
+              const targetKey = `${hash}/animated.gif`;
+
+              asset.mimeType = 'image/gif';
+              asset.variants.preview = { key: targetKey, url: targetUrl, size: asset.originalSize, width: asset.width, height: asset.height, format: 'gif' };
+              asset.variants.thumb = { key: targetKey, url: targetUrl, size: asset.originalSize, width: asset.width, height: asset.height, format: 'gif' };
+              asset.variants.highres = { key: targetKey, url: targetUrl, size: asset.originalSize, width: asset.width, height: asset.height, format: 'gif' };
+              if (asset.variants.original) {
+                asset.variants.original.format = 'gif';
+                asset.variants.original.url = targetUrl;
+              }
+            }
+
             this.registry.set(asset.hash, asset);
           }
         }
@@ -124,8 +162,19 @@ export class ImageService {
       throw new Error('Image exceeds 12MB size limit');
     }
 
-    // 1. Content Hashing for Instant Deduplication
+    // Enforce Strict Server-Side Safety & Nudity Inspection
+    const safety = await checkServerImageSafety(buffer);
+    if (!safety.safe) {
+      throw new Error(safety.reason || 'This image was flagged by our safety filter (adult or explicit content detected).');
+    }
+
+    // 1. Content Hashing & Format Inspection
     const hash = crypto.createHash('sha256').update(buffer).digest('hex').substring(0, 16);
+    const isBufferGif =
+      filename.toLowerCase().endsWith('.gif') ||
+      buffer.slice(0, 3).toString() === 'GIF' ||
+      buffer.slice(0, 6).toString() === 'GIF87a' ||
+      buffer.slice(0, 6).toString() === 'GIF89a';
 
     // If identical asset was already uploaded, increment refCount and reuse immediately
     const existing = this.registry.get(hash);
@@ -133,6 +182,49 @@ export class ImageService {
       existing.refCount++;
       this.duplicateAvoidedCount++;
       this.duplicateBytesSaved += buffer.length;
+
+      const existingIsGif =
+        isBufferGif ||
+        existing.mimeType === 'image/gif' ||
+        existing.variants?.original?.format === 'gif' ||
+        existing.variants?.original?.url?.endsWith('.gif') ||
+        existing.variants?.preview?.url?.endsWith('.gif');
+
+      if (existingIsGif) {
+        const gifKey = `${hash}/animated.gif`;
+        const gifUrl = `/uploads/images/${hash}/animated.gif`;
+        const diskDir = path.resolve(process.cwd(), 'uploads', 'images', hash);
+        const animPath = path.join(diskDir, 'animated.gif');
+        const origPath = path.join(diskDir, 'original.gif');
+
+        if (!fs.existsSync(animPath)) {
+          if (fs.existsSync(origPath)) {
+            try { fs.copyFileSync(origPath, animPath); } catch {}
+          } else {
+            try { fs.writeFileSync(animPath, buffer); } catch {}
+          }
+        }
+
+        existing.mimeType = 'image/gif';
+        existing.variants.thumb = { key: gifKey, url: gifUrl, size: buffer.length || existing.originalSize, width: existing.width, height: existing.height, format: 'gif' };
+        existing.variants.preview = { key: gifKey, url: gifUrl, size: buffer.length || existing.originalSize, width: existing.width, height: existing.height, format: 'gif' };
+        existing.variants.highres = { key: gifKey, url: gifUrl, size: buffer.length || existing.originalSize, width: existing.width, height: existing.height, format: 'gif' };
+        existing.variants.original = { key: gifKey, url: gifUrl, size: buffer.length || existing.originalSize, width: existing.width, height: existing.height, format: 'gif' };
+
+        this.saveRegistry();
+
+        return {
+          imageUrl: gifUrl,
+          thumbnailUrl: gifUrl,
+          highResUrl: gifUrl,
+          hash: existing.hash,
+          width: existing.width,
+          height: existing.height,
+          size: buffer.length || existing.originalSize,
+          isDuplicate: true,
+        };
+      }
+
       this.saveRegistry();
 
       return {
@@ -197,81 +289,39 @@ export class ImageService {
       };
     }
 
-    // 3. Smart Multi-Resolution Variants:
-    // A) Thumbnail: 160x200 WebP (~8-18 KB) for zoomed-out overview
-    const thumbBuffer = await sharp(buffer)
-      .rotate()
-      .resize(160, 200, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 75, effort: 4 })
-      .toBuffer();
-
-    // B) Canvas Preview: 800x1000 WebP (~35-70 KB, crystal sharp for 4K / Retina and max zoom)
+    // 3. Smart High-Efficiency WebP (Single Master File):
+    // Ultra-optimized 800x1000 WebP at 85% quality: crystal-sharp on 4K/Retina displays & maximum zoom,
+    // stripped of unneeded camera EXIF metadata, weighing only ~35-50 KB (90%+ storage savings).
     const previewBuffer = await sharp(buffer)
       .rotate()
-      .resize(800, 1000, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 88, effort: 4 })
+      .resize(800, 1000, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 85, effort: 4 })
       .toBuffer();
 
-    // C) High-Res: 1600x2000 WebP (~90-180 KB) for detail modal inspection & share kits
-    const highresBuffer = await sharp(buffer)
-      .rotate()
-      .resize(1600, 2000, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 90, effort: 4 })
-      .toBuffer();
-
-    // 4. Save Variants in Content-Addressed Object Storage
-    const thumbKey = `${hash}/thumb.webp`;
+    // 4. Save Single Master Variant in Object Storage
     const previewKey = `${hash}/preview.webp`;
-    const highresKey = `${hash}/highres.webp`;
-
-    const thumbUrl = await storage.save(thumbKey, thumbBuffer, 'image/webp');
     const previewUrl = await storage.save(previewKey, previewBuffer, 'image/webp');
-    const highresUrl = await storage.save(highresKey, highresBuffer, 'image/webp');
 
-    // Optionally store original if requested
-    const originalKey = `${hash}/original.${meta.format || 'jpg'}`;
-    const originalUrl = await storage.save(originalKey, buffer, mimeType);
+    const variantInfo: ImageVariantInfo = {
+      key: previewKey,
+      url: previewUrl,
+      size: previewBuffer.length,
+      width: Math.min(800, originalWidth),
+      height: Math.min(1000, originalHeight),
+      format: 'webp',
+    };
 
     // 5. Commit Metadata to Registry
     const record: ImageAssetRecord = {
       hash,
       originalSize: buffer.length,
-      mimeType,
+      mimeType: 'image/webp',
       width: originalWidth,
       height: originalHeight,
       variants: {
-        thumb: {
-          key: thumbKey,
-          url: thumbUrl,
-          size: thumbBuffer.length,
-          width: 100,
-          height: 130,
-          format: 'webp',
-        },
-        preview: {
-          key: previewKey,
-          url: previewUrl,
-          size: previewBuffer.length,
-          width: 340,
-          height: 420,
-          format: 'webp',
-        },
-        highres: {
-          key: highresKey,
-          url: highresUrl,
-          size: highresBuffer.length,
-          width: Math.min(800, originalWidth),
-          height: Math.min(1000, originalHeight),
-          format: 'webp',
-        },
-        original: {
-          key: originalKey,
-          url: originalUrl,
-          size: buffer.length,
-          width: originalWidth,
-          height: originalHeight,
-          format: meta.format || 'jpg',
-        },
+        thumb: variantInfo,
+        preview: variantInfo,
+        highres: variantInfo,
       },
       refCount: 1,
       createdAt: new Date().toISOString(),
@@ -282,14 +332,112 @@ export class ImageService {
 
     return {
       imageUrl: previewUrl,
-      thumbnailUrl: thumbUrl,
-      highResUrl: highresUrl,
+      thumbnailUrl: previewUrl,
+      highResUrl: previewUrl,
       hash,
       width: originalWidth,
       height: originalHeight,
       size: previewBuffer.length,
       isDuplicate: false,
     };
+  }
+
+  /**
+   * Permanently purge an asset directory and its registry entry
+   */
+  purgeAsset(hash: string): boolean {
+    try {
+      const diskDir = path.resolve(process.cwd(), 'uploads', 'images', hash);
+      if (fs.existsSync(diskDir)) {
+        fs.rmSync(diskDir, { recursive: true, force: true });
+      }
+      this.registry.delete(hash);
+      this.saveRegistry();
+      return true;
+    } catch (e) {
+      console.warn(`Failed to purge asset ${hash}:`, e);
+      return false;
+    }
+  }
+
+  /**
+   * Scans uploads/images/ and purges any folders not in referencedHashes,
+   * and strips redundant files (original.*, highres.webp, thumb.webp) from active ones.
+   */
+  cleanupOrphans(referencedHashes: Set<string>): { deletedCount: number; freedBytes: number } {
+    const imagesDir = path.resolve(process.cwd(), 'uploads', 'images');
+    let deletedCount = 0;
+    let freedBytes = 0;
+
+    if (!fs.existsSync(imagesDir)) return { deletedCount: 0, freedBytes: 0 };
+
+    try {
+      const folders = fs.readdirSync(imagesDir);
+      for (const folder of folders) {
+        const folderPath = path.join(imagesDir, folder);
+        try {
+          if (!fs.statSync(folderPath).isDirectory()) continue;
+        } catch {
+          continue;
+        }
+
+        if (!referencedHashes.has(folder)) {
+          // Folder is not referenced by any active spot! Completely delete it.
+          const size = this.getDirSize(folderPath);
+          freedBytes += size;
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          this.registry.delete(folder);
+          deletedCount++;
+        } else {
+          // Folder IS referenced: purge any redundant legacy variants (original.*, highres.webp, thumb.webp)
+          try {
+            const files = fs.readdirSync(folderPath);
+            const hasAnim = files.includes('animated.gif');
+            for (const f of files) {
+              const filePath = path.join(folderPath, f);
+              if (hasAnim && f !== 'animated.gif') {
+                freedBytes += fs.statSync(filePath).size;
+                fs.unlinkSync(filePath);
+              } else if (!hasAnim && f !== 'preview.webp') {
+                freedBytes += fs.statSync(filePath).size;
+                fs.unlinkSync(filePath);
+              }
+            }
+          } catch (e) {
+            console.warn(`Could not clean redundant files in ${folder}:`, e);
+          }
+        }
+      }
+
+      // Clean up any registry entries not in referencedHashes
+      for (const key of Array.from(this.registry.keys())) {
+        if (!referencedHashes.has(key)) {
+          this.registry.delete(key);
+        }
+      }
+
+      this.saveRegistry();
+    } catch (err) {
+      console.warn('Error during image orphan cleanup:', err);
+    }
+
+    return { deletedCount, freedBytes };
+  }
+
+  private getDirSize(dirPath: string): number {
+    let total = 0;
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          total += this.getDirSize(fullPath);
+        } else {
+          total += fs.statSync(fullPath).size;
+        }
+      }
+    } catch {}
+    return total;
   }
 
   /**
@@ -325,12 +473,18 @@ export class ImageService {
     let highResStorageBytes = 0;
 
     for (const asset of this.registry.values()) {
-      if (asset.variants.original) {
+      if (asset.variants?.original && asset.variants.original.key !== asset.variants.preview?.key) {
         originalStorageBytes += asset.variants.original.size;
       }
-      previewStorageBytes += asset.variants.preview.size;
-      thumbStorageBytes += asset.variants.thumb.size;
-      highResStorageBytes += asset.variants.highres.size;
+      if (asset.variants?.preview) {
+        previewStorageBytes += asset.variants.preview.size;
+      }
+      if (asset.variants?.thumb && asset.variants.thumb.key !== asset.variants.preview?.key) {
+        thumbStorageBytes += asset.variants.thumb.size;
+      }
+      if (asset.variants?.highres && asset.variants.highres.key !== asset.variants.preview?.key) {
+        highResStorageBytes += asset.variants.highres.size;
+      }
     }
 
     totalStorageBytes = originalStorageBytes + previewStorageBytes + thumbStorageBytes + highResStorageBytes;

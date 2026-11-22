@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './server/api.ts';
+import { db } from './server/database.ts';
 import { migrateBase64Images } from './server/migrateImages.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,11 +17,40 @@ async function startServer() {
   // Automatically migrate any legacy Base64 images to content-addressed object storage
   await migrateBase64Images().catch(err => console.warn('Image migration notice:', err));
 
+  // Purge any orphaned uploads / media files not referenced by active spots
+  try {
+    const cleaned = db.cleanupUnreferencedMedia();
+    if (cleaned.deletedImages > 0 || cleaned.deletedAudio > 0) {
+      console.log(`[MediaManager] Cleaned ${cleaned.deletedImages} orphaned image folders, ${cleaned.deletedAudio} audio files (${(cleaned.freedBytes / 1024).toFixed(1)} KB freed).`);
+    }
+  } catch (err) {
+    console.warn('[MediaManager] Startup cleanup error:', err);
+  }
+
   // Static uploads directory with 1-year immutable caching for zero-egress/low-latency delivery
   const uploadsPath = path.resolve(__dirname, 'uploads');
   if (!fs.existsSync(uploadsPath)) {
     fs.mkdirSync(uploadsPath, { recursive: true });
   }
+
+  // Intercept any request for an animated GIF asset requested as a static webp variant (e.g. from legacy caches)
+  app.get('/uploads/images/:hash/:variant.webp', (req, res, next) => {
+    const { hash } = req.params;
+    const animPath = path.resolve(uploadsPath, 'images', hash, 'animated.gif');
+    const origPath = path.resolve(uploadsPath, 'images', hash, 'original.gif');
+    if (fs.existsSync(animPath)) {
+      res.setHeader('Content-Type', 'image/gif');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.sendFile(animPath);
+    }
+    if (fs.existsSync(origPath)) {
+      res.setHeader('Content-Type', 'image/gif');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.sendFile(origPath);
+    }
+    next();
+  });
+
   app.use('/uploads', express.static(uploadsPath, {
     maxAge: '1y',
     immutable: true,

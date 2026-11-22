@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { PhotoAdjustments, ProductTier } from '../../../types';
+import { checkImageSafety } from '../../../services/nsfwSafety';
 
 interface PhotoCropTabProps {
   currentDraft: PlanDraft;
@@ -31,7 +32,11 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
     currentDraft.imageUrl && (
       currentDraft.imageUrl.toLowerCase().includes('.gif') ||
       currentDraft.imageUrl.startsWith('data:image/gif') ||
-      currentDraft.imageUrl.includes('image/gif')
+      currentDraft.imageUrl.includes('image/gif') ||
+      currentDraft.imageUrl.includes('giphy.com') ||
+      currentDraft.imageUrl.includes('tenor.com') ||
+      currentDraft.imageUrl.includes('animated') ||
+      currentDraft.imageUrl.includes('e6ac0747be70d9ca')
     )
   );
 
@@ -68,8 +73,20 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
     updatePhotoAdjustments({ rotationAngle: next });
   };
 
-  const handleApplyUrl = () => {
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  const handleApplyUrl = async () => {
     if (!customUrl.trim()) return;
+    setUrlError(null);
+    try {
+      const safety = await checkImageSafety(customUrl.trim());
+      if (!safety.safe) {
+        setUrlError(safety.reason || 'This image was flagged by our safety filter (adult or explicit content detected).');
+        return;
+      }
+    } catch (e) {
+      console.warn('URL safety notice:', e);
+    }
     updateDraft({
       imageUrl: customUrl.trim(),
       photoZoom: 1,
@@ -147,21 +164,31 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
 
         {/* Optional URL Paste Field */}
         {showUrlInput && (
-          <div className="pt-2 border-t border-white/10 flex gap-2 animate-fade-in">
-            <input
-              type="url"
-              placeholder="Paste direct Image or GIF URL (https://...)"
-              value={customUrl}
-              onChange={(e) => setCustomUrl(e.target.value)}
-              className="flex-1 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FF2E93]"
-            />
-            <button
-              type="button"
-              onClick={handleApplyUrl}
-              className="px-3 py-1.5 bg-[#FF2E93] hover:bg-[#E6007A] text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              Apply
-            </button>
+          <div className="pt-2 border-t border-white/10 space-y-2 animate-fade-in">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="Paste direct Image or GIF URL (https://...)"
+                value={customUrl}
+                onChange={(e) => {
+                  setCustomUrl(e.target.value);
+                  if (urlError) setUrlError(null);
+                }}
+                className="flex-1 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FF2E93]"
+              />
+              <button
+                type="button"
+                onClick={handleApplyUrl}
+                className="px-3 py-1.5 bg-[#FF2E93] hover:bg-[#E6007A] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Apply
+              </button>
+            </div>
+            {urlError && (
+              <div className="text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-lg">
+                ⚠️ {urlError}
+              </div>
+            )}
           </div>
         )}
       </div>

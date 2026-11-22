@@ -103,7 +103,8 @@
         "sp_big_1926",
         "sp_big_1951",
         "sp_big_1976",
-        "sp_1795181373880_akpj"
+        "sp_1795181373880_akpj",
+        "sp_1795182666665_1ica"
       ]
     },
     {
@@ -685,7 +686,7 @@
         "fontSize": 22,
         "textOpacity": 1,
         "alignment": "center",
-        "imageUrl": "/uploads/images/e6ac0747be70d9ca/preview.webp",
+        "imageUrl": "/uploads/images/e6ac0747be70d9ca/animated.gif",
         "imageFit": "cover",
         "photoOpacity": 1,
         "photoZoom": 1,
@@ -3902,7 +3903,7 @@
           "fontSize": 22,
           "textOpacity": 1,
           "alignment": "center",
-          "imageUrl": "/uploads/images/e6ac0747be70d9ca/preview.webp",
+          "imageUrl": "/uploads/images/e6ac0747be70d9ca/animated.gif",
           "imageFit": "cover",
           "photoOpacity": 1,
           "photoZoom": 1,
@@ -3997,7 +3998,7 @@
           "fontSize": 22,
           "textOpacity": 1,
           "alignment": "center",
-          "imageUrl": "/uploads/images/e6ac0747be70d9ca/preview.webp",
+          "imageUrl": "/uploads/images/e6ac0747be70d9ca/animated.gif",
           "imageFit": "cover",
           "photoOpacity": 1,
           "photoZoom": 1,
@@ -4361,6 +4362,15 @@
       "tier": "big_pop",
       "message": "Spot Pioneer claimed a Big Pop on SpotPop!",
       "timestamp": "2026-11-20T13:51:06.666Z"
+    },
+    {
+      "id": "act_1795374504471_dzby",
+      "type": "claimed",
+      "spotId": "sp_temp_cleanup_test",
+      "creatorName": "Cleanup Tester",
+      "tier": "mini_pop",
+      "message": "Cleanup Tester claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-22T19:08:24.471Z"
     }
   ],
   "systemSettings": {

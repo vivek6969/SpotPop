@@ -3,6 +3,8 @@ import path from 'path';
 import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
 import { SpatialIndex } from './spatialIndex.ts';
+import { imageService } from './imageService.ts';
+import { audioService } from './audioService.ts';
 
 interface DatabaseSchema {
   users: User[];
@@ -767,9 +769,19 @@ class Database {
   updateSpot(id: string, updates: Partial<Spot>): Spot | null {
     const idx = this.data.spots.findIndex(s => s.id === id);
     if (idx === -1) return null;
+    const oldSpot = this.data.spots[idx];
     this.data.spots[idx] = { ...this.data.spots[idx], ...updates };
     this.spatialIndex.insert(this.data.spots[idx]);
     this.save();
+
+    // If media changed, immediately purge any orphaned files
+    if (
+      updates.content?.imageUrl !== undefined ||
+      updates.content?.audio !== undefined
+    ) {
+      this.cleanupUnreferencedMedia();
+    }
+
     return this.data.spots[idx];
   }
 
@@ -779,6 +791,8 @@ class Database {
     if (this.data.spots.length !== initialLen) {
       this.spatialIndex.remove(id);
       this.save();
+      // Immediately purge deleted spot's media files from disk
+      this.cleanupUnreferencedMedia();
       return true;
     }
     return false;
@@ -794,6 +808,8 @@ class Database {
         this.spatialIndex.remove(id);
       }
       this.save();
+      // Immediately purge deleted spots' media files from disk
+      this.cleanupUnreferencedMedia();
     }
     return deletedCount;
   }
@@ -803,7 +819,61 @@ class Database {
     this.data.spots = [];
     this.spatialIndex.clear();
     this.save();
+    // Immediately purge all spot media from disk
+    this.cleanupUnreferencedMedia();
     return total;
+  }
+
+  /**
+   * Scans all spots in database, finds all unreferenced image folders and audio files,
+   * and permanently erases them from disk. Also cleans up redundant image files.
+   */
+  cleanupUnreferencedMedia(): { deletedImages: number; deletedAudio: number; freedBytes: number } {
+    const activeHashes = new Set<string>();
+    const activeAudioKeys = new Set<string>();
+
+    const checkUrl = (url?: string) => {
+      if (!url) return;
+      const match = url.match(/\/uploads\/images\/([a-f0-9]+)\//i);
+      if (match) activeHashes.add(match[1]);
+    };
+
+    for (const s of this.data.spots) {
+      checkUrl(s.content?.imageUrl);
+      if (Array.isArray(s.content?.layers)) {
+        for (const l of s.content.layers) {
+          checkUrl(l.imageUrl);
+          checkUrl(l.content);
+        }
+      }
+      if (s.content?.audio?.storageKey) {
+        activeAudioKeys.add(s.content.audio.storageKey);
+      }
+      if (s.content?.audio?.url) {
+        activeAudioKeys.add(path.basename(s.content.audio.url));
+      }
+    }
+
+    // Also preserve media referenced in pending orders
+    for (const o of this.data.orders) {
+      checkUrl((o.spotDraft as any)?.imageUrl);
+      checkUrl(o.spotDraft?.content?.imageUrl);
+      if (Array.isArray(o.spotDraft?.content?.layers)) {
+        for (const l of o.spotDraft.content.layers) {
+          checkUrl(l.imageUrl);
+          checkUrl(l.content);
+        }
+      }
+    }
+
+    const imgResult = imageService.cleanupOrphans(activeHashes);
+    const audResult = audioService.cleanOrphanedAudio(activeAudioKeys, true);
+
+    return {
+      deletedImages: imgResult.deletedCount,
+      deletedAudio: audResult.deletedCount,
+      freedBytes: imgResult.freedBytes + audResult.freedBytes,
+    };
   }
 
   queryViewport(minX: number, minY: number, maxX: number, maxY: number, limit: number = 2000): Spot[] {

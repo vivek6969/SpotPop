@@ -46,14 +46,14 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
 
   return (
     <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
-      {/* 1. Text Inputs (Headline & Secondary Subtext) */}
+      {/* 1. Text Inputs (Headline, Subtext & Creator Signature) */}
       <div className="space-y-2.5">
         {/* Main Headline */}
         <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 focus-within:border-[#FF2E93] transition-colors">
           <div className="flex items-center justify-between">
             <label className="text-[11px] font-bold text-white flex items-center gap-1.5">
               <span>💬</span>
-              <span>Main Headline</span>
+              <span>Main Headline (Optional)</span>
             </label>
             <div className="flex items-center gap-2">
               {currentDraft.headline && (
@@ -86,7 +86,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             maxLength={48}
             value={currentDraft.headline}
             onChange={(e) => updateDraft({ headline: e.target.value })}
-            placeholder="Type your message..."
+            placeholder="Type your message or leave blank..."
             className="w-full bg-transparent text-white text-sm font-medium focus:outline-none placeholder:text-slate-500"
           />
         </div>
@@ -114,6 +114,38 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             value={currentDraft.secondaryText || ''}
             onChange={(e) => updateDraft({ secondaryText: e.target.value })}
             placeholder="e.g. Can't wait to see you there! ♡"
+            className="w-full bg-transparent text-white text-xs font-medium focus:outline-none placeholder:text-slate-500"
+          />
+        </div>
+
+        {/* Creator Signature / Author Tag */}
+        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 focus-within:border-emerald-400 transition-colors">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+              <span>✍️</span>
+              <span>Creator Signature / Author Tag (Optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              {currentDraft.creatorName && (
+                <button
+                  type="button"
+                  onClick={() => updateDraft({ creatorName: '' })}
+                  className="text-[10px] text-slate-400 hover:text-rose-400 font-semibold cursor-pointer"
+                >
+                  ✕ Clear
+                </button>
+              )}
+              <span className="text-[10px] text-slate-500 font-mono">
+                {(currentDraft.creatorName || '').length}/32
+              </span>
+            </div>
+          </div>
+          <input
+            type="text"
+            maxLength={32}
+            value={currentDraft.creatorName || ''}
+            onChange={(e) => updateDraft({ creatorName: e.target.value })}
+            placeholder="e.g. Your Name, Handle, or leave blank to hide"
             className="w-full bg-transparent text-white text-xs font-medium focus:outline-none placeholder:text-slate-500"
           />
         </div>

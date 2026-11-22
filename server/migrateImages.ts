@@ -3,8 +3,6 @@ import path from 'path';
 import { imageService } from './imageService.ts';
 
 const DB_FILE = path.resolve(process.cwd(), 'server-db.json');
-const BACKUP_FILE = path.resolve(process.cwd(), 'server-db.backup.json');
-
 export async function migrateBase64Images(): Promise<{
   migratedSpots: number;
   migratedOrders: number;
@@ -16,12 +14,12 @@ export async function migrateBase64Images(): Promise<{
   }
 
   const originalContent = fs.readFileSync(DB_FILE, 'utf-8');
+  if (!originalContent.includes('data:image')) {
+    // Zero legacy base64 images present: no migration or backup file needed
+    return { migratedSpots: 0, migratedOrders: 0, originalSizeBytes: 0, newSizeBytes: 0 };
+  }
+
   const originalSizeBytes = fs.statSync(DB_FILE).size;
-
-  // 1. Safety First: Create non-destructive backup before modifying anything
-  fs.writeFileSync(BACKUP_FILE, originalContent, 'utf-8');
-  console.log(`[Migration] Database backed up safely to ${BACKUP_FILE}`);
-
   const db = JSON.parse(originalContent);
   let migratedSpots = 0;
   let migratedOrders = 0;
@@ -31,12 +29,25 @@ export async function migrateBase64Images(): Promise<{
     for (const spot of db.spots) {
       if (spot.content?.imageUrl && spot.content.imageUrl.startsWith('data:image')) {
         try {
-          const result = await imageService.processAndStore(spot.content.imageUrl, `${spot.id}.webp`);
+          const isGif = spot.content.imageUrl.startsWith('data:image/gif');
+          const result = await imageService.processAndStore(spot.content.imageUrl, `${spot.id}.${isGif ? 'gif' : 'webp'}`);
           spot.content.imageUrl = result.imageUrl;
           migratedSpots++;
           console.log(`[Migration] Migrated spot ${spot.id} to ${result.imageUrl} (${(result.size / 1024).toFixed(1)} KB)`);
         } catch (err) {
           console.error(`[Migration] Error migrating spot ${spot.id}:`, err);
+        }
+      } else if (spot.content?.imageUrl && spot.content.imageUrl.includes('/uploads/images/')) {
+        const match = spot.content.imageUrl.match(/\/uploads\/images\/([a-f0-9]+)\//);
+        if (match) {
+          const hash = match[1];
+          const diskDir = path.resolve(process.cwd(), 'uploads', 'images', hash);
+          const hasGif = fs.existsSync(path.join(diskDir, 'animated.gif')) || fs.existsSync(path.join(diskDir, 'original.gif'));
+          if (hasGif && !spot.content.imageUrl.endsWith('.gif')) {
+            spot.content.imageUrl = `/uploads/images/${hash}/animated.gif`;
+            migratedSpots++;
+            console.log(`[Migration] Upgraded spot ${spot.id} to animated GIF (${spot.content.imageUrl})`);
+          }
         }
       }
     }

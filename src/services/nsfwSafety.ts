@@ -9,11 +9,11 @@ export interface SafetyFilterConfig {
 }
 
 export const DEFAULT_SAFETY_CONFIG: SafetyFilterConfig = {
-  pornThreshold: 0.55,
-  hentaiThreshold: 0.55,
-  combinedAdultThreshold: 0.65,
-  sexyStrictThreshold: 0.88,
-  neutralSafeBuffer: 0.30,
+  pornThreshold: 0.25,
+  hentaiThreshold: 0.30,
+  combinedAdultThreshold: 0.35,
+  sexyStrictThreshold: 0.45,
+  neutralSafeBuffer: 0.35,
 };
 
 export interface SafetyCheckResult {
@@ -127,23 +127,25 @@ export async function checkImageSafety(
     const sexyScore = scores.Sexy || 0;
     const neutralScore = scores.Neutral || 0;
     const drawingScore = scores.Drawing || 0;
+    const safeScore = neutralScore + drawingScore;
+    const adultScore = pornScore + hentaiScore + sexyScore;
 
     const topPrediction = predictions.reduce((prev, current) =>
       current.probability > prev.probability ? current : prev
     );
 
-    // Rule 1: High-confidence Porn
-    if (pornScore >= config.pornThreshold) {
+    // Rule 1: Direct Porn / Genitalia / Explicit Sexual Content (>= 25%)
+    if (pornScore >= 0.25) {
       return {
         safe: false,
-        reason: `Explicit content detected (${Math.round(pornScore * 100)}% confidence). Prohibited on the public canvas.`,
+        reason: `Explicit content or nudity detected (${Math.round(pornScore * 100)}% confidence). Prohibited on the public canvas.`,
         predictions,
         topPrediction,
       };
     }
 
-    // Rule 2: High-confidence Hentai
-    if (hentaiScore >= config.hentaiThreshold) {
+    // Rule 2: Explicit Animated / Illustrated Adult Content (>= 30%)
+    if (hentaiScore >= 0.30) {
       return {
         safe: false,
         reason: `Explicit animated/hentai content detected (${Math.round(hentaiScore * 100)}% confidence). Prohibited on the public canvas.`,
@@ -152,23 +154,41 @@ export async function checkImageSafety(
       };
     }
 
-    // Rule 3: Combined adult content (Porn + Hentai)
-    if (pornScore + hentaiScore >= config.combinedAdultThreshold) {
+    // Rule 3: Combined Porn + Hentai (>= 35%)
+    if (pornScore + hentaiScore >= 0.35) {
       return {
         safe: false,
-        reason: 'Adult content detected. Please choose a community-friendly image or artwork.',
+        reason: 'Adult content detected. Prohibited on the public canvas.',
         predictions,
         topPrediction,
       };
     }
 
-    // Rule 4: Sexy category with strict protection for safe ordinary photos
-    // If neutral or drawing scores are substantial, ordinary photos (swimwear, gym, statues, portraits) are ALLOWED.
-    const safeBuffer = neutralScore + drawingScore;
-    if (sexyScore >= config.sexyStrictThreshold && safeBuffer < config.neutralSafeBuffer) {
+    // Rule 4: Combined Porn + Sexy (>= 45% adult) when safe neutral score is low (< 50%)
+    if (pornScore + sexyScore >= 0.45 && safeScore < 0.50) {
       return {
         safe: false,
-        reason: 'Suggestive or explicit content detected. Please choose a community-friendly photo.',
+        reason: 'Nudity or sexually explicit content detected. Prohibited on the public canvas.',
+        predictions,
+        topPrediction,
+      };
+    }
+
+    // Rule 5: Nude body / Revealing Content (Sexy >= 45% and Neutral < 35%)
+    if (sexyScore >= 0.45 && neutralScore < 0.35) {
+      return {
+        safe: false,
+        reason: 'Nudity or sexually suggestive content detected. Prohibited on the public canvas.',
+        predictions,
+        topPrediction,
+      };
+    }
+
+    // Rule 6: Overwhelming adult probability (Porn + Sexy + Hentai >= 60% with low safe buffer < 35%)
+    if (adultScore >= 0.60 && safeScore < 0.35) {
+      return {
+        safe: false,
+        reason: 'Explicit or adult content detected. Prohibited on the public canvas.',
         predictions,
         topPrediction,
       };

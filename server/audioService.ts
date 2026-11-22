@@ -88,9 +88,27 @@ export class AudioService {
   }
 
   /**
+   * Delete an audio file directly by storage key or url
+   */
+  deleteAudio(storageKeyOrUrl: string): boolean {
+    this.ensureDirectory();
+    try {
+      const cleanKey = path.basename(storageKeyOrUrl);
+      const filePath = path.join(AUDIO_DIR, cleanKey);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return true;
+      }
+    } catch (e) {
+      console.warn(`Could not delete audio ${storageKeyOrUrl}:`, e);
+    }
+    return false;
+  }
+
+  /**
    * Safely delete orphaned audio files that are not referenced by any published Big Pop.
    */
-  cleanOrphanedAudio(activeKeys: Set<string>): { deletedCount: number; freedBytes: number } {
+  cleanOrphanedAudio(activeKeys: Set<string>, forceAll: boolean = false): { deletedCount: number; freedBytes: number } {
     this.ensureDirectory();
     let deletedCount = 0;
     let freedBytes = 0;
@@ -105,8 +123,8 @@ export class AudioService {
           const filePath = path.join(AUDIO_DIR, file);
           try {
             const stats = fs.statSync(filePath);
-            // Protect recent uploads (within last hour) from race conditions during creation
-            if (now - stats.mtimeMs > ONE_HOUR_MS) {
+            // Protect recent uploads unless forced
+            if (forceAll || now - stats.mtimeMs > ONE_HOUR_MS) {
               freedBytes += stats.size;
               fs.unlinkSync(filePath);
               deletedCount++;

@@ -1122,8 +1122,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           if (res?.imageUrl) {
             updateDraft({ imageUrl: res.imageUrl });
           }
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Background image upload notice:', err);
+          setErrorMessage(err.message || 'This image was flagged by our safety filter (adult or explicit content detected).');
+          updateDraft({ imageUrl: DEFAULT_SPOT_PHOTO });
         }
       }
     };
@@ -1132,12 +1134,18 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   // Proceed to checkout and publish
   const handleProceedToPayment = async () => {
-    if (!currentDraft.creatorName.trim()) {
-      setErrorMessage('Please enter your creator display name');
-      return;
-    }
-    if (!currentDraft.headline.trim()) {
-      setErrorMessage('Please enter your headline or message');
+    // Both Headline and Creator Signature are completely optional!
+    // Verify the spot has at least one piece of content (photo, drawing, text, sticker, audio)
+    const hasPhoto = Boolean(currentDraft.imageUrl);
+    const hasDrawing = Boolean(currentDraft.drawingDataUrl);
+    const hasStickers = Boolean(currentDraft.stickers && currentDraft.stickers.length > 0);
+    const hasLayers = Boolean(currentDraft.layers && currentDraft.layers.length > 0);
+    const hasHeadline = Boolean(currentDraft.headline && currentDraft.headline.trim());
+    const hasSubtext = Boolean(currentDraft.secondaryText && currentDraft.secondaryText.trim());
+    const hasAudio = Boolean(currentDraft.audioDraft || editSpot?.content?.audio);
+
+    if (!hasPhoto && !hasDrawing && !hasStickers && !hasLayers && !hasHeadline && !hasSubtext && !hasAudio) {
+      setErrorMessage('Please add some content (a photo, message, drawing, sticker, or voice note) to your spot!');
       return;
     }
 
@@ -1146,6 +1154,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setStep('processing');
 
     try {
+      const resolvedCreator = currentDraft.creatorName?.trim() || 'Spot Pioneer';
+      const resolvedHeadline = currentDraft.headline ? currentDraft.headline.trim() : '';
+      const resolvedAuthor = currentDraft.creatorName ? currentDraft.creatorName.trim() : '';
       // Ensure image is converted to optimized object storage asset before submitting
       let finalImageUrl = currentDraft.imageUrl;
       if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
@@ -1192,16 +1203,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       const draftSpot: Partial<Spot> = {
         shape: currentDraft.shape,
         background: currentDraft.backgroundColor,
-        creatorName: currentDraft.creatorName.trim(),
+        creatorName: resolvedCreator,
         content: {
-          headline: currentDraft.headline.trim(),
+          headline: resolvedHeadline,
           headlineX: currentDraft.headlineX,
           headlineY: currentDraft.headlineY,
-          text: currentDraft.secondaryText.trim(),
+          text: currentDraft.secondaryText ? currentDraft.secondaryText.trim() : '',
           subtextX: currentDraft.subtextX,
           subtextY: currentDraft.subtextY,
           subtextSize: currentDraft.subtextSize,
-          author: currentDraft.creatorName.trim(),
+          author: resolvedAuthor,
           authorX: currentDraft.authorX,
           authorY: currentDraft.authorY,
           authorSize: currentDraft.authorSize,
@@ -1239,7 +1250,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           {
             shape: currentDraft.shape,
             background: currentDraft.backgroundColor,
-            creatorName: currentDraft.creatorName.trim(),
+            creatorName: resolvedCreator,
             content: draftSpot.content,
           },
           authToken || undefined
@@ -1264,7 +1275,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       const orderRes = await api.createOrder({
         productId: tier,
         spotDraft: draftSpot,
-        creatorName: currentDraft.creatorName.trim(),
+        creatorName: resolvedCreator,
         token: authToken || undefined,
       });
 
@@ -1476,7 +1487,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     onDeleteSticker={handleDeleteSticker}
                     onUpdateLayer={handleUpdateLayer}
                     onDeleteLayer={handleDeleteLayer}
-                    onUpdateContent={(updates) => updateDraft(updates)}
+                    onUpdateContent={(updates) => {
+                      const draftUpdates: Partial<PlanDraft> = { ...updates };
+                      if (updates.author !== undefined) {
+                        draftUpdates.creatorName = updates.author;
+                      }
+                      if (updates.text !== undefined) {
+                        draftUpdates.secondaryText = updates.text;
+                      }
+                      updateDraft(draftUpdates);
+                    }}
                     // Overlay full card drawing canvas when drawing mode is toggled (4x HD Retina Supersampled)
                     drawingCanvasOverlay={
                       isDrawingMode ? (
