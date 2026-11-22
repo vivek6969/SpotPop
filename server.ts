@@ -66,7 +66,18 @@ async function startServer() {
   // In development, hook up Vite dev server middlewares
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          ignored: [
+            '**/uploads/**',
+            '**/server-db*.json',
+            '**/dev-dist/**',
+            '**/.tmp/**',
+            '**/dist/**',
+          ],
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

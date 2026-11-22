@@ -18,10 +18,11 @@ export default defineConfig(() => {
         manifest: false, // We supply custom public/manifest.webmanifest
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globIgnores: ['**/uploads/**', '**/node_modules/**'],
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit to handle image assets
         },
         devOptions: {
-          enabled: true,
+          enabled: false, // Disable in development to prevent dev SW from reloading the page
         },
       }),
     ],
@@ -33,7 +34,15 @@ export default defineConfig(() => {
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: [
+          '**/uploads/**',
+          '**/server-db*.json',
+          '**/dev-dist/**',
+          '**/.tmp/**',
+          '**/dist/**',
+        ],
+      },
     },
   };
 });

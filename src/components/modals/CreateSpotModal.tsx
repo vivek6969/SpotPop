@@ -726,6 +726,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   };
 
   const handleCustomStickerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -1071,15 +1073,19 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   // Image File Upload for Big Pop with Local Client-Side MobileNetV2 Nudity Prevention
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.gif')) {
       setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF)');
+      e.target.value = '';
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
       setErrorMessage('Image size must be less than 8MB');
+      e.target.value = '';
       return;
     }
 
@@ -1130,6 +1136,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       }
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // Proceed to checkout and publish
