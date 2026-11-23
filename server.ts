@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -91,7 +92,20 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 SpotPop server running on http://0.0.0.0:${PORT}`);
+    const interfaces = os.networkInterfaces();
+    const networkIps: string[] = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const net of interfaces[name] || []) {
+        if (net.family === 'IPv4' && !net.internal) {
+          networkIps.push(net.address);
+        }
+      }
+    }
+    console.log(`🚀 SpotPop server running:`);
+    console.log(`   • Local:   http://localhost:${PORT}`);
+    for (const ip of networkIps) {
+      console.log(`   • Network: http://${ip}:${PORT} (Open on your phone)`);
+    }
   });
 }
 
