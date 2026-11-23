@@ -803,6 +803,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   const lastSelectedAtRef = useRef<number>(0);
 
   const handleSelectItem = (id: string | null) => {
+    // If an item (e.g. photo, headline, sticker) was selected very recently (< 450ms),
+    // ignore any accidental unselect or background clicks that immediately follow the pointer event!
+    if ((id === null || id === 'background') && Date.now() - lastSelectedAtRef.current < 450) {
+      return;
+    }
+
     setSelectedItemId(id);
     if (!id) return;
     lastSelectedAtRef.current = Date.now();
@@ -913,9 +919,14 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   // Auto-scroll tab bar so active section is always visible
   useEffect(() => {
     if (!tabsContainerRef.current) return;
-    const activeBtn = tabsContainerRef.current.querySelector<HTMLElement>('[data-active="true"]');
+    const container = tabsContainerRef.current;
+    const activeBtn = container.querySelector<HTMLElement>('[data-active="true"]');
     if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      const containerRect = container.getBoundingClientRect();
+      const btnRect = activeBtn.getBoundingClientRect();
+      const currentScroll = container.scrollLeft;
+      const targetScroll = currentScroll + (btnRect.left - containerRect.left) - (containerRect.width / 2) + (btnRect.width / 2);
+      container.scrollTo({ left: targetScroll, behavior: 'smooth' });
     }
     setTimeout(checkTabsScroll, 300);
   }, [activeEditorTab, isDrawingMode]);
@@ -1476,8 +1487,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             <div className="lg:col-span-5 flex flex-col items-center">
               <div
                 onClick={(e) => {
-                  if (e.target === e.currentTarget && Date.now() - lastSelectedAtRef.current > 350) {
-                    setSelectedItemId(null);
+                  if (e.target === e.currentTarget) {
+                    handleSelectItem(null);
                   }
                 }}
                 className="w-full p-4 sm:p-6 rounded-2xl bg-[#090A0F] border border-white/10 flex flex-col items-center justify-center min-h-[360px] relative overflow-hidden shadow-inner select-none"
@@ -1675,6 +1686,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       onClick={() => {
                         setActiveEditorTab('photo');
                         setIsDrawingMode(false);
+                        setSelectedItemId('photo');
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
                         activeEditorTab === 'photo' && !isDrawingMode
@@ -1693,6 +1705,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     onClick={() => {
                       setActiveEditorTab('adjust');
                       setIsDrawingMode(false);
+                      setSelectedItemId('photo');
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
                       activeEditorTab === 'adjust' && !isDrawingMode
@@ -1712,6 +1725,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       onClick={() => {
                         setActiveEditorTab('retouch');
                         setIsDrawingMode(false);
+                        setSelectedItemId('photo');
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
                         activeEditorTab === 'retouch' && !isDrawingMode

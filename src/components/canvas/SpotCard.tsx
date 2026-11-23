@@ -472,7 +472,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
     const onPointerMove = (moveEvt: PointerEvent) => {
       const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
-      if (dist > 2) isDragging = true;
+      if (dist > 4) isDragging = true;
       if (!isDragging) return;
 
       const dx = (moveEvt.clientX - startClientX) / scale;
