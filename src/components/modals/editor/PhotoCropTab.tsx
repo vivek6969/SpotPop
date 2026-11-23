@@ -114,11 +114,6 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
               ) : (
                 <span className="w-full h-full flex items-center justify-center text-sm">📸</span>
               )}
-              {isGif && (
-                <span className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-[7px] font-black text-white text-center py-0.2">
-                  GIF
-                </span>
-              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">

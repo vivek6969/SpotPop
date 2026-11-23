@@ -839,12 +839,6 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
-            {isGif && (
-              <div className="absolute top-2 left-2 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                GIF
-              </div>
-            )}
             <img
               src={content.imageUrl}
               alt="Cutout Art"
@@ -889,12 +883,6 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
-            {isGif && (
-              <div className="absolute top-2.5 left-2.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                GIF
-              </div>
-            )}
             <img
               src={content.imageUrl}
               alt="Full Bleed Artwork"
@@ -967,12 +955,6 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
-            {isGif && content.imageUrl && (
-              <div className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                GIF
-              </div>
-            )}
             {content.imageUrl ? (
               <img
                 src={content.imageUrl}
@@ -1057,12 +1039,6 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               }
             }}
           >
-            {isGif && (
-              <div className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-xs text-[9px] font-black tracking-widest text-emerald-400 border border-emerald-500/40 pointer-events-none shadow-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                GIF
-              </div>
-            )}
             <img
               src={content.imageUrl}
               alt="Artwork"
