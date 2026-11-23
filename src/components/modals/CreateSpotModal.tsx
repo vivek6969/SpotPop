@@ -553,20 +553,35 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   // Active Draft based on tier
   const currentDraft = tier === 'big_pop' ? bigDraft : miniDraft;
 
-  // History tracking for Undo/Redo
-  const [undoHistory, setUndoHistory] = useState<PlanDraft[]>([]);
-  const [redoHistory, setRedoHistory] = useState<PlanDraft[]>([]);
+  // History tracking for Undo/Redo isolated by tier
+  const [miniUndoHistory, setMiniUndoHistory] = useState<PlanDraft[]>([]);
+  const [miniRedoHistory, setMiniRedoHistory] = useState<PlanDraft[]>([]);
+  const [bigUndoHistory, setBigUndoHistory] = useState<PlanDraft[]>([]);
+  const [bigRedoHistory, setBigRedoHistory] = useState<PlanDraft[]>([]);
   const lastHistorySnapshotRef = useRef<number>(0);
   const pendingHistoryDraftRef = useRef<PlanDraft | null>(null);
 
+  const undoHistory = tier === 'big_pop' ? bigUndoHistory : miniUndoHistory;
+  const redoHistory = tier === 'big_pop' ? bigRedoHistory : miniRedoHistory;
+
   const saveHistorySnapshot = (draftToSave: PlanDraft) => {
-    setUndoHistory((prev) => {
-      if (prev.length > 0 && JSON.stringify(prev[prev.length - 1]) === JSON.stringify(draftToSave)) {
-        return prev;
-      }
-      return [...prev.slice(-30), draftToSave];
-    });
-    setRedoHistory([]);
+    if (tier === 'big_pop') {
+      setBigUndoHistory((prev) => {
+        if (prev.length > 0 && JSON.stringify(prev[prev.length - 1]) === JSON.stringify(draftToSave)) {
+          return prev;
+        }
+        return [...prev, draftToSave].slice(-30);
+      });
+      setBigRedoHistory([]);
+    } else {
+      setMiniUndoHistory((prev) => {
+        if (prev.length > 0 && JSON.stringify(prev[prev.length - 1]) === JSON.stringify(draftToSave)) {
+          return prev;
+        }
+        return [...prev, draftToSave].slice(-30);
+      });
+      setMiniRedoHistory([]);
+    }
   };
 
   const updateDraft = (updates: Partial<PlanDraft>, immediateHistory = false) => {
@@ -593,29 +608,35 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   };
 
   const handleUndo = () => {
-    if (undoHistory.length === 0) return;
-    const previous = undoHistory[undoHistory.length - 1];
-    setRedoHistory((prev) => [...prev.slice(-30), currentDraft]);
-    setUndoHistory((prev) => prev.slice(0, -1));
-    triggerMobileHaptic(10);
+    const history = tier === 'big_pop' ? bigUndoHistory : miniUndoHistory;
+    if (history.length === 0) return;
+    const previous = history[history.length - 1];
     if (tier === 'big_pop') {
+      setBigRedoHistory((prev) => [...prev, currentDraft].slice(-30));
+      setBigUndoHistory((prev) => prev.slice(0, -1));
       setBigDraft(previous);
     } else {
+      setMiniRedoHistory((prev) => [...prev, currentDraft].slice(-30));
+      setMiniUndoHistory((prev) => prev.slice(0, -1));
       setMiniDraft(previous);
     }
+    triggerMobileHaptic(10);
   };
 
   const handleRedo = () => {
-    if (redoHistory.length === 0) return;
-    const next = redoHistory[redoHistory.length - 1];
-    setUndoHistory((prev) => [...prev.slice(-30), currentDraft]);
-    setRedoHistory((prev) => prev.slice(0, -1));
-    triggerMobileHaptic(10);
+    const history = tier === 'big_pop' ? bigRedoHistory : miniRedoHistory;
+    if (history.length === 0) return;
+    const next = history[history.length - 1];
     if (tier === 'big_pop') {
+      setBigUndoHistory((prev) => [...prev, currentDraft].slice(-30));
+      setBigRedoHistory((prev) => prev.slice(0, -1));
       setBigDraft(next);
     } else {
+      setMiniUndoHistory((prev) => [...prev, currentDraft].slice(-30));
+      setMiniRedoHistory((prev) => prev.slice(0, -1));
       setMiniDraft(next);
     }
+    triggerMobileHaptic(10);
   };
 
   // Active Tool Tab in Editor
@@ -1512,19 +1533,23 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   const MOBILE_TOOLS: { id: string; label: string; icon: string; bigPopOnly?: boolean }[] = [
     ...(tier === 'big_pop'
-      ? [{ id: 'photo', label: 'Tools', icon: '📐' }]
+      ? [{ id: 'photo', label: 'Tools', icon: '📐', bigPopOnly: true }]
       : []),
-    { id: 'adjust', label: 'Adjust', icon: '🎨' },
     ...(tier === 'big_pop'
-      ? [{ id: 'retouch', label: 'Retouch', icon: '✨' }]
+      ? [{ id: 'adjust', label: 'Adjust', icon: '🎨', bigPopOnly: true }]
+      : []),
+    ...(tier === 'big_pop'
+      ? [{ id: 'retouch', label: 'Retouch', icon: '✨', bigPopOnly: true }]
       : []),
     { id: 'text', label: 'Text', icon: '✍️' },
     { id: 'stickers', label: 'Stickers', icon: '💖' },
-    { id: 'draw', label: 'Draw', icon: '🖌️' },
+    ...(tier === 'big_pop'
+      ? [{ id: 'draw', label: 'Draw', icon: '🖌️', bigPopOnly: true }]
+      : []),
     { id: 'frames', label: 'Frames', icon: '🖼️' },
     { id: 'themes', label: 'Background', icon: '🌈' },
     ...(tier === 'big_pop'
-      ? [{ id: 'audio', label: 'Audio', icon: '🎙️' }]
+      ? [{ id: 'audio', label: 'Audio', icon: '🎙️', bigPopOnly: true }]
       : []),
   ];
 
@@ -2138,23 +2163,25 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    data-active={activeEditorTab === 'adjust' && !isDrawingMode}
-                    onClick={() => {
-                      setActiveEditorTab('adjust');
-                      setIsDrawingMode(false);
-                      setSelectedItemId('photo');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      activeEditorTab === 'adjust' && !isDrawingMode
-                        ? 'bg-amber-400 text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span>🎨</span>
-                    <span>Adjust</span>
-                  </button>
+                  {tier === 'big_pop' && (
+                    <button
+                      type="button"
+                      data-active={activeEditorTab === 'adjust' && !isDrawingMode}
+                      onClick={() => {
+                        setActiveEditorTab('adjust');
+                        setIsDrawingMode(false);
+                        setSelectedItemId('photo');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                        activeEditorTab === 'adjust' && !isDrawingMode
+                          ? 'bg-amber-400 text-black shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>🎨</span>
+                      <span>Adjust</span>
+                    </button>
+                  )}
 
                   {tier === 'big_pop' && (
                     <button
@@ -2210,23 +2237,25 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     <span>Stickers</span>
                   </button>
 
-                  <button
-                    type="button"
-                    data-active={isDrawingMode || activeEditorTab === 'draw'}
-                    onClick={() => {
-                      setActiveEditorTab('draw');
-                      setIsDrawingMode(true);
-                      setSelectedItemId(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      isDrawingMode
-                        ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span>🖌️</span>
-                    <span>Draw</span>
-                  </button>
+                  {tier === 'big_pop' && (
+                    <button
+                      type="button"
+                      data-active={isDrawingMode || activeEditorTab === 'draw'}
+                      onClick={() => {
+                        setActiveEditorTab('draw');
+                        setIsDrawingMode(true);
+                        setSelectedItemId(null);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                        isDrawingMode
+                          ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>🖌️</span>
+                      <span>Draw</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

@@ -50,9 +50,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
     currentUser && (
       currentUser.role === 'admin' ||
       spot.ownerId === currentUser.id ||
-      currentUser.ownedSpotIds?.includes(spot.id) ||
-      spot.creatorName.toLowerCase() === currentUser.displayName.toLowerCase() ||
-      spot.creatorName.toLowerCase() === currentUser.username.toLowerCase()
+      currentUser.ownedSpotIds?.includes(spot.id)
     )
   );
 

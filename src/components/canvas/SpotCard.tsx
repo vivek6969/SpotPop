@@ -33,7 +33,7 @@ const triggerHaptic = (ms = 10) => {
   }
 };
 
-export const SpotCard: React.FC<SpotCardProps> = ({
+const SpotCardComponent: React.FC<SpotCardProps> = ({
   tier = 'mini_pop',
   shape,
   background,
@@ -2117,3 +2117,5 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     </div>
   );
 };
+
+export const SpotCard = React.memo(SpotCardComponent);

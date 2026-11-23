@@ -142,3 +142,4 @@ The CTO continues executing through the backlog until:
 2. A genuine external blocker arises (e.g. missing third-party credentials, external network outage).
 3. A dangerous action requiring user approval is reached.
 4. Antigravity execution turn budget is reached (in which case current state is saved to disk for instant resumption).
+

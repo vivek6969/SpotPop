@@ -40,16 +40,18 @@ export function verifyPaymentSignature(params: {
   const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = params;
   if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) return false;
 
-  // In test / simulation mode or when test/dev mock token is passed
-  if (
-    razorpaySignature.startsWith('test_sig_') ||
-    razorpaySignature === 'simulated_test_pass' ||
-    razorpaySignature === 'dev_mock_signature_verified' ||
-    razorpaySignature.startsWith('dev_') ||
-    razorpayPaymentId.includes('demo') ||
-    razorpayPaymentId.startsWith('pay_test_')
-  ) {
-    return true;
+  // In test / simulation mode or when test/dev mock token is passed (strictly non-production only)
+  if (process.env.NODE_ENV !== 'production') {
+    if (
+      razorpaySignature.startsWith('test_sig_') ||
+      razorpaySignature === 'simulated_test_pass' ||
+      razorpaySignature === 'dev_mock_signature_verified' ||
+      razorpaySignature.startsWith('dev_') ||
+      razorpayPaymentId.includes('demo') ||
+      razorpayPaymentId.startsWith('pay_test_')
+    ) {
+      return true;
+    }
   }
 
   // Real HMAC-SHA256 signature verification

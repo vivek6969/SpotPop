@@ -18,8 +18,8 @@ export default defineConfig(() => {
         manifest: false, // We supply custom public/manifest.webmanifest
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          globIgnores: ['**/uploads/**', '**/node_modules/**'],
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit to handle image assets
+          globIgnores: ['**/uploads/**', '**/node_modules/**', '**/group1-shard*', '**/model.min*', '**/heic2any*', '**/aistudio/**'],
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         },
         devOptions: {
           enabled: false, // Disable in development to prevent dev SW from reloading the page

@@ -218,11 +218,6 @@ export function App() {
         selectedSpotId={selectedSpot?.id}
         highlightedSpotId={highlightedSpotId}
         onSelectSpot={(spot) => {
-          if (!currentUser) {
-            setAuthNoticeMessage('Sign in to interact with pops, listen to audio memories, and connect with creators!');
-            setIsAccountOpen(true);
-            return;
-          }
           setSelectedSpot(spot);
         }}
         showMinimap={showMinimap}

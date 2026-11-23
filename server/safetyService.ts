@@ -1,6 +1,6 @@
 import * as nsfw from 'nsfwjs';
 import * as tf from '@tensorflow/tfjs';
-import sharp from 'sharp';
+import sharp, { type OutputInfo } from 'sharp';
 
 let modelPromise: Promise<nsfw.NSFWJS> | null = null;
 
@@ -16,7 +16,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     const model = await getModel();
 
     // Resize to 224x224 (native MobileNetV2 input) and strip alpha channel for lightning-fast inference
-    let rawImageData: { data: Buffer; info: sharp.OutputInfo };
+    let rawImageData: { data: Buffer; info: OutputInfo };
     try {
       rawImageData = await sharp(buffer)
         .resize(224, 224, { fit: 'cover' })

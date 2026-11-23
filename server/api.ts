@@ -610,9 +610,7 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
     const isOwner =
       user.role === 'admin' ||
       spot.ownerId === user.id ||
-      user.ownedSpotIds?.includes(spot.id) ||
-      spot.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
-      spot.creatorName.toLowerCase() === user.username.toLowerCase();
+      user.ownedSpotIds?.includes(spot.id);
 
     if (!isOwner) {
       return res.status(403).json({ error: 'You do not have permission to edit this Pop' });
@@ -659,9 +657,7 @@ apiRouter.delete('/spots/:id', (req: Request, res: Response) => {
     const isOwner =
       user.role === 'admin' ||
       spot.ownerId === user.id ||
-      user.ownedSpotIds?.includes(spot.id) ||
-      spot.creatorName.toLowerCase() === user.displayName.toLowerCase() ||
-      spot.creatorName.toLowerCase() === user.username.toLowerCase();
+      user.ownedSpotIds?.includes(spot.id);
 
     if (!isOwner) {
       return res.status(403).json({ error: 'You do not have permission to delete this Pop' });
@@ -815,14 +811,14 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         fontSize: draft.content?.fontSize || 24,
         textOpacity: draft.content?.textOpacity ?? 1,
         alignment: draft.content?.alignment || 'center',
-        imageUrl: draft.content?.imageUrl,
+        imageUrl: order.productId === 'big_pop' ? draft.content?.imageUrl : undefined,
         imageFit: draft.content?.imageFit || 'cover',
         photoOpacity: draft.content?.photoOpacity ?? 1,
         photoZoom: draft.content?.photoZoom ?? 1,
         photoOffsetX: draft.content?.photoOffsetX ?? 0,
         photoOffsetY: draft.content?.photoOffsetY ?? 0,
         stickers: draft.content?.stickers || [],
-        drawingData: draft.content?.drawingData,
+        drawingData: order.productId === 'big_pop' ? draft.content?.drawingData : undefined,
         drawingOpacity: draft.content?.drawingOpacity ?? 1,
         frameStyle: draft.content?.frameStyle || 'tape',
         badge: 'NEW',

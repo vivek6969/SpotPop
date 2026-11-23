@@ -8,38 +8,56 @@
 
 ---
 
-## Tracked Defects
+## Tracked Defects & Remediation Status
 
 ### [BUG-001]: Black Screen on "Add Your Spot" Modal Open
 - **Severity**: P0 (Blocker)
 - **Status**: Resolved
 - **Assigned Agent**: senior-engineer
-- **Root Cause**:
-  1. Missing React state hooks (`activeEditorTab`, `selectedBgCategory`, `selectedFontCategory`) triggered unhandled runtime `ReferenceError` during render.
-  2. Early return `if (!isOpen) return null;` previously executed before subsequent hooks, violating React's Rules of Hooks.
-  3. `SpotAudio` draft object missing required `storageKey` property.
-- **Fix Applied**:
-  - Restored missing state hooks and ensured all hooks execute unconditionally before any return in `CreateSpotModal.tsx`.
-  - Added fallback `storageKey: ''` for newly initialized audio drafts.
-- **Verification Evidence**: `npm run build` passed cleanly; modal opens without unhandled exceptions.
-- **Regression Test**: Added check in pre-commit build verification.
+- **Root Cause**: Missing React state hooks (`activeEditorTab`, `selectedBgCategory`, `selectedFontCategory`) and premature early return before hooks in `CreateSpotModal.tsx`.
+- **Fix Applied**: Restored missing state hooks and guaranteed unconditional top-level hook execution. Verified via `npm run build`.
 
 ---
 
-### [BUG-002]: Mobile Canvas Live Preview Scaled Too Small
-- **Severity**: P1 (Major)
+### [BUG-PM-001]: Premature Sign-in Wall on Spot Card Click
+- **Severity**: P0 (Virality Blocker)
 - **Status**: Resolved
-- **Assigned Agent**: ui-ux-engineer
-- **Root Cause**: Mobile preview card scaling was set to `scale-[0.52]` to avoid viewport overflow, making text and stickers difficult to inspect on mobile devices.
-- **Fix Applied**: Adjusted scale to `scale-[1.18]` / `scale-[1.55]` and reduced the bottom drawer max-height to 35vh, keeping 65% of screen real estate for the canvas.
-- **Verification Evidence**: Verified in commit `0df3b69`.
+- **Assigned Agent**: senior-engineer
+- **Root Cause**: `App.tsx` forced unauthenticated visitors to sign in immediately upon clicking any card on the canvas or opening a shared spot link.
+- **Fix Applied**: Removed guest gate in `App.tsx`; unauthenticated visitors can freely inspect spot cards, read messages, and play audio notes. Login is only prompted for claiming, editing, or reporting.
 
 ---
 
-### [BUG-003]: Voice Note Text Overlap & Missing Card Controls
+### [BUG-QA-001]: Cross-Tier Draft Contamination via Shared Undo History
+- **Severity**: P0 (Major State Leak)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**: `undoHistory` and `redoHistory` were shared across plan tiers in `CreateSpotModal.tsx`. Triggering undo after switching from Big Pop to Mini Pop applied Big Pop photos/stickers to `miniDraft`.
+- **Fix Applied**: Scoped undo and redo history per tier (`miniUndoHistory` and `bigUndoHistory`). Verified in `tests/studio-state-integrity.test.ts`.
+
+---
+
+### [BUG-QA-002]: Server-Side Spot Payload Tier Sanitization Bypass
+- **Severity**: P1 (Commercial & Data Integrity)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**: In `server/api.ts`, `imageUrl` and `drawingData` were copied directly from client payload without checking `order.productId === 'big_pop'`.
+- **Fix Applied**: Conditioned `imageUrl` and `drawingData` on `order.productId === 'big_pop'`. Verified in `tests/business-logic.test.ts`.
+
+---
+
+### [BUG-QA-003]: Drawing Studio Accessible to Mini Pop Users
+- **Severity**: P1 (Commercial Tier Leakage)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**: In `CreateSpotModal.tsx`, `Draw` and `Adjust` tools were rendered for Mini Pop in mobile tool dock and desktop toolbar.
+- **Fix Applied**: Restricted `Draw` and `Adjust` to `tier === 'big_pop'`. Verified in `tests/studio-state-integrity.test.ts`.
+
+---
+
+### [BUG-QA-004]: Off-by-One Boundary in History Stack Depth Cap
 - **Severity**: P2 (Minor)
 - **Status**: Resolved
-- **Assigned Agent**: senior-engineer / ui-ux-engineer
-- **Root Cause**: "Voice Note 15.0s" text overlay obscured the spot background visual, with no interactive play button on the preview card itself.
-- **Fix Applied**: Removed redundant label and added interactive SVG play/pause button with audio playback state tracking.
-- **Verification Evidence**: Verified in commit `e44fe91`.
+- **Assigned Agent**: senior-engineer
+- **Root Cause**: `[...prev.slice(-30), draftToSave]` yielded 31 items instead of 30.
+- **Fix Applied**: Updated to `[...prev, draftToSave].slice(-30)` across both tier history stacks. Verified in tests.
