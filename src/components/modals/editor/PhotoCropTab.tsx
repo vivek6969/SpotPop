@@ -101,8 +101,8 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
     <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
       {/* 1. Photo Action Bar & Status */}
       <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-black/60 border border-white/20 shrink-0">
               {currentDraft.imageUrl ? (
                 <img
@@ -119,44 +119,49 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
                 </span>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white block">Photo Artwork</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-white whitespace-nowrap">Photo Artwork</span>
                 {isGif ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold whitespace-nowrap">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Animated GIF Active
+                    GIF Active
                   </span>
                 ) : (
-                  <span className="text-[10px] text-slate-400">
-                    {currentDraft.imageUrl ? 'Custom image loaded' : 'Default photo'}
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                    {currentDraft.imageUrl ? 'Custom photo' : 'Default photo'}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-slate-400">
-                Supports animated GIFs, JPG, PNG & WebP
+              <span className="text-[10px] text-slate-400 block truncate">
+                {isGif ? 'Animated GIF loaded' : 'JPG, PNG, WebP or GIF'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setShowUrlInput(!showUrlInput)}
-              className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-bold text-slate-300 transition-colors"
-              title="Paste image or GIF URL"
+              className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold transition-colors flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                showUrlInput
+                  ? 'border-pink-500 bg-pink-500/20 text-white'
+                  : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
+              }`}
+              title="Paste direct image or GIF URL"
             >
-              🔗 URL
+              <span>🔗</span>
+              <span>URL</span>
             </button>
             <button
               type="button"
               onClick={() => updateDraft({ imageUrl: DEFAULT_PHOTO_URL, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
-              className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-bold text-slate-300 transition-colors"
+              className="h-8 px-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-slate-300 transition-colors whitespace-nowrap cursor-pointer"
             >
               Default
             </button>
-            <label className="px-3 py-1.5 rounded-xl bg-[#FF2E93] hover:bg-[#E6007A] text-white text-xs font-bold cursor-pointer transition-colors shadow-md flex items-center gap-1.5">
-              <span>{currentDraft.imageUrl ? 'Change Photo/GIF' : 'Upload Photo/GIF'}</span>
+            <label className="h-8 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] hover:opacity-90 text-white text-xs font-bold cursor-pointer transition-opacity shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0">
+              <span>{currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}</span>
               <input type="file" accept="image/*,.gif" onChange={onFileUpload} className="hidden" />
             </label>
           </div>
