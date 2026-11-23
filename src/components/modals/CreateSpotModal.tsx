@@ -1851,10 +1851,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 <span>LIVE PREVIEW</span>
               </div>
 
-              {/* Card centered and scaled for mobile viewport to ensure 100% full visibility with no clipping */}
+              {/* Card centered and scaled for mobile viewport to ensure prominent, crystal-clear readability */}
               <div
                 className={`relative transition-transform duration-300 origin-center my-auto ${
-                  mobileActiveSheet !== null ? 'scale-[0.52] xs:scale-[0.58] sm:scale-[0.68]' : 'scale-[0.82] xs:scale-[0.90] sm:scale-100'
+                  mobileActiveSheet !== null ? 'scale-[1.18] xs:scale-[1.28] sm:scale-[1.38]' : 'scale-[1.55] xs:scale-[1.68] sm:scale-[1.80]'
                 }`}
               >
                 {renderSpotCardElement()}
@@ -1927,9 +1927,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
               </div>
             )}
 
-            {/* Contextual Mobile Bottom Sheet (Native Mobile Style) */}
+            {/* Contextual Mobile Bottom Sheet (Compact drawer leaving 65% screen for canvas) */}
             {mobileActiveSheet !== null && (
-              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[44vh] relative animate-slide-up">
+              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[35vh] sm:max-h-[38vh] relative animate-slide-up">
                 {/* Grab handle & sheet header */}
                 <div className="shrink-0 px-4 pt-3 pb-2 border-b border-white/10 flex items-center justify-between relative">
                   <div className="w-10 h-1 rounded-full bg-white/30 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
@@ -2038,7 +2038,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     handleSelectItem(null);
                   }
                 }}
-                className="w-full h-full flex flex-col items-center justify-center relative scale-100 origin-center transition-transform"
+                className="w-full h-full flex flex-col items-center justify-center relative scale-115 lg:scale-125 origin-center transition-transform"
               >
                 <div className="relative">
                   {renderSpotCardElement()}
