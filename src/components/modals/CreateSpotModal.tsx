@@ -826,6 +826,61 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   // Sticker categories
   const [stickerCategory, setStickerCategory] = useState<string>('love');
 
+  // Tab Bar Horizontal Scroll helpers for Desktop / PC & Mobile
+  const tabsContainerRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkTabsScroll = () => {
+    if (!tabsContainerRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = tabsContainerRef.current;
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+  };
+
+  useEffect(() => {
+    checkTabsScroll();
+    window.addEventListener('resize', checkTabsScroll);
+    return () => window.removeEventListener('resize', checkTabsScroll);
+  }, [tier]);
+
+  const handleScrollTabs = (direction: 'left' | 'right') => {
+    if (!tabsContainerRef.current) return;
+    const scrollAmount = direction === 'left' ? -200 : 200;
+    tabsContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    setTimeout(checkTabsScroll, 300);
+  };
+
+  const handleTabsWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!tabsContainerRef.current) return;
+    if (e.deltaY !== 0) {
+      tabsContainerRef.current.scrollLeft += e.deltaY;
+      checkTabsScroll();
+    }
+  };
+
+  const isDraggingTabsRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const scrollStartLeftRef = useRef(0);
+
+  const handleTabsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    isDraggingTabsRef.current = true;
+    dragStartXRef.current = e.clientX;
+    scrollStartLeftRef.current = tabsContainerRef.current?.scrollLeft || 0;
+  };
+
+  const handleTabsPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingTabsRef.current || !tabsContainerRef.current) return;
+    const dx = e.clientX - dragStartXRef.current;
+    tabsContainerRef.current.scrollLeft = scrollStartLeftRef.current - dx;
+    checkTabsScroll();
+  };
+
+  const handleTabsPointerUp = () => {
+    isDraggingTabsRef.current = false;
+  };
+
   // =================== DRAWING STUDIO (BIG POP ONLY) ===================
   const drawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -854,6 +909,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       }
     }
   }, [isDrawingMode, currentDraft.drawingDataUrl]);
+
+  // Auto-scroll tab bar so active section is always visible
+  useEffect(() => {
+    if (!tabsContainerRef.current) return;
+    const activeBtn = tabsContainerRef.current.querySelector<HTMLElement>('[data-active="true"]');
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    setTimeout(checkTabsScroll, 300);
+  }, [activeEditorTab, isDrawingMode]);
 
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
@@ -1579,162 +1644,205 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
             {/* RIGHT / BOTTOM: STUDIO TOOLS ACCORDION TABS */}
             <div className="lg:col-span-7 flex flex-col space-y-3">
-              {/* Tool Navigation Bar (Picsart Mobile & Desktop Responsive Scrolling Pills) */}
-              <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10 overflow-x-auto no-scrollbar">
-                {/* Tools (Photo Crop & Upload) - Big Pop Only */}
-                {tier === 'big_pop' && (
+              {/* Tool Navigation Bar with Desktop Left/Right Scroll Arrows & Wheel Scroll */}
+              <div className="relative flex items-center">
+                {/* Left Scroll Arrow */}
+                {canScrollLeft && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveEditorTab('photo');
-                      setIsDrawingMode(false);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                      activeEditorTab === 'photo' && !isDrawingMode
-                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    onClick={() => handleScrollTabs('left')}
+                    className="absolute -left-2.5 z-20 w-7 h-7 rounded-full bg-slate-900/95 hover:bg-black text-white border border-white/25 flex items-center justify-center text-sm font-extrabold shadow-lg shadow-black/80 transition-all cursor-pointer hover:scale-110 active:scale-95"
+                    title="Previous Sections"
                   >
-                    <span>📐</span>
-                    <span>Tools</span>
+                    ‹
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('adjust');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'adjust' && !isDrawingMode
-                      ? 'bg-amber-400 text-black shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                <div
+                  ref={tabsContainerRef}
+                  onScroll={checkTabsScroll}
+                  onWheel={handleTabsWheel}
+                  onPointerDown={handleTabsPointerDown}
+                  onPointerMove={handleTabsPointerMove}
+                  onPointerUp={handleTabsPointerUp}
+                  className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10 overflow-x-auto scroll-smooth no-scrollbar w-full select-none cursor-grab active:cursor-grabbing"
                 >
-                  <span>🎨</span>
-                  <span>Adjust</span>
-                </button>
+                  {/* Tools (Photo Crop & Upload) - Big Pop Only */}
+                  {tier === 'big_pop' && (
+                    <button
+                      type="button"
+                      data-active={activeEditorTab === 'photo' && !isDrawingMode}
+                      onClick={() => {
+                        setActiveEditorTab('photo');
+                        setIsDrawingMode(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                        activeEditorTab === 'photo' && !isDrawingMode
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>📐</span>
+                      <span>Tools</span>
+                    </button>
+                  )}
 
-                {/* Retouch (Portrait Beautify) - Big Pop Only */}
-                {tier === 'big_pop' && (
                   <button
                     type="button"
+                    data-active={activeEditorTab === 'adjust' && !isDrawingMode}
                     onClick={() => {
-                      setActiveEditorTab('retouch');
+                      setActiveEditorTab('adjust');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                      activeEditorTab === 'retouch' && !isDrawingMode
-                        ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      activeEditorTab === 'adjust' && !isDrawingMode
+                        ? 'bg-amber-400 text-black shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <span>✨</span>
-                    <span>Retouch</span>
+                    <span>🎨</span>
+                    <span>Adjust</span>
                   </button>
-                )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('text');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'text' && !isDrawingMode
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>✍️</span>
-                  <span>Text</span>
-                </button>
+                  {/* Retouch (Portrait Beautify) - Big Pop Only */}
+                  {tier === 'big_pop' && (
+                    <button
+                      type="button"
+                      data-active={activeEditorTab === 'retouch' && !isDrawingMode}
+                      onClick={() => {
+                        setActiveEditorTab('retouch');
+                        setIsDrawingMode(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                        activeEditorTab === 'retouch' && !isDrawingMode
+                          ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>✨</span>
+                      <span>Retouch</span>
+                    </button>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('stickers');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'stickers' && !isDrawingMode
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>💖</span>
-                  <span>Stickers</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('draw');
-                    setIsDrawingMode(true);
-                    setSelectedItemId(null);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    isDrawingMode
-                      ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>🖌️</span>
-                  <span>Draw</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('frames');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'frames' && !isDrawingMode
-                      ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>🖼️</span>
-                  <span>Frames</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveEditorTab('themes');
-                    setIsDrawingMode(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                    activeEditorTab === 'themes' && !isDrawingMode
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>🌈</span>
-                  <span>Background</span>
-                </button>
-
-                {/* Audio Memory Tab - Big Pop Exclusive */}
-                {tier === 'big_pop' && (
                   <button
                     type="button"
+                    data-active={activeEditorTab === 'text' && !isDrawingMode}
                     onClick={() => {
-                      setActiveEditorTab('audio');
+                      setActiveEditorTab('text');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                      activeEditorTab === 'audio' && !isDrawingMode
-                        ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-black shadow-sm'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      activeEditorTab === 'text' && !isDrawingMode
+                        ? 'bg-white text-black shadow-sm'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <span>🎙️</span>
-                    <span>Audio</span>
-                    {currentDraft.audioDraft && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    )}
+                    <span>✍️</span>
+                    <span>Text</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-active={activeEditorTab === 'stickers' && !isDrawingMode}
+                    onClick={() => {
+                      setActiveEditorTab('stickers');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      activeEditorTab === 'stickers' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>💖</span>
+                    <span>Stickers</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-active={isDrawingMode || activeEditorTab === 'draw'}
+                    onClick={() => {
+                      setActiveEditorTab('draw');
+                      setIsDrawingMode(true);
+                      setSelectedItemId(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      isDrawingMode
+                        ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🖌️</span>
+                    <span>Draw</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-active={activeEditorTab === 'frames' && !isDrawingMode}
+                    onClick={() => {
+                      setActiveEditorTab('frames');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      activeEditorTab === 'frames' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🖼️</span>
+                    <span>Frames</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-active={activeEditorTab === 'themes' && !isDrawingMode}
+                    onClick={() => {
+                      setActiveEditorTab('themes');
+                      setIsDrawingMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                      activeEditorTab === 'themes' && !isDrawingMode
+                        ? 'bg-white text-black shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>🌈</span>
+                    <span>Background</span>
+                  </button>
+
+                  {/* Audio Memory Tab - Big Pop Exclusive */}
+                  {tier === 'big_pop' && (
+                    <button
+                      type="button"
+                      data-active={activeEditorTab === 'audio' && !isDrawingMode}
+                      onClick={() => {
+                        setActiveEditorTab('audio');
+                        setIsDrawingMode(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                        activeEditorTab === 'audio' && !isDrawingMode
+                          ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-black shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>🎙️</span>
+                      <span>Audio</span>
+                      {currentDraft.audioDraft && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Right Scroll Arrow */}
+                {canScrollRight && (
+                  <button
+                    type="button"
+                    onClick={() => handleScrollTabs('right')}
+                    className="absolute -right-2.5 z-20 w-7 h-7 rounded-full bg-gradient-to-r from-pink-500 to-[#FF2E93] text-white flex items-center justify-center text-sm font-extrabold shadow-lg shadow-pink-500/40 transition-all cursor-pointer hover:scale-110 active:scale-95 animate-pulse"
+                    title="More Sections (Draw, Frames, Background, Audio)"
+                  >
+                    ›
                   </button>
                 )}
               </div>
