@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spot } from '../../types';
 import { api } from '../../services/api';
+import { HorizontalScroll } from '../common/HorizontalScroll';
 
 interface ExploreBarProps {
   onSelectSpot: (spot: Spot) => void;
@@ -68,7 +69,7 @@ export const ExploreBar: React.FC<ExploreBarProps> = ({ onSelectSpot }) => {
         </button>
 
         {/* Quick Filter Chips directly visible on the bar */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <HorizontalScroll className="gap-1 min-w-0" wrapperClassName="min-w-0 flex-1">
           {[
             { id: 'trending', label: '🔥 Trending', sort: 'trending', cat: 'all', tier: 'all' },
             { id: 'newest', label: '⚡ Newest', sort: 'newest', cat: 'all', tier: 'all' },
@@ -92,7 +93,7 @@ export const ExploreBar: React.FC<ExploreBarProps> = ({ onSelectSpot }) => {
                   setActiveTier(chip.tier as any);
                   if (!isExpanded) setIsExpanded(true);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   isChipActive
                     ? 'bg-white text-slate-900 shadow-sm font-bold'
                     : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -102,7 +103,7 @@ export const ExploreBar: React.FC<ExploreBarProps> = ({ onSelectSpot }) => {
               </button>
             );
           })}
-        </div>
+        </HorizontalScroll>
       </div>
 
       {/* Expanded Discovery Panel */}

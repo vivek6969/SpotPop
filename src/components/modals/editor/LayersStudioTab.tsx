@@ -2,6 +2,7 @@ import React from 'react';
 import { PlanDraft } from './types';
 import { SpotLayer, BlendMode } from '../../../types';
 import { BLEND_MODES } from '../CreateSpotModal';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface LayersStudioTabProps {
   currentDraft: PlanDraft;
@@ -73,7 +74,7 @@ export const LayersStudioTab: React.FC<LayersStudioTabProps> = ({
           <label className="text-[11px] font-bold text-slate-400 block mb-1.5">
             Insert Vector Shape Layer:
           </label>
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <HorizontalScroll className="gap-1.5 py-0.5">
             {[
               { id: 'heart', label: 'Heart', icon: '💖' },
               { id: 'star', label: 'Star', icon: '⭐' },
@@ -90,13 +91,13 @@ export const LayersStudioTab: React.FC<LayersStudioTabProps> = ({
                 key={shp.id}
                 type="button"
                 onClick={() => handleAddShapeLayer(shp.id as any)}
-                className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/15 border border-white/10 text-white text-xs font-bold flex items-center gap-1 shrink-0"
+                className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/15 border border-white/10 text-white text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
               >
                 <span>{shp.icon}</span>
                 <span>{shp.label}</span>
               </button>
             ))}
-          </div>
+          </HorizontalScroll>
         </div>
       </div>
 

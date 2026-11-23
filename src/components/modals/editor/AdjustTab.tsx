@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { PhotoAdjustments } from '../../../types';
 import { FILTER_PRESETS, EFFECT_PRESETS, CURVE_PRESETS } from '../../../utils/photoFilters';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface AdjustTabProps {
   currentDraft: PlanDraft;
@@ -498,13 +499,13 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <HorizontalScroll className="gap-1.5 py-1">
                   {(['gaussian', 'motion', 'radial', 'background'] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => updatePhotoAdjustments({ blurType: type })}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold capitalize transition-colors ${
+                      className={`px-3 py-1 rounded-lg text-xs font-bold capitalize transition-colors cursor-pointer ${
                         (adj.blurType || 'gaussian') === type
                           ? 'bg-cyan-500 text-black'
                           : 'bg-white/10 text-slate-300 hover:text-white'
@@ -513,7 +514,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                       {type}
                     </button>
                   ))}
-                </div>
+                </HorizontalScroll>
 
                 <input
                   type="range"
@@ -719,7 +720,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block px-1">
               Tap Tool to Adjust
             </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <HorizontalScroll className="gap-1.5 py-1">
               {SUB_TOOLS.map((tool) => {
                 const isActive = activeSubTool === tool.id;
                 return (
@@ -727,7 +728,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                     key={tool.id}
                     type="button"
                     onClick={() => setActiveSubTool(tool.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 relative ${
+                    className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 relative cursor-pointer ${
                       isActive
                         ? 'bg-amber-400 text-black shadow-lg scale-105'
                         : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
@@ -741,7 +742,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                   </button>
                 );
               })}
-            </div>
+            </HorizontalScroll>
           </div>
         </div>
       )}

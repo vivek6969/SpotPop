@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlanDraft, BackgroundOption } from './types';
 import { THEMED_BACKGROUNDS } from '../CreateSpotModal';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface ThemesTabProps {
   currentDraft: PlanDraft;
@@ -48,7 +49,7 @@ export const ThemesTab: React.FC<ThemesTabProps> = ({
       </div>
 
       {/* 2. Theme Category Filters */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+      <HorizontalScroll className="gap-1 py-0.5">
         {[
           { id: 'all', name: 'All Themes' },
           { id: 'classic', name: 'Classic' },
@@ -61,7 +62,7 @@ export const ThemesTab: React.FC<ThemesTabProps> = ({
             key={cat.id}
             type="button"
             onClick={() => setSelectedBgCategory(cat.id)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
               selectedBgCategory === cat.id
                 ? 'bg-white text-black shadow-xs'
                 : 'bg-white/5 text-slate-400 hover:text-white'
@@ -70,7 +71,7 @@ export const ThemesTab: React.FC<ThemesTabProps> = ({
             {cat.name}
           </button>
         ))}
-      </div>
+      </HorizontalScroll>
 
       {/* 3. Background Swatches Grid */}
       <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">

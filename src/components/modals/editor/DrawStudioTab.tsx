@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlanDraft, BrushStyle } from './types';
 import { BRUSH_STYLES } from '../CreateSpotModal';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface DrawStudioTabProps {
   currentDraft: PlanDraft;
@@ -152,13 +153,13 @@ export const DrawStudioTab: React.FC<DrawStudioTabProps> = ({
               className="w-6 h-6 rounded-md cursor-pointer border-0 bg-transparent"
             />
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <HorizontalScroll className="gap-1.5 py-1">
             {COLOR_SWATCHES.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setDrawColor(c)}
-                className={`w-7 h-7 rounded-full shrink-0 border-2 transition-transform hover:scale-110 ${
+                className={`w-7 h-7 rounded-full shrink-0 border-2 transition-transform hover:scale-110 cursor-pointer ${
                   drawColor === c
                     ? 'border-white scale-115 ring-2 ring-[#FF2E93]'
                     : 'border-transparent'
@@ -166,7 +167,7 @@ export const DrawStudioTab: React.FC<DrawStudioTabProps> = ({
                 style={{ backgroundColor: c }}
               />
             ))}
-          </div>
+          </HorizontalScroll>
         </div>
       )}
 

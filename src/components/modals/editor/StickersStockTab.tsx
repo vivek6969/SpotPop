@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { STICKER_CATEGORIES } from '../CreateSpotModal';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface StickersStockTabProps {
   currentDraft: PlanDraft;
@@ -132,13 +133,13 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
 
         {/* Category Pills Strip */}
         {!searchQuery && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <HorizontalScroll className="gap-1.5 py-1">
             {STICKER_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${
                   activeCategory === cat.id
                     ? 'bg-white text-black shadow-sm'
                     : 'bg-white/5 text-slate-400 hover:text-white'
@@ -147,7 +148,7 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
                 <span>{cat.name}</span>
               </button>
             ))}
-          </div>
+          </HorizontalScroll>
         )}
       </div>
 

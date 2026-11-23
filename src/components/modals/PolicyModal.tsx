@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
+import { HorizontalScroll } from '../common/HorizontalScroll';
 
 interface PolicyModalProps {
   isOpen: boolean;
@@ -35,25 +36,27 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-5 py-2.5 bg-white/5 border-b border-white/10 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'terms', label: 'Terms of Service' },
-            { id: 'privacy', label: 'Privacy Policy' },
-            { id: 'refund', label: 'Refund Policy' },
-            { id: 'content', label: 'Content Guidelines' },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id as any)}
-              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all ${
-                activeTab === t.id
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="px-5 py-2.5 bg-white/5 border-b border-white/10">
+          <HorizontalScroll className="gap-2">
+            {[
+              { id: 'terms', label: 'Terms of Service' },
+              { id: 'privacy', label: 'Privacy Policy' },
+              { id: 'refund', label: 'Refund Policy' },
+              { id: 'content', label: 'Content Guidelines' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id as any)}
+                className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === t.id
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </HorizontalScroll>
         </div>
 
         {/* Body Text */}

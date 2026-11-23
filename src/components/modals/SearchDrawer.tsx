@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Spot } from '../../types';
 import { api } from '../../services/api';
+import { HorizontalScroll } from '../common/HorizontalScroll';
 
 interface CreatorResult {
   username: string;
@@ -197,28 +198,30 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
         </div>
 
         {/* Filter Pills */}
-        <div className="px-4 py-2.5 bg-black/20 border-b border-white/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'trending', label: '🔥 Trending' },
-            { id: 'big', label: '📸 Big Pop' },
-            { id: 'mini', label: '📝 Mini Pop' },
-            { id: 'photo', label: '🖼️ Photos' },
-            { id: 'notes', label: '📌 Notes' },
-            { id: 'featured', label: '⭐ Featured' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
-              className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                filter === tab.id
-                  ? 'bg-gradient-to-r from-[#FF2E93] to-[#FF5EAA] text-white shadow-md shadow-pink-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="px-4 py-2.5 bg-black/20 border-b border-white/10">
+          <HorizontalScroll className="gap-1.5">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'trending', label: '🔥 Trending' },
+              { id: 'big', label: '📸 Big Pop' },
+              { id: 'mini', label: '📝 Mini Pop' },
+              { id: 'photo', label: '🖼️ Photos' },
+              { id: 'notes', label: '📌 Notes' },
+              { id: 'featured', label: '⭐ Featured' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  filter === tab.id
+                    ? 'bg-gradient-to-r from-[#FF2E93] to-[#FF5EAA] text-white shadow-md shadow-pink-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </HorizontalScroll>
         </div>
 
         {/* Scrollable Body */}

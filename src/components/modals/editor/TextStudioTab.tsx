@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { ALL_FONTS } from '../CreateSpotModal';
 import { CAPTION_PRESETS, loadGoogleFont, speakText } from '../../../utils/photoFilters';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface TextStudioTabProps {
   currentDraft: PlanDraft;
@@ -195,13 +196,13 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             />
 
             {/* Font Category Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <HorizontalScroll className="gap-1.5 py-1">
               {['All', 'Handwriting', 'Display', 'Modern', 'Retro', 'Elegant'].map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setSelectedFontCategory(cat)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
                     selectedFontCategory === cat
                       ? 'bg-white text-black'
                       : 'bg-white/10 text-slate-300 hover:text-white'
@@ -210,7 +211,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
                   {cat}
                 </button>
               ))}
-            </div>
+            </HorizontalScroll>
 
             {/* Fonts Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto no-scrollbar p-0.5">
@@ -486,20 +487,20 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
         {/* Caption Ideas & Quotes */}
         {activeSubTool === 'captions' && (
           <div className="space-y-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <HorizontalScroll className="gap-1.5 py-1">
               {CAPTION_PRESETS.map((cat) => (
                 <button
                   key={cat.category}
                   type="button"
                   onClick={() => setActiveCaptionCategory(cat.category)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
                     activeCaptionCategory === cat.category ? 'bg-pink-500 text-white' : 'bg-white/10 text-slate-300'
                   }`}
                 >
                   {cat.category}
                 </button>
               ))}
-            </div>
+            </HorizontalScroll>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto no-scrollbar">
               {CAPTION_PRESETS.find((c) => c.category === activeCaptionCategory)?.captions.map((caption) => (
@@ -522,7 +523,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block px-1">
           Tap Tool to Edit
         </span>
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+        <HorizontalScroll className="gap-1.5 py-1">
           {SUB_TOOLS.map((tool) => {
             const isActive = activeSubTool === tool.id;
             return (
@@ -530,7 +531,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
                 key={tool.id}
                 type="button"
                 onClick={() => setActiveSubTool(tool.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 ${
+                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 cursor-pointer ${
                   isActive
                     ? 'bg-white text-black shadow-lg scale-105'
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
@@ -541,7 +542,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
               </button>
             );
           })}
-        </div>
+        </HorizontalScroll>
       </div>
     </div>
   );

@@ -16,8 +16,12 @@ import { AdminPanelModal } from './components/modals/AdminPanelModal';
 import { PolicyModal } from './components/modals/PolicyModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { SpotPopLogo } from './components/brand/SpotPopLogo';
+import { useGlobalHorizontalScroll } from './hooks/useGlobalHorizontalScroll';
 
 export function App() {
+  // Enable PC mouse wheel horizontal scrolling globally across all overflow-x-auto containers
+  useGlobalHorizontalScroll();
+
   // Main Data States
   const [spots, setSpots] = useState<Spot[]>([]);
   const [stats, setStats] = useState<CanvasStats | null>(null);

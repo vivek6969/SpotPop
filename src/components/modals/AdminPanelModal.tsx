@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Spot, ModerationReport, Order, User, ProductTier, SpotShape } from '../../types';
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
+import { HorizontalScroll } from '../common/HorizontalScroll';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -219,66 +220,68 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-6 py-2.5 bg-white/5 border-b border-white/10 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab('spots')}
-            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'spots'
-                ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>📌</span>
-            <span>Spots Management ({spots.length})</span>
-          </button>
+        <div className="px-6 py-2.5 bg-white/5 border-b border-white/10">
+          <HorizontalScroll className="gap-2">
+            <button
+              onClick={() => setActiveTab('spots')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                activeTab === 'spots'
+                  ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>📌</span>
+              <span>Spots Management ({spots.length})</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('metrics')}
-            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'metrics'
-                ? 'bg-white text-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>📊</span>
-            <span>Metrics</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('metrics')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                activeTab === 'metrics'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>📊</span>
+              <span>Metrics</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'reports'
-                ? 'bg-rose-500 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>🚨</span>
-            <span>Reports ({reports.filter((r) => r.status === 'pending').length})</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                activeTab === 'reports'
+                  ? 'bg-rose-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🚨</span>
+              <span>Reports ({reports.filter((r) => r.status === 'pending').length})</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'orders'
-                ? 'bg-white text-black shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>💳</span>
-            <span>Orders ({orders.length})</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                activeTab === 'orders'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>💳</span>
+              <span>Orders ({orders.length})</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('storage')}
-            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'storage'
-                ? 'bg-emerald-500 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>💾</span>
-            <span>Storage & Cost</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                activeTab === 'storage'
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>💾</span>
+              <span>Storage & Cost</span>
+            </button>
+          </HorizontalScroll>
         </div>
 
         {/* Tab Content Body */}

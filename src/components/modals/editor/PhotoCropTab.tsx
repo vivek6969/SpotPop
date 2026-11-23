@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { PhotoAdjustments, ProductTier } from '../../../types';
 import { checkImageSafety } from '../../../services/nsfwSafety';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface PhotoCropTabProps {
   currentDraft: PlanDraft;
@@ -489,7 +490,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
       </div>
 
       {/* 3. Sub-Tool Navigation Strip */}
-      <div className="flex items-center gap-2 p-1.5 rounded-xl bg-black/40 border border-white/10 overflow-x-auto no-scrollbar">
+      <HorizontalScroll className="gap-2 p-1.5 rounded-xl bg-black/40 border border-white/10">
         {[
           { id: 'crop', label: 'Crop & Frame', icon: '✂️' },
           { id: 'zoom', label: 'Zoom & Pan', icon: '🔍' },
@@ -501,7 +502,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             key={tool.id}
             type="button"
             onClick={() => setActiveSubTab(tool.id as ToolSubTab)}
-            className={`flex-1 min-w-[75px] py-2 px-2 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`flex-1 min-w-[75px] py-2 px-2 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeSubTab === tool.id
                 ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -514,13 +515,13 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
         <button
           type="button"
           onClick={handleResetTransforms}
-          className="py-2 px-2.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-pink-300 flex flex-col items-center justify-center gap-1 shrink-0"
+          className="py-2 px-2.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-pink-300 flex flex-col items-center justify-center gap-1 shrink-0 cursor-pointer"
           title="Reset transforms"
         >
           <span className="text-sm">↺</span>
           <span>Reset</span>
         </button>
-      </div>
+      </HorizontalScroll>
     </div>
   );
 };

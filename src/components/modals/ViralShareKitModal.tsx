@@ -3,6 +3,7 @@ import { Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
+import { HorizontalScroll } from '../common/HorizontalScroll';
 
 interface ViralShareKitModalProps {
   isOpen: boolean;
@@ -437,20 +438,22 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
         </div>
 
         {/* Format Selector Pills */}
-        <div className="p-3 bg-white/5 border-b border-white/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {(Object.keys(FORMATS) as ShareFormat[]).map((fmt) => (
-            <button
-              key={fmt}
-              onClick={() => setActiveFormat(fmt)}
-              className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                activeFormat === fmt
-                  ? 'bg-[#FF2E93] text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {FORMATS[fmt].label}
-            </button>
-          ))}
+        <div className="p-3 bg-white/5 border-b border-white/10">
+          <HorizontalScroll className="gap-1.5">
+            {(Object.keys(FORMATS) as ShareFormat[]).map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => setActiveFormat(fmt)}
+                className={`py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                  activeFormat === fmt
+                    ? 'bg-[#FF2E93] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {FORMATS[fmt].label}
+              </button>
+            ))}
+          </HorizontalScroll>
         </div>
 
         {/* Visual Live Preview Card (Matching Reference: No QR Code, Viral Story Aesthetic) */}
