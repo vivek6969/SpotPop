@@ -555,30 +555,51 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   // Active Draft based on tier
   const currentDraft = tier === 'big_pop' ? bigDraft : miniDraft;
 
-  const updateDraft = (updates: Partial<PlanDraft>) => {
-    if (tier === 'big_pop') {
-      setBigDraft(prev => ({ ...prev, ...updates }));
-    } else {
-      setMiniDraft(prev => ({ ...prev, ...updates }));
-    }
-  };
-
-  // Active Tool Tab in Editor
-  const [activeEditorTab, setActiveEditorTab] = useState<
-    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes' | 'audio'
-  >('photo');
-  const [selectedBgCategory, setSelectedBgCategory] = useState<'all' | 'halloween' | 'christmas' | 'love' | 'retro' | 'classic'>('all');
-  const [selectedFontCategory, setSelectedFontCategory] = useState<string>('All');
-
   // History tracking for Undo/Redo
   const [undoHistory, setUndoHistory] = useState<PlanDraft[]>([]);
   const [redoHistory, setRedoHistory] = useState<PlanDraft[]>([]);
+  const lastHistorySnapshotRef = useRef<number>(0);
+  const pendingHistoryDraftRef = useRef<PlanDraft | null>(null);
+
+  const saveHistorySnapshot = (draftToSave: PlanDraft) => {
+    setUndoHistory((prev) => {
+      if (prev.length > 0 && JSON.stringify(prev[prev.length - 1]) === JSON.stringify(draftToSave)) {
+        return prev;
+      }
+      return [...prev.slice(-30), draftToSave];
+    });
+    setRedoHistory([]);
+  };
+
+  const updateDraft = (updates: Partial<PlanDraft>, immediateHistory = false) => {
+    // Record history snapshot before applying updates
+    if (immediateHistory) {
+      saveHistorySnapshot(currentDraft);
+    } else {
+      const now = Date.now();
+      if (!pendingHistoryDraftRef.current) {
+        pendingHistoryDraftRef.current = currentDraft;
+      }
+      if (now - lastHistorySnapshotRef.current > 400) {
+        saveHistorySnapshot(pendingHistoryDraftRef.current || currentDraft);
+        pendingHistoryDraftRef.current = null;
+        lastHistorySnapshotRef.current = now;
+      }
+    }
+
+    if (tier === 'big_pop') {
+      setBigDraft((prev) => ({ ...prev, ...updates }));
+    } else {
+      setMiniDraft((prev) => ({ ...prev, ...updates }));
+    }
+  };
 
   const handleUndo = () => {
     if (undoHistory.length === 0) return;
     const previous = undoHistory[undoHistory.length - 1];
-    setRedoHistory(prev => [...prev, currentDraft]);
-    setUndoHistory(prev => prev.slice(0, -1));
+    setRedoHistory((prev) => [...prev.slice(-30), currentDraft]);
+    setUndoHistory((prev) => prev.slice(0, -1));
+    triggerMobileHaptic(10);
     if (tier === 'big_pop') {
       setBigDraft(previous);
     } else {
@@ -589,8 +610,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   const handleRedo = () => {
     if (redoHistory.length === 0) return;
     const next = redoHistory[redoHistory.length - 1];
-    setUndoHistory(prev => [...prev, currentDraft]);
-    setRedoHistory(prev => prev.slice(0, -1));
+    setUndoHistory((prev) => [...prev.slice(-30), currentDraft]);
+    setRedoHistory((prev) => prev.slice(0, -1));
+    triggerMobileHaptic(10);
     if (tier === 'big_pop') {
       setBigDraft(next);
     } else {
@@ -1761,28 +1783,30 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
           {/* Right Header Controls: Undo, Redo, and Publish CTA */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {(undoHistory.length > 0 || !isMobile) && (
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={undoHistory.length === 0}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
-                title="Undo"
-              >
-                ↩
-              </button>
-            )}
-            {(redoHistory.length > 0 || !isMobile) && (
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={redoHistory.length === 0}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
-                title="Redo"
-              >
-                ↪
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={undoHistory.length === 0}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center cursor-pointer disabled:cursor-not-allowed transition-all active:scale-90 border border-white/10 disabled:border-transparent"
+              title={undoHistory.length > 0 ? `Undo (${undoHistory.length})` : 'Undo'}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7v6h6" />
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={redoHistory.length === 0}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center cursor-pointer disabled:cursor-not-allowed transition-all active:scale-90 border border-white/10 disabled:border-transparent"
+              title={redoHistory.length > 0 ? `Redo (${redoHistory.length})` : 'Redo'}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 7v6h-6" />
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+              </svg>
+            </button>
 
             {/* Top Right Action Button */}
             <button
@@ -1984,19 +2008,27 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   type="button"
                   onClick={handleUndo}
                   disabled={undoHistory.length === 0}
-                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                   title="Undo"
                 >
-                  ↩
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                  <span>Undo</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleRedo}
                   disabled={redoHistory.length === 0}
-                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                   title="Redo"
                 >
-                  ↪
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 7v6h-6" />
+                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+                  </svg>
+                  <span>Redo</span>
                 </button>
               </div>
 
