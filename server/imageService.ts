@@ -165,7 +165,7 @@ export class ImageService {
     // Enforce Strict Server-Side Safety & Nudity Inspection
     const safety = await checkServerImageSafety(buffer);
     if (!safety.safe) {
-      throw new Error(safety.reason || 'This image was flagged by our safety filter (adult or explicit content detected).');
+      throw new Error(safety.reason || 'This image could not be uploaded because it appears to contain sensitive or adult content. Please choose another photo or artwork.');
     }
 
     // 1. Content Hashing & Format Inspection

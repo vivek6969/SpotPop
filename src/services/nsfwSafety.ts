@@ -138,7 +138,7 @@ export async function checkImageSafety(
     if (pornScore >= 0.25) {
       return {
         safe: false,
-        reason: `Explicit content or nudity detected (${Math.round(pornScore * 100)}% confidence). Prohibited on the public canvas.`,
+        reason: 'This image could not be uploaded because it appears to contain explicit content or nudity. Please choose another photo or artwork.',
         predictions,
         topPrediction,
       };
@@ -148,7 +148,7 @@ export async function checkImageSafety(
     if (hentaiScore >= 0.30) {
       return {
         safe: false,
-        reason: `Explicit animated/hentai content detected (${Math.round(hentaiScore * 100)}% confidence). Prohibited on the public canvas.`,
+        reason: 'This image could not be uploaded because it appears to contain sensitive or adult artwork. Please choose another image.',
         predictions,
         topPrediction,
       };
@@ -158,7 +158,7 @@ export async function checkImageSafety(
     if (pornScore + hentaiScore >= 0.35) {
       return {
         safe: false,
-        reason: 'Adult content detected. Prohibited on the public canvas.',
+        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
         predictions,
         topPrediction,
       };
@@ -168,7 +168,7 @@ export async function checkImageSafety(
     if (pornScore + sexyScore >= 0.45 && safeScore < 0.50) {
       return {
         safe: false,
-        reason: 'Nudity or sexually explicit content detected. Prohibited on the public canvas.',
+        reason: 'This image could not be uploaded because it appears to contain explicit or adult content. Please choose another photo or artwork.',
         predictions,
         topPrediction,
       };
@@ -178,7 +178,7 @@ export async function checkImageSafety(
     if (sexyScore >= 0.45 && neutralScore < 0.35) {
       return {
         safe: false,
-        reason: 'Nudity or sexually suggestive content detected. Prohibited on the public canvas.',
+        reason: 'This image could not be uploaded because it appears to contain revealing or adult content. Please choose another photo or artwork.',
         predictions,
         topPrediction,
       };
@@ -188,7 +188,7 @@ export async function checkImageSafety(
     if (adultScore >= 0.60 && safeScore < 0.35) {
       return {
         safe: false,
-        reason: 'Explicit or adult content detected. Prohibited on the public canvas.',
+        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
         predictions,
         topPrediction,
       };

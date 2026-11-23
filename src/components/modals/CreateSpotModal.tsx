@@ -739,7 +739,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       if (!safety.safe) {
         setErrorMessage(
           safety.reason ||
-          'This sticker was flagged by our safety filter (prohibited adult or explicit content detected).'
+          'This sticker could not be uploaded because it appears to contain sensitive or adult content. Please choose another image.'
         );
         e.target.value = '';
         setIsScanningImage(false);
@@ -1174,7 +1174,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       if (!safety.safe) {
         setErrorMessage(
           safety.reason ||
-          'This image was flagged by our safety filter (adult or explicit content detected). Please choose another photo or artwork!'
+          'This image could not be uploaded because it appears to contain sensitive or adult content. Please choose another photo or artwork!'
         );
         e.target.value = ''; // Reset input to allow choosing a different image
         setIsScanningImage(false);
@@ -1206,7 +1206,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           }
         } catch (err: any) {
           console.warn('Background image upload notice:', err);
-          setErrorMessage(err.message || 'This image was flagged by our safety filter (adult or explicit content detected).');
+          setErrorMessage(err.message || 'This image could not be uploaded because it appears to contain sensitive content. Please choose another photo or artwork.');
           updateDraft({ imageUrl: DEFAULT_SPOT_PHOTO });
         }
       }

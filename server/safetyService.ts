@@ -50,7 +50,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (porn >= 0.25) {
       return {
         safe: false,
-        reason: `Explicit adult content or nudity detected (${Math.round(porn * 100)}% confidence). Prohibited on SpotPop.`,
+        reason: 'This image could not be uploaded because it appears to contain explicit content or nudity. Please choose another photo or artwork.',
       };
     }
 
@@ -58,7 +58,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (hentai >= 0.30) {
       return {
         safe: false,
-        reason: `Explicit illustrated/hentai content detected (${Math.round(hentai * 100)}% confidence). Prohibited on SpotPop.`,
+        reason: 'This image could not be uploaded because it appears to contain sensitive or adult artwork. Please choose another image.',
       };
     }
 
@@ -66,7 +66,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (porn + hentai >= 0.35) {
       return {
         safe: false,
-        reason: 'Adult content detected. Prohibited on SpotPop.',
+        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
       };
     }
 
@@ -74,7 +74,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (porn + sexy >= 0.45 && safeScore < 0.50) {
       return {
         safe: false,
-        reason: 'Nudity or sexually explicit content detected. Prohibited on SpotPop.',
+        reason: 'This image could not be uploaded because it appears to contain explicit or adult content. Please choose another photo or artwork.',
       };
     }
 
@@ -82,7 +82,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (sexy >= 0.45 && neutral < 0.35) {
       return {
         safe: false,
-        reason: 'Nudity or sexually suggestive content detected. Prohibited on SpotPop.',
+        reason: 'This image could not be uploaded because it appears to contain revealing or adult content. Please choose another photo or artwork.',
       };
     }
 
@@ -90,7 +90,7 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     if (adultScore >= 0.60 && safeScore < 0.35) {
       return {
         safe: false,
-        reason: 'Adult or explicit content detected. Prohibited on SpotPop.',
+        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
       };
     }
 

@@ -82,7 +82,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
     try {
       const safety = await checkImageSafety(customUrl.trim());
       if (!safety.safe) {
-        setUrlError(safety.reason || 'This image was flagged by our safety filter (adult or explicit content detected).');
+        setUrlError(safety.reason || 'This image could not be loaded because it appears to contain sensitive or adult content. Please try another URL.');
         return;
       }
     } catch (e) {
