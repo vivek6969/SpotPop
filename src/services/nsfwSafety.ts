@@ -134,8 +134,8 @@ export async function checkImageSafety(
       current.probability > prev.probability ? current : prev
     );
 
-    // Rule 1: Direct Porn / Genitalia / Explicit Sexual Content (>= 25%)
-    if (pornScore >= 0.25) {
+    // Rule 1: Explicit Pornography / Genitalia / Sexual Acts (>= 60%, or >= 50% when dominant over swimwear/sexy)
+    if (pornScore >= 0.60 || (pornScore >= 0.50 && pornScore > sexyScore)) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain explicit content or nudity. Please choose another photo or artwork.',
@@ -144,8 +144,8 @@ export async function checkImageSafety(
       };
     }
 
-    // Rule 2: Explicit Animated / Illustrated Adult Content (>= 30%)
-    if (hentaiScore >= 0.30) {
+    // Rule 2: Explicit Animated / Illustrated Adult Content (>= 55%)
+    if (hentaiScore >= 0.55) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain sensitive or adult artwork. Please choose another image.',
@@ -154,8 +154,8 @@ export async function checkImageSafety(
       };
     }
 
-    // Rule 3: Combined Porn + Hentai (>= 35%)
-    if (pornScore + hentaiScore >= 0.35) {
+    // Rule 3: Combined Explicit (Porn + Hentai >= 65%)
+    if (pornScore + hentaiScore >= 0.65) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
@@ -164,35 +164,8 @@ export async function checkImageSafety(
       };
     }
 
-    // Rule 4: Combined Porn + Sexy (>= 45% adult) when safe neutral score is low (< 50%)
-    if (pornScore + sexyScore >= 0.45 && safeScore < 0.50) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain explicit or adult content. Please choose another photo or artwork.',
-        predictions,
-        topPrediction,
-      };
-    }
-
-    // Rule 5: Nude body / Revealing Content (Sexy >= 45% and Neutral < 35%)
-    if (sexyScore >= 0.45 && neutralScore < 0.35) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain revealing or adult content. Please choose another photo or artwork.',
-        predictions,
-        topPrediction,
-      };
-    }
-
-    // Rule 6: Overwhelming adult probability (Porn + Sexy + Hentai >= 60% with low safe buffer < 35%)
-    if (adultScore >= 0.60 && safeScore < 0.35) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
-        predictions,
-        topPrediction,
-      };
-    }
+    // Note: Shirtless male photos, gym selfies, fitness modelling, and swimwear
+    // have high 'Sexy' scores and moderate ambiguous skin scores, which are allowed on SpotPop.
 
     // Image is safe!
     return {

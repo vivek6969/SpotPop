@@ -46,53 +46,32 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     const safeScore = neutral + drawing;
     const adultScore = porn + hentai + sexy;
 
-    // Rule 1: Direct Porn / Genitalia / Explicit Nudity (>= 25%)
-    if (porn >= 0.25) {
+    // Rule 1: Explicit Pornography / Genitalia / Sexual Acts (>= 60%, or >= 50% when dominant over swimwear/sexy)
+    if (porn >= 0.60 || (porn >= 0.50 && porn > sexy)) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain explicit content or nudity. Please choose another photo or artwork.',
       };
     }
 
-    // Rule 2: Explicit Animated / Illustrated Adult Content (>= 30%)
-    if (hentai >= 0.30) {
+    // Rule 2: Explicit Animated / Illustrated Adult Content (>= 55%)
+    if (hentai >= 0.55) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain sensitive or adult artwork. Please choose another image.',
       };
     }
 
-    // Rule 3: Combined Porn + Hentai (>= 35%)
-    if (porn + hentai >= 0.35) {
+    // Rule 3: Combined Explicit (Porn + Hentai >= 65%)
+    if (porn + hentai >= 0.65) {
       return {
         safe: false,
         reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
       };
     }
 
-    // Rule 4: Combined Porn + Sexy (>= 45% adult) with low safe buffer (< 50%)
-    if (porn + sexy >= 0.45 && safeScore < 0.50) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain explicit or adult content. Please choose another photo or artwork.',
-      };
-    }
-
-    // Rule 5: Nude body / Revealing Content (Sexy >= 45% and Neutral < 35%)
-    if (sexy >= 0.45 && neutral < 0.35) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain revealing or adult content. Please choose another photo or artwork.',
-      };
-    }
-
-    // Rule 6: Overwhelming adult probability (Porn + Sexy + Hentai >= 60% with low safe buffer < 35%)
-    if (adultScore >= 0.60 && safeScore < 0.35) {
-      return {
-        safe: false,
-        reason: 'This image could not be uploaded because it appears to contain adult content. Please choose another photo or artwork.',
-      };
-    }
+    // Note: Shirtless male photos, gym selfies, fitness modelling, and swimwear
+    // have high 'Sexy' scores and moderate ambiguous skin scores, which are allowed on SpotPop.
 
     return { safe: true };
   } catch (err: any) {
