@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { SpotShape, FrameStyle, StickerItem, SpotContent, SpotLayer } from '../../types';
 import { getPhotoFilterStyle, getCleanFontFamily } from '../../utils/photoFilters';
 
@@ -65,6 +65,46 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   const cardHeight = isHero ? rawHeight : Math.min(rawHeight, tier === 'big_pop' ? 210 : 170);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Audio Playback Engine on Card
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
+      }
+    };
+  }, []);
+
+  const togglePlayAudio = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (!content.audio?.url) {
+      onSelectItem?.('audio');
+      return;
+    }
+    if (isAudioPlaying && audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      setIsAudioPlaying(false);
+      triggerHaptic(10);
+    } else {
+      triggerHaptic(15);
+      if (!audioPlayerRef.current || audioPlayerRef.current.src !== content.audio.url) {
+        audioPlayerRef.current = new Audio(content.audio.url);
+        audioPlayerRef.current.onended = () => setIsAudioPlaying(false);
+        audioPlayerRef.current.onerror = () => setIsAudioPlaying(false);
+      }
+      audioPlayerRef.current.currentTime = 0;
+      audioPlayerRef.current.play().then(() => {
+        setIsAudioPlaying(true);
+      }).catch((err) => {
+        console.warn('Audio play notice:', err);
+        setIsAudioPlaying(false);
+      });
+    }
+  };
 
   // =================== MULTI-TOUCH STICKER GESTURES (DRAG, PINCH-RESIZE & ROTATE) ===================
   const lastStickerTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
@@ -1159,21 +1199,24 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
       {/* Audio Memory Indicator Badge (Big Pop Only) */}
       {content.audio && (
-        <div
+        <button
+          type="button"
           onClick={(e) => {
             if (interactive) {
               e.stopPropagation();
-              onSelectItem?.('audio');
+              togglePlayAudio(e);
             }
           }}
-          className={`absolute top-2 right-2 z-35 px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md select-none ${
-            interactive ? 'cursor-pointer hover:border-[#FF2E93] hover:scale-105 transition-transform' : 'pointer-events-none'
-          }`}
-          title={`${content.audio.type === 'voice' ? 'Voice Note' : 'Original Sound'} (${content.audio.duration}s)`}
+          className={`absolute top-2 right-2 z-35 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md select-none transition-all ${
+            interactive ? 'cursor-pointer hover:border-[#FF2E93] hover:scale-105 active:scale-95' : 'pointer-events-none'
+          } ${isAudioPlaying ? 'border-pink-500 bg-pink-950/60 ring-1 ring-pink-500/30' : ''}`}
+          title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
         >
-          <span className="text-[10px]">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
-          <span className="text-[8px] font-mono font-bold opacity-90">{Math.round(content.audio.duration)}s</span>
-        </div>
+          <span className="text-[10px] leading-none">
+            {isAudioPlaying ? '⏸' : content.audio.type === 'voice' ? '🎙️' : '🎵'}
+          </span>
+          <span className="text-[8px] font-mono font-bold opacity-90">{Math.round(content.audio.duration || 0)}s</span>
+        </button>
       )}
 
       {/* Spot Visual Contents Wrapper (Applies filters on Mini Pop / spots without uploaded photo) */}
@@ -1415,36 +1458,66 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 <div className="absolute w-28 h-28 rounded-full bg-pink-500/15 blur-xl animate-pulse" />
                 <div className="absolute w-16 h-16 rounded-full bg-cyan-500/10 blur-lg animate-pulse" style={{ animationDelay: '500ms' }} />
 
-                {/* Central Audio Icon */}
-                <div className="relative z-10 w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-xl shadow-lg shadow-pink-500/30">
-                  <span>{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
-                </div>
+                {/* Central Audio Play Icon */}
+                <button
+                  type="button"
+                  onClick={togglePlayAudio}
+                  className="relative z-20 w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+                >
+                  {isAudioPlaying ? (
+                    <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                      <rect x="6" y="4" width="4" height="16" rx="1.5" />
+                      <rect x="14" y="4" width="4" height="16" rx="1.5" />
+                    </svg>
+                  ) : (
+                    <span className="text-xl leading-none">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
+                  )}
+                </button>
 
                 {/* Animated Waveform Equalizer Bars */}
                 <div className="relative z-10 flex items-center justify-center gap-1 h-5 mt-2.5">
                   {[35, 75, 100, 60, 90, 45, 80, 50, 95, 40].map((h, i) => (
                     <div
                       key={i}
-                      className="w-1 rounded-full bg-gradient-to-t from-[#FF2E93] to-cyan-400 animate-pulse"
+                      className={`w-1 rounded-full bg-gradient-to-t from-[#FF2E93] to-cyan-400 transition-all ${
+                        isAudioPlaying ? 'animate-pulse' : 'opacity-60'
+                      }`}
                       style={{
-                        height: `${h}%`,
-                        animationDuration: `${0.8 + (i % 3) * 0.3}s`,
-                        animationDelay: `${i * 90}ms`,
+                        height: isAudioPlaying ? `${h}%` : `${Math.max(20, h * 0.45)}%`,
+                        animationDuration: `${0.6 + (i % 3) * 0.25}s`,
+                        animationDelay: `${i * 80}ms`,
                       }}
                     />
                   ))}
                 </div>
 
-                {/* Audio Pop Label & Duration */}
-                <div className="relative z-10 mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/60 border border-white/15 backdrop-blur-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[9px] font-bold text-white tracking-wide">
-                    {content.audio.type === 'voice' ? 'Voice Note' : 'Audio Pop'}
+                {/* Interactive Audio Play Button (Replaces "Voice Note" text with instant tap-to-play) */}
+                <button
+                  type="button"
+                  onClick={togglePlayAudio}
+                  className={`relative z-20 mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all cursor-pointer active:scale-95 ${
+                    isAudioPlaying
+                      ? 'bg-[#FF2E93] border-pink-400 text-white shadow-md shadow-pink-500/30 ring-2 ring-pink-500/20'
+                      : 'bg-black/75 hover:bg-black/90 border-white/25 text-white shadow-sm hover:border-[#FF2E93]'
+                  }`}
+                  title={isAudioPlaying ? 'Pause' : 'Play Audio'}
+                >
+                  {isAudioPlaying ? (
+                    <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                      <rect x="6" y="4" width="4" height="16" rx="1" />
+                      <rect x="14" y="4" width="4" height="16" rx="1" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3 fill-current ml-0.5 text-pink-400" viewBox="0 0 24 24">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  )}
+                  <span className="text-[10px] font-mono font-bold tracking-wider">
+                    {content.audio.duration ? `${content.audio.duration.toFixed(1)}s` : 'Play'}
                   </span>
-                  <span className="text-[8px] font-mono text-pink-300 font-bold">
-                    {content.audio.duration ? `${content.audio.duration.toFixed(1)}s` : ''}
-                  </span>
-                </div>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isAudioPlaying ? 'bg-white animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
+                </button>
               </div>
             ) : (
               <div
