@@ -235,27 +235,54 @@ export const THEMED_BACKGROUNDS: BackgroundOption[] = [
   { name: 'Kraft Vintage', value: 'linear-gradient(135deg, #E2C9A5, #D4B68A)', text: '#3E2723', category: 'classic' },
 ];
 
-// Frame Styles
-export const MINI_FRAMES: { id: FrameStyle; label: string }[] = [
-  { id: 'pin', label: '📌 Push Pin' },
-  { id: 'tape', label: '🩹 Scotch Tape' },
-  { id: 'washi', label: '🎀 Washi Tape' },
-  { id: 'gold_crown', label: '👑 Gold Accent' },
-  { id: 'stamp', label: '📮 Vintage Stamp' },
-  { id: 'comic', label: '💥 Comic Border' },
-  { id: 'none', label: '✨ Clean (None)' },
+// Frame Styles & Accents with Seasons & Festivals
+export interface FrameAccentItem {
+  id: FrameStyle;
+  label: string;
+  category: 'classic' | 'seasons' | 'festivals' | 'aesthetic';
+  animated?: boolean;
+}
+
+export const ALL_FRAME_ACCENTS: FrameAccentItem[] = [
+  // Classic Hanging Tapes & Pins
+  { id: 'tape', label: '🩹 Scotch Tape', category: 'classic' },
+  { id: 'pin', label: '📌 Push Pin', category: 'classic' },
+  { id: 'binder_clip', label: '📎 Binder Clip', category: 'classic' },
+  { id: 'duct_tape', label: '🧲 Duct Tape', category: 'classic' },
+  { id: 'washi', label: '🎀 Artisan Washi', category: 'classic' },
+  { id: 'film_strip', label: '🎞️ 35mm Film', category: 'classic' },
+  { id: 'stamp', label: '📮 Vintage Stamp', category: 'classic' },
+  { id: 'comic', label: '💥 Comic Halftone', category: 'classic' },
+  { id: 'none', label: '✨ Borderless', category: 'classic' },
+
+  // Every Season
+  { id: 'spring_blossom', label: '🌸 Spring Blossom', category: 'seasons', animated: true },
+  { id: 'summer_sun', label: '☀️ Tropical Summer', category: 'seasons', animated: true },
+  { id: 'autumn_leaves', label: '🍁 Autumn Leaves', category: 'seasons', animated: true },
+  { id: 'winter_frost', label: '❄️ Winter Frost', category: 'seasons', animated: true },
+
+  // Festivals & Holidays
+  { id: 'christmas_lights', label: '🎄 Christmas Lights', category: 'festivals', animated: true },
+  { id: 'halloween_bat', label: '🎃 Halloween Spooky', category: 'festivals', animated: true },
+  { id: 'diwali_diya', label: '🪔 Diwali Diyas', category: 'festivals', animated: true },
+  { id: 'new_year_sparkle', label: '🎆 New Year Sparkle', category: 'festivals', animated: true },
+  { id: 'valentine_hearts', label: '💖 Valentine Hearts', category: 'festivals', animated: true },
+  { id: 'birthday_bunting', label: '🎂 Birthday Party', category: 'festivals', animated: true },
+  { id: 'ramadan_crescent', label: '🌙 Ramadan Crescent', category: 'festivals', animated: true },
+  { id: 'holi_colors', label: '🎨 Holi Color Splash', category: 'festivals' },
+  { id: 'lucky_clover', label: '🍀 Lucky Clover', category: 'festivals', animated: true },
+
+  // Aesthetic & Animated
+  { id: 'gold_crown', label: '👑 Royal Crown', category: 'aesthetic', animated: true },
+  { id: 'neon', label: '⚡ Neon Cyber Glow', category: 'aesthetic', animated: true },
+  { id: 'cyber_pulse', label: '👾 Glitch Laser', category: 'aesthetic', animated: true },
+  { id: 'rainbow_holo', label: '🌈 Rainbow Holo', category: 'aesthetic', animated: true },
+  { id: 'cat_paws', label: '🐱 Kitty Paws', category: 'aesthetic', animated: true },
+  { id: 'golden_ribbon', label: '🎗️ Golden Ribbon', category: 'aesthetic' },
 ];
 
-export const BIG_FRAMES: { id: FrameStyle; label: string }[] = [
-  { id: 'tape', label: '🩹 Scotch Tape' },
-  { id: 'gold_crown', label: '👑 Royal Crown' },
-  { id: 'neon', label: '⚡ Neon Cyber Glow' },
-  { id: 'film_strip', label: '🎞️ 35mm Film' },
-  { id: 'duct_tape', label: '🧲 Duct Tape' },
-  { id: 'washi', label: '🎀 Artisan Washi' },
-  { id: 'comic', label: '💥 Comic Halftone' },
-  { id: 'none', label: '✨ Borderless' },
-];
+export const MINI_FRAMES = ALL_FRAME_ACCENTS;
+export const BIG_FRAMES = ALL_FRAME_ACCENTS;
 
 // Vastly Expanded Sticker Library with dedicated Love Elements
 export const STICKER_CATEGORIES: { id: string; name: string; emojis: string[] }[] = [

@@ -75,7 +75,39 @@ export type SpotShape =
   | 'ticket'
   | 'stamp'
   | 'cyber';
-export type FrameStyle = 'tape' | 'pin' | 'washi' | 'neon' | 'gold_crown' | 'film_strip' | 'cyber_glitch' | 'comic' | 'stamp' | 'duct_tape' | 'none';
+export type FrameStyle =
+  | 'none'
+  | 'tape'
+  | 'pin'
+  | 'washi'
+  | 'neon'
+  | 'gold_crown'
+  | 'film_strip'
+  | 'cyber_glitch'
+  | 'comic'
+  | 'stamp'
+  | 'duct_tape'
+  // Seasonal
+  | 'spring_blossom'
+  | 'summer_sun'
+  | 'autumn_leaves'
+  | 'winter_frost'
+  // Festivals & Celebrations
+  | 'christmas_lights'
+  | 'halloween_bat'
+  | 'diwali_diya'
+  | 'new_year_sparkle'
+  | 'valentine_hearts'
+  | 'birthday_bunting'
+  | 'ramadan_crescent'
+  | 'holi_colors'
+  | 'lucky_clover'
+  // Aesthetic & Animated
+  | 'cyber_pulse'
+  | 'rainbow_holo'
+  | 'binder_clip'
+  | 'cat_paws'
+  | 'golden_ribbon';
 
 export interface StickerItem {
   id: string;

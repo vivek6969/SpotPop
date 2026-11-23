@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PlanDraft, ShapeOption } from './types';
 import { ProductTier, FrameStyle } from '../../../types';
-import { AVAILABLE_SHAPES, MINI_FRAMES, BIG_FRAMES } from '../CreateSpotModal';
+import { AVAILABLE_SHAPES, ALL_FRAME_ACCENTS, FrameAccentItem } from '../CreateSpotModal';
+import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface FramesTabProps {
   currentDraft: PlanDraft;
@@ -17,7 +18,13 @@ export const FramesTab: React.FC<FramesTabProps> = ({
   handleSelectShape,
 }) => {
   const isTransparent = currentDraft.shape === 'transparent';
-  const framesList = tier === 'big_pop' ? BIG_FRAMES : MINI_FRAMES;
+  const [accentCategory, setAccentCategory] = useState<'all' | 'animated' | 'seasons' | 'festivals' | 'classic' | 'aesthetic'>('all');
+
+  const filteredAccents = ALL_FRAME_ACCENTS.filter((item) => {
+    if (accentCategory === 'all') return true;
+    if (accentCategory === 'animated') return Boolean(item.animated);
+    return item.category === accentCategory;
+  });
 
   return (
     <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
@@ -94,30 +101,74 @@ export const FramesTab: React.FC<FramesTabProps> = ({
         </div>
       </div>
 
-      {/* 3. Tape Accents & Top Pins */}
+      {/* 3. Tape Accents, Seasons, Festivals & Animated Borders */}
       {!isTransparent && (
-        <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-          <label className="text-xs font-bold text-slate-300 block">
-            📌 Frame Accents & Hanging Tape
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            {framesList.map((f) => (
+        <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-white flex items-center gap-1.5">
+              <span>📌</span>
+              <span>Frame Accents, Seasons & Festivals ({ALL_FRAME_ACCENTS.length})</span>
+            </label>
+            <span className="text-[10px] text-amber-400 font-bold capitalize">
+              {ALL_FRAME_ACCENTS.find(f => f.id === currentDraft.frameStyle)?.label || currentDraft.frameStyle}
+            </span>
+          </div>
+
+          {/* Category Filter Tabs */}
+          <HorizontalScroll className="gap-1.5 py-0.5">
+            {[
+              { id: 'all', label: '🌟 All' },
+              { id: 'animated', label: '✨ Animated (15)' },
+              { id: 'seasons', label: '🍂 Seasons (4)' },
+              { id: 'festivals', label: '🎉 Festivals (9)' },
+              { id: 'classic', label: '🩹 Tapes & Pins' },
+              { id: 'aesthetic', label: '⚡ Aesthetics' },
+            ].map((cat) => (
               <button
-                key={f.id}
+                key={cat.id}
                 type="button"
-                onClick={() => updateDraft({ frameStyle: f.id as FrameStyle })}
-                className={`p-2 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all ${
-                  currentDraft.frameStyle === f.id
-                    ? 'border-amber-400 bg-amber-400/20 text-white'
-                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                onClick={() => setAccentCategory(cat.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  accentCategory === cat.id
+                    ? 'bg-amber-400 text-black shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10'
                 }`}
               >
-                <span>{f.label.split(' ')[0]}</span>
-                <span className="text-[10px] mt-0.5 truncate w-full text-center">
-                  {f.label.split(' ').slice(1).join(' ')}
-                </span>
+                {cat.label}
               </button>
             ))}
+          </HorizontalScroll>
+
+          {/* Grid of Frame Accents */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-72 overflow-y-auto no-scrollbar p-0.5">
+            {filteredAccents.map((f: FrameAccentItem) => {
+              const isSelected = currentDraft.frameStyle === f.id;
+              const emoji = f.label.split(' ')[0];
+              const title = f.label.split(' ').slice(1).join(' ');
+
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => updateDraft({ frameStyle: f.id as FrameStyle })}
+                  className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all relative cursor-pointer ${
+                    isSelected
+                      ? 'border-amber-400 bg-amber-400/20 text-white ring-1 ring-amber-400 shadow-md'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10'
+                  }`}
+                >
+                  {f.animated && (
+                    <span className="absolute top-1 right-1 text-[8px] px-1 rounded-xs bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                      LIVE
+                    </span>
+                  )}
+                  <span className="text-xl mb-1">{emoji}</span>
+                  <span className="text-[10px] font-semibold truncate w-full text-center leading-tight">
+                    {title}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

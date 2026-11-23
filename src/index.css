@@ -62,6 +62,57 @@
   animation: float-slow 4s ease-in-out infinite;
 }
 
+@keyframes twinkle-glow {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); filter: drop-shadow(0 0 2px rgba(255,255,255,0.4)); }
+  50% { opacity: 1; transform: scale(1.12); filter: drop-shadow(0 0 8px currentColor); }
+}
+
+.animate-twinkle {
+  animation: twinkle-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes holiday-sway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.animate-sway {
+  animation: holiday-sway 2.5s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+
+@keyframes heart-pulse {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  50% { transform: scale(0.96); }
+  65% { transform: scale(1.1); }
+}
+
+.animate-heart-pulse {
+  animation: heart-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes holo-sweep {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-holo {
+  background-size: 200% 200%;
+  animation: holo-sweep 4s linear infinite;
+}
+
+@keyframes laser-sweep {
+  0% { top: 0%; opacity: 0.2; }
+  50% { opacity: 0.9; }
+  100% { top: 100%; opacity: 0.2; }
+}
+
+.animate-laser {
+  animation: laser-sweep 2.4s ease-in-out infinite;
+}
+
 /* Hide scrollbars for smooth UI controls */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

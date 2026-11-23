@@ -577,6 +577,185 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         return (
           <div className="absolute inset-0 border-3 border-black pointer-events-none z-20 shadow-[4px_4px_0_0_#000]" />
         );
+      case 'binder_clip':
+        return (
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none filter drop-shadow-md">
+            <div className="w-5 h-4 border-2 border-slate-300 rounded-t-sm bg-transparent" />
+            <div className="w-8 h-3 bg-neutral-900 rounded-xs border border-neutral-700 shadow-sm" />
+          </div>
+        );
+      case 'spring_blossom':
+        return (
+          <div className="absolute -top-3.5 inset-x-0 z-30 flex items-center justify-between px-2 pointer-events-none select-none">
+            <span className="text-base animate-sway">🌸</span>
+            <div className="flex items-center gap-1 opacity-90">
+              <span className="text-xs">🌸</span>
+              <span className="text-[10px] animate-pulse">✨</span>
+              <span className="text-xs">🌸</span>
+            </div>
+            <span className="text-base animate-sway" style={{ animationDelay: '600ms' }}>🌸</span>
+          </div>
+        );
+      case 'summer_sun':
+        return (
+          <div className="absolute -top-3.5 inset-x-0 z-30 flex items-center justify-between px-1.5 pointer-events-none select-none">
+            <span className="text-base animate-sway">🌴</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 backdrop-blur-xs">
+              <span className="text-xs animate-spin-slow">☀️</span>
+              <span className="text-[9px] font-bold text-amber-200">Summer</span>
+            </div>
+            <span className="text-base animate-sway" style={{ animationDelay: '400ms' }}>🌺</span>
+          </div>
+        );
+      case 'autumn_leaves':
+        return (
+          <div className="absolute -top-3 inset-x-0 z-30 flex items-center justify-between px-2 pointer-events-none select-none">
+            <span className="text-base animate-sway">🍁</span>
+            <div className="w-16 h-4 bg-gradient-to-r from-amber-700 via-orange-600 to-amber-800 opacity-80 rounded-xs shadow-xs rotate-[-2deg]" />
+            <span className="text-base animate-sway" style={{ animationDelay: '500ms' }}>🍂</span>
+          </div>
+        );
+      case 'winter_frost':
+        return (
+          <>
+            <div className="absolute -top-3 inset-x-0 z-30 flex items-center justify-around pointer-events-none select-none">
+              <span className="text-sm animate-twinkle">❄️</span>
+              <span className="text-xs animate-twinkle" style={{ animationDelay: '400ms' }}>✨</span>
+              <span className="text-sm animate-twinkle" style={{ animationDelay: '800ms' }}>❄️</span>
+            </div>
+            <div className="absolute inset-0 rounded-2xl border-2 border-sky-300/40 shadow-[0_0_15px_rgba(186,230,253,0.4)] pointer-events-none z-20" />
+          </>
+        );
+      case 'christmas_lights':
+        return (
+          <>
+            <div className="absolute -top-3.5 inset-x-1 z-30 flex items-center justify-between pointer-events-none select-none">
+              <span className="text-xs">🎄</span>
+              <div className="flex-1 flex items-center justify-around px-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-twinkle" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-twinkle" style={{ animationDelay: '400ms' }} />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-twinkle" style={{ animationDelay: '800ms' }} />
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-twinkle" style={{ animationDelay: '1200ms' }} />
+                <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-500 shadow-[0_0_8px_#d946ef] animate-twinkle" style={{ animationDelay: '600ms' }} />
+              </div>
+              <span className="text-xs">🎄</span>
+            </div>
+          </>
+        );
+      case 'halloween_bat':
+        return (
+          <>
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 pointer-events-none select-none filter drop-shadow">
+              <span className="text-lg animate-sway">🦇</span>
+              <span className="text-base animate-pulse">🎃</span>
+            </div>
+            <span className="absolute -top-1 -left-1 z-30 text-xs pointer-events-none opacity-80">🕸️</span>
+            <span className="absolute -top-1 -right-1 z-30 text-xs pointer-events-none opacity-80">🕸️</span>
+          </>
+        );
+      case 'diwali_diya':
+        return (
+          <div className="absolute -top-3.5 inset-x-0 z-30 flex items-center justify-between px-2 pointer-events-none select-none">
+            <span className="text-xs">🌼</span>
+            <div className="flex items-center gap-1 filter drop-shadow-md">
+              <span className="text-lg animate-twinkle">🪔</span>
+            </div>
+            <span className="text-xs">🌼</span>
+          </div>
+        );
+      case 'new_year_sparkle':
+        return (
+          <div className="absolute -top-3.5 inset-x-0 z-30 flex items-center justify-around pointer-events-none select-none">
+            <span className="text-base animate-twinkle">🎆</span>
+            <span className="text-xs animate-twinkle" style={{ animationDelay: '500ms' }}>✨</span>
+            <span className="text-sm animate-twinkle" style={{ animationDelay: '300ms' }}>⭐</span>
+            <span className="text-base animate-twinkle" style={{ animationDelay: '700ms' }}>🎉</span>
+          </div>
+        );
+      case 'valentine_hearts':
+        return (
+          <div className="absolute -top-4 inset-x-0 z-30 flex items-center justify-center gap-1 pointer-events-none select-none">
+            <span className="text-sm animate-heart-pulse">💕</span>
+            <span className="text-xl animate-heart-pulse text-rose-500 filter drop-shadow" style={{ animationDelay: '200ms' }}>💖</span>
+            <span className="text-sm animate-heart-pulse" style={{ animationDelay: '400ms' }}>💕</span>
+          </div>
+        );
+      case 'birthday_bunting':
+        return (
+          <div className="absolute -top-3 inset-x-0 z-30 flex items-center justify-between px-1 pointer-events-none select-none">
+            <span className="text-xs animate-sway">🎈</span>
+            <div className="flex items-center gap-0.5">
+              <span className="text-[11px]">🎪</span>
+              <span className="text-[11px]">🚩</span>
+              <span className="text-[11px]">🎪</span>
+              <span className="text-[11px]">🚩</span>
+            </div>
+            <span className="text-xs animate-sway" style={{ animationDelay: '500ms' }}>🎈</span>
+          </div>
+        );
+      case 'ramadan_crescent':
+        return (
+          <div className="absolute -top-4 inset-x-0 z-30 flex items-center justify-center gap-2 pointer-events-none select-none filter drop-shadow">
+            <span className="text-xs animate-twinkle">⭐</span>
+            <span className="text-xl animate-pulse text-amber-300">🌙</span>
+            <span className="text-sm animate-sway">🏮</span>
+          </div>
+        );
+      case 'holi_colors':
+        return (
+          <>
+            <div className="absolute -top-2.5 -left-2.5 z-30 w-7 h-7 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 blur-[2px] opacity-80 pointer-events-none" />
+            <div className="absolute -top-2.5 -right-2.5 z-30 w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-emerald-500 blur-[2px] opacity-80 pointer-events-none" />
+            <div className="absolute -bottom-2 right-2 z-30 w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 blur-[2px] opacity-75 pointer-events-none" />
+          </>
+        );
+      case 'lucky_clover':
+        return (
+          <div className="absolute -top-3.5 inset-x-0 z-30 flex items-center justify-between px-2 pointer-events-none select-none">
+            <span className="text-base animate-sway">🍀</span>
+            <span className="text-xs animate-twinkle text-emerald-300">✨</span>
+            <span className="text-base animate-sway" style={{ animationDelay: '400ms' }}>🍀</span>
+          </div>
+        );
+      case 'cyber_pulse':
+        return (
+          <div className="absolute inset-0 rounded-2xl pointer-events-none z-20 overflow-hidden border-2 border-cyan-400/70 shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-300 to-transparent animate-laser" />
+            <div className="absolute top-1 left-1 w-2 h-2 border-t-2 border-l-2 border-cyan-300" />
+            <div className="absolute top-1 right-1 w-2 h-2 border-t-2 border-r-2 border-cyan-300" />
+            <div className="absolute bottom-1 left-1 w-2 h-2 border-b-2 border-l-2 border-cyan-300" />
+            <div className="absolute bottom-1 right-1 w-2 h-2 border-b-2 border-r-2 border-cyan-300" />
+          </div>
+        );
+      case 'rainbow_holo':
+        return (
+          <div
+            className="absolute inset-0 rounded-2xl pointer-events-none z-20 border-[3px] border-transparent animate-holo"
+            style={{
+              backgroundImage: 'linear-gradient(#0000,#0000), linear-gradient(135deg, #FF0080, #7928CA, #0070F3, #00DFD8, #FF4D4D, #F5A623)',
+              backgroundOrigin: 'border-box',
+              backgroundClip: 'padding-box, border-box',
+              filter: 'drop-shadow(0 0 10px rgba(255,0,128,0.4))',
+            }}
+          />
+        );
+      case 'cat_paws':
+        return (
+          <div className="absolute -top-3 inset-x-0 z-30 flex items-center justify-between px-6 pointer-events-none select-none animate-sway">
+            <div className="flex flex-col items-center">
+              <span className="text-sm">🐾</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-sm">🐾</span>
+            </div>
+          </div>
+        );
+      case 'golden_ribbon':
+        return (
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none select-none filter drop-shadow-md">
+            <span className="text-2xl">🎗️</span>
+          </div>
+        );
       default:
         return null;
     }
