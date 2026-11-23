@@ -618,6 +618,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     }
   };
 
+  // Active Tool Tab in Editor
+  const [activeEditorTab, setActiveEditorTab] = useState<
+    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes' | 'audio'
+  >('photo');
+  const [selectedBgCategory, setSelectedBgCategory] = useState<'all' | 'halloween' | 'christmas' | 'love' | 'retro' | 'classic'>('all');
+  const [selectedFontCategory, setSelectedFontCategory] = useState<string>('All');
+
   // Sticker search
   const [stickerSearchQuery, setStickerSearchQuery] = useState('');
 
@@ -1503,7 +1510,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     ? ALL_FONTS
     : ALL_FONTS.filter(f => f.category === selectedFontCategory);
 
-  const MOBILE_TOOLS = [
+  const MOBILE_TOOLS: { id: string; label: string; icon: string; bigPopOnly?: boolean }[] = [
     ...(tier === 'big_pop'
       ? [{ id: 'photo', label: 'Tools', icon: '📐' }]
       : []),
@@ -1680,7 +1687,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
               duration: currentDraft.audioDraft.duration,
               type: currentDraft.audioDraft.type,
               mimeType: currentDraft.audioDraft.mimeType,
-              size: currentDraft.audioDraft.size,
+              size: currentDraft.audioDraft.size || 0,
+              storageKey: (currentDraft.audioDraft as any).storageKey || '',
             }
           : editSpot?.content?.audio,
       }}
