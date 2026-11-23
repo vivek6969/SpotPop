@@ -19,12 +19,19 @@ export interface SpotCardProps {
   onSelectItem?: (id: string | null) => void;
   onUpdateSticker?: (id: string, updates: Partial<StickerItem>) => void;
   onDeleteSticker?: (id: string) => void;
+  onDuplicateSticker?: (stk: StickerItem) => void;
   onUpdateLayer?: (id: string, updates: Partial<SpotLayer>) => void;
   onDeleteLayer?: (id: string) => void;
   onUpdateContent?: (updates: Partial<SpotContent>) => void;
   drawingCanvasOverlay?: React.ReactNode;
   className?: string;
 }
+
+const triggerHaptic = (ms = 10) => {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    try { navigator.vibrate(ms); } catch (_) {}
+  }
+};
 
 export const SpotCard: React.FC<SpotCardProps> = ({
   tier = 'mini_pop',
@@ -42,6 +49,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   onSelectItem,
   onUpdateSticker,
   onDeleteSticker,
+  onDuplicateSticker,
   onUpdateLayer,
   onDeleteLayer,
   onUpdateContent,
@@ -58,41 +66,105 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // =================== FREE STICKER DRAGGING & RESIZING ===================
+  // =================== MULTI-TOUCH STICKER GESTURES (DRAG, PINCH-RESIZE & ROTATE) ===================
+  const lastStickerTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+  const activeStickerPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const stickerGestureStartRef = useRef<{
+    startDist: number;
+    startAngle: number;
+    startSize: number;
+    startRot: number;
+    startX: number;
+    startY: number;
+    startStkX: number;
+    startStkY: number;
+  }>({ startDist: 0, startAngle: 0, startSize: 28, startRot: 0, startX: 0, startY: 0, startStkX: 0, startStkY: 0 });
 
   const handleStickerPointerDown = (e: React.PointerEvent, stk: StickerItem) => {
     if (!interactive) return;
     e.stopPropagation();
     onSelectItem?.(stk.id);
 
-    const startClientX = e.clientX;
-    const startClientY = e.clientY;
-    const startX = stk.x;
-    const startY = stk.y;
-    let isDragging = false;
+    // Double-tap to duplicate sticker
+    const now = Date.now();
+    if (lastStickerTapRef.current.id === stk.id && now - lastStickerTapRef.current.time < 320) {
+      lastStickerTapRef.current = { id: '', time: 0 };
+      triggerHaptic(15);
+      onDuplicateSticker?.(stk);
+      return;
+    }
+    lastStickerTapRef.current = { id: stk.id, time: now };
+
+    activeStickerPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const stkSize = stk.size || 28;
+    const stkRot = stk.rotation || 0;
+    const pointers = Array.from(activeStickerPointersRef.current.values());
+
+    if (pointers.length === 1) {
+      stickerGestureStartRef.current = {
+        startDist: 0,
+        startAngle: 0,
+        startSize: stkSize,
+        startRot: stkRot,
+        startX: pointers[0].x,
+        startY: pointers[0].y,
+        startStkX: stk.x,
+        startStkY: stk.y,
+      };
+    } else if (pointers.length >= 2) {
+      const dist = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+      const angle = (Math.atan2(pointers[1].y - pointers[0].y, pointers[1].x - pointers[0].x) * 180) / Math.PI;
+      stickerGestureStartRef.current = {
+        startDist: Math.max(dist, 10),
+        startAngle: angle,
+        startSize: stkSize,
+        startRot: stkRot,
+        startX: (pointers[0].x + pointers[1].x) / 2,
+        startY: (pointers[0].y + pointers[1].y) / 2,
+        startStkX: stk.x,
+        startStkY: stk.y,
+      };
+    }
 
     const onPointerMove = (moveEvt: PointerEvent) => {
-      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
-      if (dist > 3) isDragging = true;
-      if (!isDragging) return;
+      if (!activeStickerPointersRef.current.has(moveEvt.pointerId)) return;
+      activeStickerPointersRef.current.set(moveEvt.pointerId, { x: moveEvt.clientX, y: moveEvt.clientY });
 
-      const dx = (moveEvt.clientX - startClientX) / scale;
-      const dy = (moveEvt.clientY - startClientY) / scale;
-      const stkSize = stk.size || 28;
-      // Allow sticker to peek slightly outside frame, but must stay anchored/touching the container
-      const maxPeek = Math.min(stkSize * 0.35, 12);
-      const newX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - stkSize + maxPeek, startX + dx)));
-      const newY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - stkSize + maxPeek, startY + dy)));
-      onUpdateSticker?.(stk.id, { x: newX, y: newY });
+      const pts = Array.from(activeStickerPointersRef.current.values());
+      if (pts.length === 1) {
+        // 1-finger drag
+        const dx = (pts[0].x - stickerGestureStartRef.current.startX) / scale;
+        const dy = (pts[0].y - stickerGestureStartRef.current.startY) / scale;
+        const currentSize = stk.size || 28;
+        const maxPeek = Math.min(currentSize * 0.35, 12);
+        const newX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - currentSize + maxPeek, stickerGestureStartRef.current.startStkX + dx)));
+        const newY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - currentSize + maxPeek, stickerGestureStartRef.current.startStkY + dy)));
+        onUpdateSticker?.(stk.id, { x: newX, y: newY });
+      } else if (pts.length >= 2) {
+        // 2-finger pinch resize & rotate
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const angle = (Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180) / Math.PI;
+        const ratio = dist / stickerGestureStartRef.current.startDist;
+        const newSize = Math.max(14, Math.min(120, Math.round(stickerGestureStartRef.current.startSize * ratio)));
+        const angleDiff = angle - stickerGestureStartRef.current.startAngle;
+        const newRot = Math.round((stickerGestureStartRef.current.startRot + angleDiff) % 360);
+        onUpdateSticker?.(stk.id, { size: newSize, rotation: newRot });
+      }
     };
 
-    const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+    const onPointerUp = (upEvt: PointerEvent) => {
+      activeStickerPointersRef.current.delete(upEvt.pointerId);
+      if (activeStickerPointersRef.current.size === 0) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+      }
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   const handleStickerResizeDown = (e: React.PointerEvent, stk: StickerItem) => {
@@ -110,10 +182,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   const handleStickerRotateDown = (e: React.PointerEvent, stk: StickerItem) => {
@@ -131,10 +205,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   // =================== FREE MULTI-LAYER DRAGGING, RESIZING & ROTATING ===================
@@ -287,39 +363,85 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
   // =================== FREE TEXT DRAGGING & RESIZING (MAIN, SUB, CREATOR TAG) ===================
 
-  // Headline drag handler
+  // Headline drag & pinch resize handler
+  const activeHeadlinePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const headlineGestureStartRef = useRef<{
+    startDist: number;
+    startSize: number;
+    startX: number;
+    startY: number;
+    startHeadlineX: number;
+    startHeadlineY: number;
+  }>({ startDist: 0, startSize: 22, startX: 0, startY: 0, startHeadlineX: 12, startHeadlineY: 50 });
+
   const handleHeadlinePointerDown = (e: React.PointerEvent) => {
     if (!interactive) return;
     e.stopPropagation();
     onSelectItem?.('headline');
 
-    const startClientX = e.clientX;
-    const startClientY = e.clientY;
+    activeHeadlinePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
     const defaultX = 12;
-    const defaultY = shape === 'polaroid' ? cardHeight - 55 : (cardHeight * 0.28);
-    const startX = content.headlineX !== undefined ? content.headlineX : defaultX;
-    const startY = content.headlineY !== undefined ? content.headlineY : defaultY;
-    let isDragging = false;
+    const defaultY = shape === 'polaroid' ? cardHeight - 55 : cardHeight * 0.28;
+    const currentX = content.headlineX !== undefined ? content.headlineX : defaultX;
+    const currentY = content.headlineY !== undefined ? content.headlineY : defaultY;
+    const currentSize = content.fontSize || 22;
+
+    const pointers = Array.from(activeHeadlinePointersRef.current.values());
+    if (pointers.length === 1) {
+      headlineGestureStartRef.current = {
+        startDist: 0,
+        startSize: currentSize,
+        startX: pointers[0].x,
+        startY: pointers[0].y,
+        startHeadlineX: currentX,
+        startHeadlineY: currentY,
+      };
+    } else if (pointers.length >= 2) {
+      const dist = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+      headlineGestureStartRef.current = {
+        startDist: Math.max(dist, 10),
+        startSize: currentSize,
+        startX: (pointers[0].x + pointers[1].x) / 2,
+        startY: (pointers[0].y + pointers[1].y) / 2,
+        startHeadlineX: currentX,
+        startHeadlineY: currentY,
+      };
+    }
 
     const onPointerMove = (moveEvt: PointerEvent) => {
-      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
-      if (dist > 3) isDragging = true;
-      if (!isDragging) return;
+      if (!activeHeadlinePointersRef.current.has(moveEvt.pointerId)) return;
+      activeHeadlinePointersRef.current.set(moveEvt.pointerId, { x: moveEvt.clientX, y: moveEvt.clientY });
 
-      const dx = (moveEvt.clientX - startClientX) / scale;
-      const dy = (moveEvt.clientY - startClientY) / scale;
-      const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, startX + dx)));
-      const newY = Math.round(Math.max(5, Math.min(cardHeight - 30, startY + dy)));
-      onUpdateContent?.({ headlineX: newX, headlineY: newY });
+      const pts = Array.from(activeHeadlinePointersRef.current.values());
+      if (pts.length === 1) {
+        // 1-finger reposition
+        const dx = (pts[0].x - headlineGestureStartRef.current.startX) / scale;
+        const dy = (pts[0].y - headlineGestureStartRef.current.startY) / scale;
+        const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, headlineGestureStartRef.current.startHeadlineX + dx)));
+        const newY = Math.round(Math.max(5, Math.min(cardHeight - 30, headlineGestureStartRef.current.startHeadlineY + dy)));
+        onUpdateContent?.({ headlineX: newX, headlineY: newY });
+      } else if (pts.length >= 2) {
+        // 2-finger pinch resize
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const ratio = dist / headlineGestureStartRef.current.startDist;
+        const newSize = Math.max(12, Math.min(56, Math.round(headlineGestureStartRef.current.startSize * ratio)));
+        onUpdateContent?.({ fontSize: newSize });
+      }
     };
 
-    const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+    const onPointerUp = (upEvt: PointerEvent) => {
+      activeHeadlinePointersRef.current.delete(upEvt.pointerId);
+      if (activeHeadlinePointersRef.current.size === 0) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+      }
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   // Headline corner resize
@@ -331,52 +453,100 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
     const onPointerMove = (moveEvt: PointerEvent) => {
       const dy = (moveEvt.clientY - startY) / scale;
-      const newSize = Math.max(13, Math.min(52, Math.round(currentSize + dy * 0.4)));
+      const newSize = Math.max(13, Math.min(56, Math.round(currentSize + dy * 0.4)));
       onUpdateContent?.({ fontSize: newSize });
     };
 
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
-  // Subtext drag handler
+  // Subtext drag & pinch resize handler
+  const activeSubtextPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const subtextGestureStartRef = useRef<{
+    startDist: number;
+    startSize: number;
+    startX: number;
+    startY: number;
+    startSubtextX: number;
+    startSubtextY: number;
+  }>({ startDist: 0, startSize: 14, startX: 0, startY: 0, startSubtextX: 12, startSubtextY: 80 });
+
   const handleSubtextPointerDown = (e: React.PointerEvent) => {
     if (!interactive) return;
     e.stopPropagation();
     onSelectItem?.('subtext');
 
-    const startClientX = e.clientX;
-    const startClientY = e.clientY;
+    activeSubtextPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
     const defaultX = 12;
-    const defaultY = shape === 'polaroid' ? cardHeight - 28 : (cardHeight * 0.58);
-    const startX = content.subtextX !== undefined ? content.subtextX : defaultX;
-    const startY = content.subtextY !== undefined ? content.subtextY : defaultY;
-    let isDragging = false;
+    const defaultY = shape === 'polaroid' ? cardHeight - 28 : cardHeight * 0.58;
+    const currentX = content.subtextX !== undefined ? content.subtextX : defaultX;
+    const currentY = content.subtextY !== undefined ? content.subtextY : defaultY;
+    const currentSize = content.subtextSize || 14;
+
+    const pointers = Array.from(activeSubtextPointersRef.current.values());
+    if (pointers.length === 1) {
+      subtextGestureStartRef.current = {
+        startDist: 0,
+        startSize: currentSize,
+        startX: pointers[0].x,
+        startY: pointers[0].y,
+        startSubtextX: currentX,
+        startSubtextY: currentY,
+      };
+    } else if (pointers.length >= 2) {
+      const dist = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+      subtextGestureStartRef.current = {
+        startDist: Math.max(dist, 10),
+        startSize: currentSize,
+        startX: (pointers[0].x + pointers[1].x) / 2,
+        startY: (pointers[0].y + pointers[1].y) / 2,
+        startSubtextX: currentX,
+        startSubtextY: currentY,
+      };
+    }
 
     const onPointerMove = (moveEvt: PointerEvent) => {
-      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
-      if (dist > 3) isDragging = true;
-      if (!isDragging) return;
+      if (!activeSubtextPointersRef.current.has(moveEvt.pointerId)) return;
+      activeSubtextPointersRef.current.set(moveEvt.pointerId, { x: moveEvt.clientX, y: moveEvt.clientY });
 
-      const dx = (moveEvt.clientX - startClientX) / scale;
-      const dy = (moveEvt.clientY - startClientY) / scale;
-      const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, startX + dx)));
-      const newY = Math.round(Math.max(5, Math.min(cardHeight - 20, startY + dy)));
-      onUpdateContent?.({ subtextX: newX, subtextY: newY });
+      const pts = Array.from(activeSubtextPointersRef.current.values());
+      if (pts.length === 1) {
+        // 1-finger reposition
+        const dx = (pts[0].x - subtextGestureStartRef.current.startX) / scale;
+        const dy = (pts[0].y - subtextGestureStartRef.current.startY) / scale;
+        const newX = Math.round(Math.max(-20, Math.min(cardWidth - 40, subtextGestureStartRef.current.startSubtextX + dx)));
+        const newY = Math.round(Math.max(5, Math.min(cardHeight - 20, subtextGestureStartRef.current.startSubtextY + dy)));
+        onUpdateContent?.({ subtextX: newX, subtextY: newY });
+      } else if (pts.length >= 2) {
+        // 2-finger pinch resize
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const ratio = dist / subtextGestureStartRef.current.startDist;
+        const newSize = Math.max(10, Math.min(36, Math.round(subtextGestureStartRef.current.startSize * ratio)));
+        onUpdateContent?.({ subtextSize: newSize });
+      }
     };
 
-    const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+    const onPointerUp = (upEvt: PointerEvent) => {
+      activeSubtextPointersRef.current.delete(upEvt.pointerId);
+      if (activeSubtextPointersRef.current.size === 0) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+      }
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   // Subtext corner resize
@@ -388,17 +558,19 @@ export const SpotCard: React.FC<SpotCardProps> = ({
 
     const onPointerMove = (moveEvt: PointerEvent) => {
       const dy = (moveEvt.clientY - startY) / scale;
-      const newSize = Math.max(10, Math.min(32, Math.round(currentSize + dy * 0.3)));
+      const newSize = Math.max(10, Math.min(36, Math.round(currentSize + dy * 0.3)));
       onUpdateContent?.({ subtextSize: newSize });
     };
 
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   // Creator Tag (Author) drag handler
@@ -430,10 +602,12 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   // Creator Tag corner resize
@@ -452,52 +626,119 @@ export const SpotCard: React.FC<SpotCardProps> = ({
     const onPointerUp = () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
-  // Direct Photo Pan & Crop Drag Handler
+  // Multi-Touch Photo Gestures (1-finger pan, 2-finger pinch-zoom, double-tap reset)
+  const lastPhotoTapRef = useRef<number>(0);
+  const activePhotoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const photoGestureStartRef = useRef<{
+    startDist: number;
+    startZoom: number;
+    startX: number;
+    startY: number;
+    startOffsetX: number;
+    startOffsetY: number;
+  }>({ startDist: 0, startZoom: 1, startX: 0, startY: 0, startOffsetX: 0, startOffsetY: 0 });
+
   const handlePhotoPointerDown = (e: React.PointerEvent) => {
     if (!interactive) return;
     e.stopPropagation();
     onSelectItem?.('photo');
 
-    const startClientX = e.clientX;
-    const startClientY = e.clientY;
-    const startOffsetX = content.photoOffsetX ?? 0;
-    const startOffsetY = content.photoOffsetY ?? 0;
-    let isDragging = false;
+    // Double-tap detection -> Reset zoom & fit
+    const now = Date.now();
+    if (now - lastPhotoTapRef.current < 320) {
+      lastPhotoTapRef.current = 0;
+      triggerHaptic(15);
+      onUpdateContent?.({ photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 });
+      return;
+    }
+    lastPhotoTapRef.current = now;
+
+    activePhotoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const currentZoom = content.photoZoom ?? 1;
+    const currentOffsetX = content.photoOffsetX ?? 0;
+    const currentOffsetY = content.photoOffsetY ?? 0;
+
+    const pointers = Array.from(activePhotoPointersRef.current.values());
+    if (pointers.length === 1) {
+      photoGestureStartRef.current = {
+        startDist: 0,
+        startZoom: currentZoom,
+        startX: pointers[0].x,
+        startY: pointers[0].y,
+        startOffsetX: currentOffsetX,
+        startOffsetY: currentOffsetY,
+      };
+    } else if (pointers.length >= 2) {
+      const dist = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+      photoGestureStartRef.current = {
+        startDist: Math.max(dist, 10),
+        startZoom: currentZoom,
+        startX: (pointers[0].x + pointers[1].x) / 2,
+        startY: (pointers[0].y + pointers[1].y) / 2,
+        startOffsetX: currentOffsetX,
+        startOffsetY: currentOffsetY,
+      };
+    }
 
     const onPointerMove = (moveEvt: PointerEvent) => {
-      const dist = Math.hypot(moveEvt.clientX - startClientX, moveEvt.clientY - startClientY);
-      if (dist > 4) isDragging = true;
-      if (!isDragging) return;
+      if (!activePhotoPointersRef.current.has(moveEvt.pointerId)) return;
+      activePhotoPointersRef.current.set(moveEvt.pointerId, { x: moveEvt.clientX, y: moveEvt.clientY });
 
-      const dx = (moveEvt.clientX - startClientX) / scale;
-      const dy = (moveEvt.clientY - startClientY) / scale;
-      const newX = Math.round(startOffsetX + dx);
-      const newY = Math.round(startOffsetY + dy);
-      onUpdateContent?.({ photoOffsetX: newX, photoOffsetY: newY });
+      const pts = Array.from(activePhotoPointersRef.current.values());
+      if (pts.length === 1) {
+        // 1-finger pan
+        const dx = (pts[0].x - photoGestureStartRef.current.startX) / scale;
+        const dy = (pts[0].y - photoGestureStartRef.current.startY) / scale;
+        const newX = Math.round(photoGestureStartRef.current.startOffsetX + dx);
+        const newY = Math.round(photoGestureStartRef.current.startOffsetY + dy);
+        onUpdateContent?.({ photoOffsetX: newX, photoOffsetY: newY });
+      } else if (pts.length >= 2) {
+        // 2-finger pinch zoom & pan
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const ratio = dist / photoGestureStartRef.current.startDist;
+        const newZoom = Math.min(4.0, Math.max(0.4, Number((photoGestureStartRef.current.startZoom * ratio).toFixed(2))));
+
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        const dx = (midX - photoGestureStartRef.current.startX) / scale;
+        const dy = (midY - photoGestureStartRef.current.startY) / scale;
+        const newX = Math.round(photoGestureStartRef.current.startOffsetX + dx);
+        const newY = Math.round(photoGestureStartRef.current.startOffsetY + dy);
+
+        onUpdateContent?.({ photoZoom: newZoom, photoOffsetX: newX, photoOffsetY: newY });
+      }
     };
 
-    const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+    const onPointerUp = (upEvt: PointerEvent) => {
+      activePhotoPointersRef.current.delete(upEvt.pointerId);
+      if (activePhotoPointersRef.current.size === 0) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+      }
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
-  // Photo Wheel Zoom Handler
+  // Photo Wheel Zoom Handler (Desktop fallback)
   const handlePhotoWheel = (e: React.WheelEvent) => {
     if (!interactive) return;
     e.stopPropagation();
     const currentZoom = content.photoZoom ?? 1;
     const delta = e.deltaY < 0 ? 0.05 : -0.05;
-    const newZoom = Math.min(3.5, Math.max(0.5, Number((currentZoom + delta).toFixed(2))));
+    const newZoom = Math.min(4.0, Math.max(0.4, Number((currentZoom + delta).toFixed(2))));
     onUpdateContent?.({ photoZoom: newZoom });
   };
 
@@ -1304,9 +1545,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                     <div />
                   </div>
                 )}
-                <div className="absolute bottom-1 inset-x-0 flex justify-center">
-                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
-                    Drag to crop • Scroll zoom
+                <div className="absolute bottom-1 inset-x-0 flex justify-center pointer-events-none">
+                  <span className="text-[9px] bg-black/90 text-pink-300 px-2 py-0.5 rounded-full border border-[#FF2E93]/40 shadow-sm font-sans font-semibold tracking-wide">
+                    Drag to pan • Pinch to zoom • Double-tap reset
                   </span>
                 </div>
               </div>
@@ -1388,28 +1629,33 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               </h3>
             )}
 
-            {/* Selection Controls for Headline */}
+            {/* Selection Controls for Headline with 44px Touch Targets */}
             {isHeadlineSelected && (
               <>
                 <button
                   type="button"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    triggerHaptic(10);
                     onUpdateContent?.({ headline: '' });
                     onSelectItem?.(null);
                   }}
-                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform cursor-pointer z-40"
+                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
                   title="Delete Headline"
                 >
-                  ✕
+                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                    ✕
+                  </span>
                 </button>
                 {/* Corner Resize Handle */}
                 <div
                   onPointerDown={handleHeadlineResizeDown}
-                  className="absolute -bottom-2 -right-2 w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
                   title="Drag to Resize Font Size"
                 >
-                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  </div>
                 </div>
               </>
             )}
@@ -1457,27 +1703,32 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               {content.text}
             </p>
 
-            {/* Selection Controls for Subtext */}
+            {/* Selection Controls for Subtext with 44px Touch Targets */}
             {isSubtextSelected && (
               <>
                 <button
                   type="button"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    triggerHaptic(10);
                     onUpdateContent?.({ text: '' });
                     onSelectItem?.(null);
                   }}
-                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform"
+                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
                   title="Delete Subtext"
                 >
-                  ✕
+                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                    ✕
+                  </span>
                 </button>
                 <div
                   onPointerDown={handleSubtextResizeDown}
-                  className="absolute -bottom-2 -right-2 w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
                   title="Drag to Resize Subtext"
                 >
-                  <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                  <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                    <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                  </div>
                 </div>
               </>
             )}
@@ -1731,35 +1982,58 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             {/* SELECTION BOUNDING BOX & CONTROLS */}
             {isSelected && (
               <div className="absolute -inset-2 border-2 border-dashed border-[#FF2E93] rounded-md pointer-events-auto">
-                {/* Delete Button (✕) on Top-Right Corner */}
+                {/* Delete Button (✕) on Top-Left Corner with 44px Touch Target */}
                 <button
                   type="button"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    triggerHaptic(10);
                     onDeleteSticker?.(stk.id);
                   }}
-                  className="absolute -top-3.5 -right-3.5 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-lg hover:bg-rose-700 hover:scale-110 active:scale-95 transition-transform"
+                  className="absolute -top-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
                   title="Delete Sticker"
                 >
-                  ✕
+                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                    ✕
+                  </span>
                 </button>
 
-                {/* Resize Corner Handle on Bottom-Right Corner */}
-                <div
-                  onPointerDown={(e) => handleStickerResizeDown(e, stk)}
-                  className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
-                  title="Drag to Resize"
+                {/* Duplicate Button (⧉) on Bottom-Left Corner with 44px Touch Target */}
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    onDuplicateSticker?.(stk);
+                  }}
+                  className="absolute -bottom-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
+                  title="Duplicate Sticker"
                 >
-                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                </div>
+                  <span className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-[9px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                    ⧉
+                  </span>
+                </button>
 
-                {/* Rotate Handle on Top-Left Corner */}
+                {/* Rotate Handle on Top-Right Corner with 44px Touch Target */}
                 <div
                   onPointerDown={(e) => handleStickerRotateDown(e, stk)}
-                  className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center cursor-ew-resize shadow-md hover:scale-125 transition-transform"
+                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-ew-resize z-50"
                   title="Drag to Rotate"
                 >
-                  <span className="text-[9px] font-bold text-black">↻</span>
+                  <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                    <span className="text-[9px] font-bold text-black">↻</span>
+                  </div>
+                </div>
+
+                {/* Resize Corner Handle on Bottom-Right Corner with 44px Touch Target */}
+                <div
+                  onPointerDown={(e) => handleStickerResizeDown(e, stk)}
+                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
+                  title="Drag to Resize"
+                >
+                  <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  </div>
                 </div>
               </div>
             )}

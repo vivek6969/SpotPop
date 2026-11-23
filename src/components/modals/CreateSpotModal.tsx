@@ -918,6 +918,55 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     isDraggingTabsRef.current = false;
   };
 
+  // =================== NATIVE MOBILE CREATIVE STUDIO STATE ===================
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+  );
+  const [mobileActiveSheet, setMobileActiveSheet] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const triggerMobileHaptic = (ms = 10) => {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      try { navigator.vibrate(ms); } catch (_) {}
+    }
+  };
+
+  const handleDuplicateSticker = (stk: StickerItem) => {
+    triggerMobileHaptic(15);
+    const newSticker: StickerItem = {
+      ...stk,
+      id: 'stk_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      x: Math.min(130, stk.x + 12),
+      y: Math.min(160, stk.y + 12),
+    };
+    updateDraft({ stickers: [...currentDraft.stickers, newSticker] });
+    setSelectedItemId(newSticker.id);
+  };
+
+  const handleSelectItemWithMobileSheet = (id: string | null) => {
+    setSelectedItemId(id);
+    if (!id) return;
+    if (isMobile) {
+      if (id === 'headline' || id === 'subtext') {
+        setMobileActiveSheet('text');
+        setActiveEditorTab('text');
+      } else if (id === 'photo') {
+        setMobileActiveSheet('adjust');
+        setActiveEditorTab('adjust');
+      } else if (id === 'background') {
+        setMobileActiveSheet('themes');
+        setActiveEditorTab('themes');
+      }
+    }
+  };
+
   // =================== DRAWING STUDIO (BIG POP ONLY) ===================
   const drawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -1434,19 +1483,252 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     ? ALL_FONTS
     : ALL_FONTS.filter(f => f.category === selectedFontCategory);
 
+  const MOBILE_TOOLS = [
+    ...(tier === 'big_pop'
+      ? [{ id: 'photo', label: 'Tools', icon: '📐' }]
+      : []),
+    { id: 'adjust', label: 'Adjust', icon: '🎨' },
+    ...(tier === 'big_pop'
+      ? [{ id: 'retouch', label: 'Retouch', icon: '✨' }]
+      : []),
+    { id: 'text', label: 'Text', icon: '✍️' },
+    { id: 'stickers', label: 'Stickers', icon: '💖' },
+    { id: 'draw', label: 'Draw', icon: '🖌️' },
+    { id: 'frames', label: 'Frames', icon: '🖼️' },
+    { id: 'themes', label: 'Background', icon: '🌈' },
+    ...(tier === 'big_pop'
+      ? [{ id: 'audio', label: 'Audio', icon: '🎙️' }]
+      : []),
+  ];
+
+  const handleMobileToolSelect = (toolId: string) => {
+    triggerMobileHaptic(12);
+    if (toolId === 'draw') {
+      setIsDrawingMode(true);
+      setActiveEditorTab('draw');
+    } else {
+      setIsDrawingMode(false);
+      setActiveEditorTab(toolId as any);
+      if (toolId === 'adjust' || toolId === 'photo' || toolId === 'retouch') {
+        setSelectedItemId('photo');
+      } else if (toolId === 'themes') {
+        setSelectedItemId('background');
+      }
+    }
+    setMobileActiveSheet((prev) => (prev === toolId ? null : toolId));
+  };
+
+  const renderTabContent = (tabKey: string) => {
+    switch (tabKey) {
+      case 'photo':
+        return tier === 'big_pop' && !isDrawingMode ? (
+          <PhotoCropTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            updatePhotoAdjustments={updatePhotoAdjustments}
+            tier={tier}
+            onFileUpload={handleFileUpload}
+          />
+        ) : null;
+      case 'adjust':
+        return !isDrawingMode ? (
+          <AdjustTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            updatePhotoAdjustments={updatePhotoAdjustments}
+          />
+        ) : null;
+      case 'retouch':
+        return tier === 'big_pop' && !isDrawingMode ? (
+          <RetouchTab
+            currentDraft={currentDraft}
+            updatePhotoAdjustments={updatePhotoAdjustments}
+          />
+        ) : null;
+      case 'text':
+        return !isDrawingMode ? (
+          <TextStudioTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            selectedFontCategory={selectedFontCategory}
+            setSelectedFontCategory={setSelectedFontCategory}
+          />
+        ) : null;
+      case 'stickers':
+        return !isDrawingMode ? (
+          <StickersStockTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            handleAddSticker={handleAddSticker}
+            onCustomStickerUpload={handleCustomStickerUpload}
+            selectedItemId={selectedItemId}
+            onUpdateSticker={handleUpdateSticker}
+            onDeleteSticker={handleDeleteSticker}
+          />
+        ) : null;
+      case 'draw':
+        return (isDrawingMode || activeEditorTab === 'draw') ? (
+          <DrawStudioTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            drawTool={drawTool}
+            setDrawTool={setDrawTool}
+            drawColor={drawColor}
+            setDrawColor={setDrawColor}
+            brushSize={brushSize}
+            setBrushSize={setBrushSize}
+            brushOpacity={brushOpacity}
+            setBrushOpacity={setBrushOpacity}
+            handleUndoDrawing={handleUndoDrawing}
+            handleClearDrawing={handleClearDrawing}
+            handleAddShapeLayer={handleAddShapeLayer}
+          />
+        ) : null;
+      case 'frames':
+        return !isDrawingMode ? (
+          <FramesTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            tier={tier}
+            handleSelectShape={handleSelectShape}
+          />
+        ) : null;
+      case 'themes':
+        return !isDrawingMode ? (
+          <ThemesTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+            selectedBgCategory={selectedBgCategory}
+            setSelectedBgCategory={setSelectedBgCategory}
+          />
+        ) : null;
+      case 'audio':
+        return tier === 'big_pop' && !isDrawingMode ? (
+          <AudioStudioTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+          />
+        ) : null;
+      default:
+        return null;
+    }
+  };
+
+  const renderSpotCardElement = () => (
+    <SpotCard
+      tier={tier}
+      shape={currentDraft.shape}
+      background={currentDraft.backgroundColor}
+      content={{
+        headline: currentDraft.headline,
+        headlineX: currentDraft.headlineX,
+        headlineY: currentDraft.headlineY,
+        text: currentDraft.secondaryText,
+        subtextX: currentDraft.subtextX,
+        subtextY: currentDraft.subtextY,
+        subtextSize: currentDraft.subtextSize,
+        author: currentDraft.creatorName,
+        authorX: currentDraft.authorX,
+        authorY: currentDraft.authorY,
+        authorSize: currentDraft.authorSize,
+        authorOpacity: currentDraft.authorOpacity,
+        textColor: currentDraft.textColor,
+        fontFamily: currentDraft.fontFamily,
+        fontSize: currentDraft.fontSize,
+        textOpacity: currentDraft.textOpacity,
+        alignment: currentDraft.alignment,
+        imageUrl: tier === 'big_pop' ? currentDraft.imageUrl : undefined,
+        imageFit: currentDraft.imageFit,
+        photoOpacity: currentDraft.photoOpacity,
+        photoZoom: currentDraft.photoZoom,
+        photoOffsetX: currentDraft.photoOffsetX,
+        photoOffsetY: currentDraft.photoOffsetY,
+        stickers: currentDraft.stickers,
+        drawingData: currentDraft.drawingDataUrl || undefined,
+        drawingOpacity: currentDraft.drawingOpacity,
+        frameStyle: currentDraft.frameStyle,
+        photoAdjustments: currentDraft.photoAdjustments,
+        layers: currentDraft.layers,
+        isCurvedText: currentDraft.isCurvedText,
+        curveRadius: currentDraft.curveRadius,
+        textStroke: currentDraft.textStroke,
+        textGlow: currentDraft.textGlow,
+        letterSpacing: currentDraft.letterSpacing,
+        audio: currentDraft.audioDraft
+          ? {
+              url: currentDraft.audioDraft.previewUrl,
+              duration: currentDraft.audioDraft.duration,
+              type: currentDraft.audioDraft.type,
+              mimeType: currentDraft.audioDraft.mimeType,
+              size: currentDraft.audioDraft.size,
+            }
+          : editSpot?.content?.audio,
+      }}
+      creatorName={currentDraft.creatorName}
+      interactive={!isDrawingMode}
+      selectedItemId={selectedItemId}
+      onSelectItem={handleSelectItemWithMobileSheet}
+      onUpdateSticker={handleUpdateSticker}
+      onDeleteSticker={handleDeleteSticker}
+      onDuplicateSticker={handleDuplicateSticker}
+      onUpdateLayer={handleUpdateLayer}
+      onDeleteLayer={handleDeleteLayer}
+      onUpdateContent={(updates) => {
+        const draftUpdates: Partial<PlanDraft> = { ...updates };
+        if (updates.author !== undefined) {
+          draftUpdates.creatorName = updates.author;
+        }
+        if (updates.text !== undefined) {
+          draftUpdates.secondaryText = updates.text;
+        }
+        updateDraft(draftUpdates);
+      }}
+      drawingCanvasOverlay={
+        isDrawingMode ? (
+          <canvas
+            ref={drawingCanvasRef}
+            width={680}
+            height={tier === 'big_pop' ? 840 : 680}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="w-full h-full cursor-crosshair touch-none rounded-xs"
+            style={{ background: 'transparent' }}
+          />
+        ) : undefined
+      }
+    />
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 lg:p-4 bg-black/85 backdrop-blur-md overflow-hidden">
       <div className="relative w-full h-[100dvh] lg:max-w-4xl lg:h-[90vh] flex flex-col bg-[#12141F] lg:border lg:border-white/15 lg:rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
 
         {/* Top Header */}
-        <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/60 z-30">
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <SpotPopLogo variant="icon" size={24} />
-            <h3 className="font-outfit font-bold text-sm sm:text-base text-white">
-              {editSpot ? '✏️ Edit Pop' : 'Studio Spot Creator'}
-            </h3>
+        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/70 z-30">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-base shrink-0 active:scale-95"
+              title="Close"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <SpotPopLogo variant="icon" size={22} />
+              <h3 className="font-outfit font-bold text-sm text-white truncate hidden xs:inline">
+                {editSpot ? 'Edit Pop' : 'Studio'}
+              </h3>
+            </div>
+
+            {/* Plan Switcher Pills */}
             {!editSpot ? (
-              <div className="flex items-center p-0.5 bg-black/70 rounded-lg border border-white/10 ml-1">
+              <div className="flex items-center p-0.5 bg-black/80 rounded-lg border border-white/10 ml-1">
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('mini_pop')}
@@ -1471,223 +1753,331 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 </button>
               </div>
             ) : (
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
-                Editing ({tier === 'big_pop' ? 'Big Pop' : 'Mini Pop'})
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 truncate">
+                Editing {tier === 'big_pop' ? 'Big' : 'Mini'}
               </span>
             )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            ✕
-          </button>
+          {/* Right Header Controls: Undo, Redo, and Publish CTA */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={undoHistory.length === 0}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 disabled:opacity-25 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+              title="Undo"
+            >
+              ↩
+            </button>
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={redoHistory.length === 0}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 disabled:opacity-25 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+              title="Redo"
+            >
+              ↪
+            </button>
+
+            {/* Top Right Action Button */}
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleProceedToPayment}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95 ${
+                editSpot
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                  : tier === 'big_pop'
+                  ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-pink-500/25'
+                  : 'bg-amber-400 text-black'
+              }`}
+            >
+              {isSubmitting ? (
+                <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>{editSpot ? 'Save' : `Claim (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ================= STUDIO WORKSPACE ================= */}
-        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
-
-          {/* LEFT / TOP: LIVE INTERACTIVE WYSIWYG PREVIEW */}
-          <div className="lg:col-span-5 shrink-0 flex flex-col items-center justify-center bg-[#07080D] border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden select-none p-2 sm:p-4 h-[35vh] min-h-[210px] max-h-[275px] lg:h-full lg:min-h-0 lg:max-h-none">
-            {/* Parity Status Badge */}
-            <div className="absolute top-2 left-3 text-[9px] sm:text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="hidden sm:inline">100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE</span>
-              <span className="sm:hidden">LIVE PREVIEW</span>
-            </div>
-
-            {/* Undo / Redo Toolbar */}
-            <div className="absolute top-2 right-3 flex items-center gap-1.5 z-20">
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={undoHistory.length === 0}
-                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                title="Undo"
-              >
-                ↩
-              </button>
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={redoHistory.length === 0}
-                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                title="Redo"
-              >
-                ↪
-              </button>
-            </div>
-
-            {/* Card centered and scaled for mobile viewport */}
+        {isMobile ? (
+          /* ================= DEDICATED NATIVE MOBILE STUDIO ================= */
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#07080D]">
+            {/* Live WYSIWYG Canvas Stage */}
             <div
               onClick={(e) => {
                 if (e.target === e.currentTarget) {
-                  handleSelectItem(null);
+                  handleSelectItemWithMobileSheet(null);
                 }
               }}
-              className="w-full h-full flex flex-col items-center justify-center relative scale-[0.80] sm:scale-90 lg:scale-100 origin-center transition-transform"
+              className={`w-full flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${
+                mobileActiveSheet !== null
+                  ? 'h-[36vh] min-h-[210px] max-h-[250px] shrink-0 border-b border-white/10'
+                  : 'flex-1 min-h-[300px]'
+              }`}
             >
-              <div className="relative">
-                <SpotCard
-                  tier={tier}
-                  shape={currentDraft.shape}
-                  background={currentDraft.backgroundColor}
-                  content={{
-                    headline: currentDraft.headline,
-                    headlineX: currentDraft.headlineX,
-                    headlineY: currentDraft.headlineY,
-                    text: currentDraft.secondaryText,
-                    subtextX: currentDraft.subtextX,
-                    subtextY: currentDraft.subtextY,
-                    subtextSize: currentDraft.subtextSize,
-                    author: currentDraft.creatorName,
-                    authorX: currentDraft.authorX,
-                    authorY: currentDraft.authorY,
-                    authorSize: currentDraft.authorSize,
-                    authorOpacity: currentDraft.authorOpacity,
-                    textColor: currentDraft.textColor,
-                    fontFamily: currentDraft.fontFamily,
-                    fontSize: currentDraft.fontSize,
-                    textOpacity: currentDraft.textOpacity,
-                    alignment: currentDraft.alignment,
-                    imageUrl: tier === 'big_pop' ? currentDraft.imageUrl : undefined,
-                    imageFit: currentDraft.imageFit,
-                    photoOpacity: currentDraft.photoOpacity,
-                    photoZoom: currentDraft.photoZoom,
-                    photoOffsetX: currentDraft.photoOffsetX,
-                    photoOffsetY: currentDraft.photoOffsetY,
-                    stickers: currentDraft.stickers,
-                    drawingData: currentDraft.drawingDataUrl || undefined,
-                    drawingOpacity: currentDraft.drawingOpacity,
-                    frameStyle: currentDraft.frameStyle,
-                    photoAdjustments: currentDraft.photoAdjustments,
-                    layers: currentDraft.layers,
-                    isCurvedText: currentDraft.isCurvedText,
-                    curveRadius: currentDraft.curveRadius,
-                    textStroke: currentDraft.textStroke,
-                    textGlow: currentDraft.textGlow,
-                    letterSpacing: currentDraft.letterSpacing,
-                    audio: currentDraft.audioDraft
-                      ? {
-                          url: currentDraft.audioDraft.previewUrl,
-                          duration: currentDraft.audioDraft.duration,
-                          type: currentDraft.audioDraft.type,
-                          mimeType: currentDraft.audioDraft.mimeType,
-                          size: currentDraft.audioDraft.size,
-                        }
-                      : editSpot?.content?.audio,
-                  }}
-                  creatorName={currentDraft.creatorName}
-                  interactive={!isDrawingMode}
-                  selectedItemId={selectedItemId}
-                  onSelectItem={handleSelectItem}
-                  onUpdateSticker={handleUpdateSticker}
-                  onDeleteSticker={handleDeleteSticker}
-                  onUpdateLayer={handleUpdateLayer}
-                  onDeleteLayer={handleDeleteLayer}
-                  onUpdateContent={(updates) => {
-                    const draftUpdates: Partial<PlanDraft> = { ...updates };
-                    if (updates.author !== undefined) {
-                      draftUpdates.creatorName = updates.author;
-                    }
-                    if (updates.text !== undefined) {
-                      draftUpdates.secondaryText = updates.text;
-                    }
-                    updateDraft(draftUpdates);
-                  }}
-                  // Overlay full card drawing canvas when drawing mode is toggled (4x HD Retina Supersampled)
-                  drawingCanvasOverlay={
-                    isDrawingMode ? (
-                      <canvas
-                        ref={drawingCanvasRef}
-                        width={tier === 'big_pop' ? 680 : 680}
-                        height={tier === 'big_pop' ? 840 : 680}
-                        onMouseDown={startDrawing}
-                        onMouseMove={draw}
-                        onMouseUp={stopDrawing}
-                        onMouseLeave={stopDrawing}
-                        onTouchStart={startDrawing}
-                        onTouchMove={draw}
-                        onTouchEnd={stopDrawing}
-                        className="w-full h-full cursor-crosshair touch-none rounded-xs"
-                        style={{ background: 'transparent' }}
-                      />
-                    ) : undefined
-                  }
-                />
+              {/* Parity Live Status Badge */}
+              <div className="absolute top-2 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20 pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>LIVE PREVIEW</span>
               </div>
-            </div>
 
-            {/* Floating Selection Bar */}
-            {selectedItemId && (
-              <div className="absolute bottom-2 inset-x-2 sm:inset-x-4 px-3 py-1.5 rounded-xl bg-[#181B2A]/90 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-lg z-20">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E93] animate-pulse shrink-0" />
-                  <span className="text-[11px] font-bold text-white truncate">
-                    {activeSelectedSticker
-                      ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
-                      : selectedItemId === 'headline'
-                      ? 'Headline Selected'
-                      : selectedItemId === 'subtext'
-                      ? 'Subtext Selected'
-                      : selectedItemId === 'author'
-                      ? 'Creator Tag Selected'
-                      : selectedItemId === 'photo'
-                      ? 'Photo Selected'
-                      : selectedItemId === 'background'
-                      ? 'Background Selected'
-                      : 'Item Selected'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {activeSelectedSticker && (
+              {/* Card centered and scaled for mobile viewport */}
+              <div
+                className={`relative transition-transform duration-300 origin-center ${
+                  mobileActiveSheet !== null ? 'scale-[0.80] sm:scale-85' : 'scale-[1.05] sm:scale-115'
+                }`}
+              >
+                {renderSpotCardElement()}
+              </div>
+
+              {/* Floating Quick Action Selection Bar (Picsart / Instagram style) */}
+              {selectedItemId && (
+                <div className="absolute bottom-2 inset-x-2 px-3 py-1.5 rounded-xl bg-[#181B2A]/95 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-xl z-30 animate-fade-in">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E93] animate-pulse shrink-0" />
+                    <span className="text-[11px] font-bold text-white truncate">
+                      {activeSelectedSticker
+                        ? `Sticker (${activeSelectedSticker.emojiOrIcon})`
+                        : selectedItemId === 'headline'
+                        ? 'Headline'
+                        : selectedItemId === 'subtext'
+                        ? 'Subtext'
+                        : selectedItemId === 'author'
+                        ? 'Creator Tag'
+                        : selectedItemId === 'photo'
+                        ? 'Photo Artwork'
+                        : selectedItemId === 'background'
+                        ? 'Background'
+                        : 'Selected'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {activeSelectedSticker && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white text-[11px] font-bold cursor-pointer"
+                      >
+                        ✕ Delete
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
-                      className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                      onClick={() => handleSelectItemWithMobileSheet(null)}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-bold transition-colors cursor-pointer"
                     >
-                      ✕ Delete
+                      Done
                     </button>
-                  )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Error and Scanning Banners on Mobile */}
+            {errorMessage && (
+              <div className="shrink-0 mx-2 my-1.5 p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-2 shadow-lg z-30">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="shrink-0">🛡️</span>
+                  <span className="truncate">{errorMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="w-6 h-6 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {isScanningImage && (
+              <div className="shrink-0 mx-2 my-1.5 p-2 rounded-xl bg-[#FF2E93]/20 border border-[#FF2E93]/40 text-white text-xs flex items-center justify-center gap-2 shadow-lg animate-pulse z-30">
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin shrink-0" />
+                <span className="font-semibold text-[11px]">🛡️ Scanning image safety...</span>
+              </div>
+            )}
+
+            {/* Contextual Mobile Bottom Sheet (Native Mobile Style) */}
+            {mobileActiveSheet !== null && (
+              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[50vh] animate-slide-up">
+                {/* Grab handle & sheet header */}
+                <div className="shrink-0 px-4 pt-2.5 pb-2 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 rounded-full bg-white/30 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.icon}{' '}
+                      {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.label}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedItemId(null)}
-                    className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
+                    onClick={() => {
+                      triggerMobileHaptic(10);
+                      setMobileActiveSheet(null);
+                      if (isDrawingMode) setIsDrawingMode(false);
+                    }}
+                    className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                   >
-                    Done
+                    <span>✓ Done</span>
                   </button>
+                </div>
+
+                {/* Sheet Scrollable Content */}
+                <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3 min-h-0">
+                  {renderTabContent(mobileActiveSheet)}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* RIGHT / BOTTOM: STUDIO TOOLS ACCORDION TABS */}
-          <div className="lg:col-span-7 flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12141F]">
-            {/* Tool Navigation Bar with Desktop Left/Right Scroll Arrows & Wheel Scroll */}
-            <div className="relative flex items-center p-1.5 sm:p-2 border-b border-white/10 bg-[#0E101A] shrink-0">
-              {/* Left Scroll Arrow */}
-              {canScrollLeft && (
+            {/* Placement Fee Quick Info Bar when sheet is closed */}
+            {mobileActiveSheet === null && (
+              <div className="shrink-0 px-4 py-1.5 bg-[#080910] border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                <span>
+                  Placement Fee:{' '}
+                  <strong className="text-white font-bold">{editSpot ? 'Free' : tier === 'big_pop' ? '₹99' : '₹29'}</strong>
+                </span>
+                <span className="text-[10px] text-slate-500">Tap any tool below or tap item to edit</span>
+              </div>
+            )}
+
+            {/* Native Horizontal Scrollable 9-Tool Bottom Bar */}
+            <div className="shrink-0 bg-[#0A0C14] border-t border-white/10 px-2 py-1.5 flex items-center z-30">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full py-0.5">
+                {MOBILE_TOOLS.map((tool) => {
+                  if (tool.bigPopOnly && tier !== 'big_pop') return null;
+                  const isActive = mobileActiveSheet === tool.id;
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => handleMobileToolSelect(tool.id)}
+                      className={`min-w-[62px] min-h-[46px] px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
+                        isActive
+                          ? 'bg-[#FF2E93] text-white shadow-lg shadow-pink-500/20'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{tool.icon}</span>
+                      <span className="text-[10px] font-bold tracking-tight leading-tight">{tool.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ================= DESKTOP SPLIT-VIEW STUDIO ================= */
+          <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
+            {/* Desktop Preview */}
+            <div className="lg:col-span-5 shrink-0 flex flex-col items-center justify-center bg-[#07080D] border-r border-white/10 relative overflow-hidden select-none p-4 h-full">
+              <div className="absolute top-2 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE</span>
+              </div>
+
+              <div className="absolute top-2 right-3 flex items-center gap-1.5 z-20">
                 <button
                   type="button"
-                  onClick={() => handleScrollTabs('left')}
-                  className="absolute left-1 z-20 w-6 h-6 rounded-full bg-slate-900/95 hover:bg-black text-white border border-white/25 flex items-center justify-center text-xs font-extrabold shadow-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
-                  title="Previous Sections"
+                  onClick={handleUndo}
+                  disabled={undoHistory.length === 0}
+                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Undo"
                 >
-                  ‹
+                  ↩
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  disabled={redoHistory.length === 0}
+                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Redo"
+                >
+                  ↪
+                </button>
+              </div>
 
               <div
-                ref={tabsContainerRef}
-                onScroll={checkTabsScroll}
-                onWheel={handleTabsWheel}
-                onPointerDown={handleTabsPointerDown}
-                onPointerMove={handleTabsPointerMove}
-                onPointerUp={handleTabsPointerUp}
-                className="flex items-center gap-1.5 overflow-x-auto scroll-smooth no-scrollbar w-full select-none cursor-grab active:cursor-grabbing px-1"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    handleSelectItem(null);
+                  }
+                }}
+                className="w-full h-full flex flex-col items-center justify-center relative scale-100 origin-center transition-transform"
               >
-                  {/* Tools (Photo Crop & Upload) - Big Pop Only */}
+                <div className="relative">
+                  {renderSpotCardElement()}
+                </div>
+              </div>
+
+              {selectedItemId && (
+                <div className="absolute bottom-2 inset-x-4 px-3 py-1.5 rounded-xl bg-[#181B2A]/90 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-lg z-20">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E93] animate-pulse shrink-0" />
+                    <span className="text-[11px] font-bold text-white truncate">
+                      {activeSelectedSticker
+                        ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
+                        : selectedItemId === 'headline'
+                        ? 'Headline Selected'
+                        : selectedItemId === 'subtext'
+                        ? 'Subtext Selected'
+                        : selectedItemId === 'author'
+                        ? 'Creator Tag Selected'
+                        : selectedItemId === 'photo'
+                        ? 'Photo Selected'
+                        : selectedItemId === 'background'
+                        ? 'Background Selected'
+                        : 'Item Selected'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {activeSelectedSticker && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
+                        className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                      >
+                        ✕ Delete
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItemId(null)}
+                      className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Right Accordion Tabs */}
+            <div className="lg:col-span-7 flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12141F]">
+              <div className="relative flex items-center p-2 border-b border-white/10 bg-[#0E101A] shrink-0">
+                {canScrollLeft && (
+                  <button
+                    type="button"
+                    onClick={() => handleScrollTabs('left')}
+                    className="absolute left-1 z-20 w-6 h-6 rounded-full bg-slate-900/95 hover:bg-black text-white border border-white/25 flex items-center justify-center text-xs font-extrabold shadow-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
+                    title="Previous Sections"
+                  >
+                    ‹
+                  </button>
+                )}
+
+                <div
+                  ref={tabsContainerRef}
+                  onScroll={checkTabsScroll}
+                  onWheel={handleTabsWheel}
+                  onPointerDown={handleTabsPointerDown}
+                  onPointerMove={handleTabsPointerMove}
+                  onPointerUp={handleTabsPointerUp}
+                  className="flex items-center gap-1.5 overflow-x-auto scroll-smooth no-scrollbar w-full select-none cursor-grab active:cursor-grabbing px-1"
+                >
                   {tier === 'big_pop' && (
                     <button
                       type="button"
@@ -1726,7 +2116,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     <span>Adjust</span>
                   </button>
 
-                  {/* Retouch (Portrait Beautify) - Big Pop Only */}
                   {tier === 'big_pop' && (
                     <button
                       type="button"
@@ -1833,7 +2222,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     <span>Background</span>
                   </button>
 
-                  {/* Audio Memory Tab - Big Pop Exclusive */}
                   {tier === 'big_pop' && (
                     <button
                       type="button"
@@ -1857,21 +2245,20 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   )}
                 </div>
 
-                {/* Right Scroll Arrow */}
                 {canScrollRight && (
                   <button
                     type="button"
                     onClick={() => handleScrollTabs('right')}
                     className="absolute right-1 z-20 w-6 h-6 rounded-full bg-gradient-to-r from-pink-500 to-[#FF2E93] text-white flex items-center justify-center text-xs font-extrabold shadow-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
-                    title="More Sections (Draw, Frames, Background, Audio)"
+                    title="More Sections"
                   >
                     ›
                   </button>
                 )}
               </div>
 
-              {/* Active Tab Scrollable Content */}
-              <div className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 space-y-3">
+              {/* Desktop Active Tab Scrollable Content */}
+              <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
                 {errorMessage && (
                   <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-fade-in">
                     <div className="flex items-center gap-2.5">
@@ -1896,152 +2283,59 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   </div>
                 )}
 
-              {/* TAB 1: TOOLS (CROP & PHOTO - BIG POP ONLY) */}
-              {activeEditorTab === 'photo' && tier === 'big_pop' && !isDrawingMode && (
-                <PhotoCropTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  updatePhotoAdjustments={updatePhotoAdjustments}
-                  tier={tier}
-                  onFileUpload={handleFileUpload}
-                />
-              )}
-
-              {/* TAB 2: ADJUST (SINGLE-SLIDER PICSART ENGINE) */}
-              {activeEditorTab === 'adjust' && !isDrawingMode && (
-                <AdjustTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  updatePhotoAdjustments={updatePhotoAdjustments}
-                />
-              )}
-
-              {/* TAB 3: RETOUCH & BEAUTIFY (BIG POP ONLY) */}
-              {activeEditorTab === 'retouch' && tier === 'big_pop' && !isDrawingMode && (
-                <RetouchTab
-                  currentDraft={currentDraft}
-                  updatePhotoAdjustments={updatePhotoAdjustments}
-                />
-              )}
-
-              {/* TAB 4: TEXT STUDIO */}
-              {activeEditorTab === 'text' && !isDrawingMode && (
-                <TextStudioTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  selectedFontCategory={selectedFontCategory}
-                  setSelectedFontCategory={setSelectedFontCategory}
-                />
-              )}
-
-              {/* TAB 5: STICKERS */}
-              {activeEditorTab === 'stickers' && !isDrawingMode && (
-                <StickersStockTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  handleAddSticker={handleAddSticker}
-                  onCustomStickerUpload={handleCustomStickerUpload}
-                  selectedItemId={selectedItemId}
-                  onUpdateSticker={handleUpdateSticker}
-                  onDeleteSticker={handleDeleteSticker}
-                />
-              )}
-
-              {/* TAB 7: DRAW & PAINT */}
-              {(isDrawingMode || activeEditorTab === 'draw') && (
-                <DrawStudioTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  drawTool={drawTool}
-                  setDrawTool={setDrawTool}
-                  drawColor={drawColor}
-                  setDrawColor={setDrawColor}
-                  brushSize={brushSize}
-                  setBrushSize={setBrushSize}
-                  brushOpacity={brushOpacity}
-                  setBrushOpacity={setBrushOpacity}
-                  handleUndoDrawing={handleUndoDrawing}
-                  handleClearDrawing={handleClearDrawing}
-                  handleAddShapeLayer={handleAddShapeLayer}
-                />
-              )}
-
-              {/* TAB 8: FRAMES & SHAPE */}
-              {activeEditorTab === 'frames' && !isDrawingMode && (
-                <FramesTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  tier={tier}
-                  handleSelectShape={handleSelectShape}
-                />
-              )}
-
-              {/* TAB 9: THEMES & BG */}
-              {activeEditorTab === 'themes' && !isDrawingMode && (
-                <ThemesTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                  selectedBgCategory={selectedBgCategory}
-                  setSelectedBgCategory={setSelectedBgCategory}
-                />
-              )}
-
-              {/* TAB 10: AUDIO MEMORY (BIG POP ONLY) */}
-              {activeEditorTab === 'audio' && tier === 'big_pop' && !isDrawingMode && (
-                <AudioStudioTab
-                  currentDraft={currentDraft}
-                  updateDraft={updateDraft}
-                />
-              )}
+                {renderTabContent(activeEditorTab)}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* PINNED ACTION FOOTER */}
-        <div className="shrink-0 px-4 py-2.5 sm:py-3 bg-[#0a0c14] border-t border-white/10 flex items-center justify-between gap-3 z-30">
-          <div className="flex flex-col min-w-0">
-            <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium whitespace-nowrap">
-              {editSpot ? 'Save Changes' : 'Placement Fee'}
-            </span>
-            <span className="text-base sm:text-lg font-bold text-white tracking-tight whitespace-nowrap">
-              {editSpot ? 'Free' : (tier === 'big_pop' ? '₹99' : '₹29')}
-              <span className="text-[11px] font-normal text-slate-400 ml-1 sm:inline hidden">one-time</span>
-            </span>
-          </div>
+        {/* PINNED ACTION FOOTER (Desktop only) */}
+        {!isMobile && (
+          <div className="shrink-0 px-4 py-3 bg-[#0a0c14] border-t border-white/10 flex items-center justify-between gap-3 z-30">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                {editSpot ? 'Save Changes' : 'Placement Fee'}
+              </span>
+              <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">
+                {editSpot ? 'Free' : tier === 'big_pop' ? '₹99' : '₹29'}
+                <span className="text-[11px] font-normal text-slate-400 ml-1">one-time</span>
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 sm:px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleProceedToPayment}
-              className={`px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
-                editSpot
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
-                  : tier === 'big_pop'
-                  ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
-                  : 'bg-amber-400 text-black hover:bg-amber-300'
-              }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  <span>{editSpot ? 'Saving...' : 'Publishing...'}</span>
-                </>
-              ) : (
-                <>
-                  <span>{editSpot ? '💾 Save Changes' : `Claim & Place (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleProceedToPayment}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  editSpot
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
+                    : tier === 'big_pop'
+                    ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
+                    : 'bg-amber-400 text-black hover:bg-amber-300'
+                }`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span>{editSpot ? 'Saving...' : 'Publishing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{editSpot ? '💾 Save Changes' : `Claim & Place (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
