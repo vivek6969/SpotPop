@@ -294,7 +294,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                               background: spot.background?.startsWith('#') ? spot.background : '#1E293B',
                             }}
                           >
-                            {spot.tier === 'big_pop' ? (spot.content.imageUrl ? '📸' : '🎨') : '📝'}
+                            {spot.tier === 'big_pop' ? (spot.content.imageUrl ? '📸' : spot.content.audio ? '🎙️' : '🎨') : '📝'}
                           </div>
 
                           <div className="min-w-0 flex-1">

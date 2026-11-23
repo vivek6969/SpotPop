@@ -740,7 +740,15 @@ export const SpotCard: React.FC<SpotCardProps> = ({
       {/* Audio Memory Indicator Badge (Big Pop Only) */}
       {content.audio && (
         <div
-          className="absolute top-2 right-2 z-35 px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md pointer-events-none select-none"
+          onClick={(e) => {
+            if (interactive) {
+              e.stopPropagation();
+              onSelectItem?.('audio');
+            }
+          }}
+          className={`absolute top-2 right-2 z-35 px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md select-none ${
+            interactive ? 'cursor-pointer hover:border-[#FF2E93] hover:scale-105 transition-transform' : 'pointer-events-none'
+          }`}
           title={`${content.audio.type === 'voice' ? 'Voice Note' : 'Original Sound'} (${content.audio.duration}s)`}
         >
           <span className="text-[10px]">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
@@ -951,7 +959,11 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             onClick={(e) => {
               if (interactive) {
                 e.stopPropagation();
-                onSelectItem?.('photo');
+                if (!content.imageUrl && content.audio) {
+                  onSelectItem?.('audio');
+                } else {
+                  onSelectItem?.('photo');
+                }
               }
             }}
           >
@@ -971,13 +983,57 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 }}
                 draggable={false}
               />
+            ) : content.audio ? (
+              /* AUDIO POP ARTWORK: Soundstage visualizer with animated equalizer bars */
+              <div
+                className="w-full h-full flex flex-col items-center justify-center p-3 text-center relative overflow-hidden select-none"
+                style={{
+                  background: 'radial-gradient(circle at 50% 40%, #1e1b4b 0%, #090a15 100%)',
+                }}
+              >
+                {/* Ambient glow ripples */}
+                <div className="absolute w-28 h-28 rounded-full bg-pink-500/15 blur-xl animate-pulse" />
+                <div className="absolute w-16 h-16 rounded-full bg-cyan-500/10 blur-lg animate-pulse" style={{ animationDelay: '500ms' }} />
+
+                {/* Central Audio Icon */}
+                <div className="relative z-10 w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-xl shadow-lg shadow-pink-500/30">
+                  <span>{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
+                </div>
+
+                {/* Animated Waveform Equalizer Bars */}
+                <div className="relative z-10 flex items-center justify-center gap-1 h-5 mt-2.5">
+                  {[35, 75, 100, 60, 90, 45, 80, 50, 95, 40].map((h, i) => (
+                    <div
+                      key={i}
+                      className="w-1 rounded-full bg-gradient-to-t from-[#FF2E93] to-cyan-400 animate-pulse"
+                      style={{
+                        height: `${h}%`,
+                        animationDuration: `${0.8 + (i % 3) * 0.3}s`,
+                        animationDelay: `${i * 90}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Audio Pop Label & Duration */}
+                <div className="relative z-10 mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/60 border border-white/15 backdrop-blur-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[9px] font-bold text-white tracking-wide">
+                    {content.audio.type === 'voice' ? 'Voice Note' : 'Audio Pop'}
+                  </span>
+                  <span className="text-[8px] font-mono text-pink-300 font-bold">
+                    {content.audio.duration ? `${content.audio.duration.toFixed(1)}s` : ''}
+                  </span>
+                </div>
+              </div>
             ) : (
               <div
                 className="w-full h-full flex flex-col items-center justify-center p-3 text-center"
                 style={{ background: 'linear-gradient(135deg, #1E1B4B, #3B0764)' }}
               >
-                <span className="text-3xl filter drop-shadow">✨</span>
-                <span className="text-[11px] text-white/80 font-bold mt-1 tracking-wide">Big Pop Photo</span>
+                <span className="text-2xl filter drop-shadow">✨</span>
+                <span className="text-[10px] text-white/80 font-bold mt-1 tracking-wide">No Photo Attached</span>
+                <span className="text-[8px] text-pink-300/80 mt-0.5">Audio & Text Pop</span>
               </div>
             )}
             {interactive && isPhotoSelected && (

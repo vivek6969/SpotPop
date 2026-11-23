@@ -817,6 +817,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     if (id === 'photo') {
       setActiveEditorTab('photo');
       setIsDrawingMode(false);
+    } else if (id === 'audio') {
+      setActiveEditorTab('audio');
+      setIsDrawingMode(false);
     } else if (id === 'headline' || id === 'subtext' || id === 'author') {
       setActiveEditorTab('text');
       setIsDrawingMode(false);
@@ -1561,6 +1564,15 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       textStroke: currentDraft.textStroke,
                       textGlow: currentDraft.textGlow,
                       letterSpacing: currentDraft.letterSpacing,
+                      audio: currentDraft.audioDraft
+                        ? {
+                            url: currentDraft.audioDraft.previewUrl,
+                            duration: currentDraft.audioDraft.duration,
+                            type: currentDraft.audioDraft.type,
+                            mimeType: currentDraft.audioDraft.mimeType,
+                            size: currentDraft.audioDraft.size,
+                          }
+                        : editSpot?.content?.audio,
                     }}
                     creatorName={currentDraft.creatorName}
                     interactive={!isDrawingMode}

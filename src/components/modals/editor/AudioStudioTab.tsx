@@ -287,7 +287,7 @@ export const AudioStudioTab: React.FC<AudioStudioTabProps> = ({
             <span>Audio Memory (Big Pop Exclusive)</span>
           </h4>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            Attach an optional voice message or original sound (Max 15s, 500 KB).
+            Voice messages and sound clips work standalone — photos are completely optional! (Max 15s, 500 KB).
           </p>
         </div>
         {existingAudio && (
@@ -405,6 +405,47 @@ export const AudioStudioTab: React.FC<AudioStudioTabProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Audio-Only Pop Mode Control */}
+          {currentDraft.imageUrl ? (
+            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between gap-3 animate-fade-in">
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+                  <span>🖼️</span>
+                  <span>Photo currently attached</span>
+                </div>
+                <div className="text-[10px] text-purple-300/80">
+                  Prefer a clean audio-first pop? You can remove the photo with one tap.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateDraft({ imageUrl: undefined })}
+                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold whitespace-nowrap transition-colors shadow cursor-pointer"
+              >
+                Set as Audio-Only (No Photo)
+              </button>
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-3 animate-fade-in">
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Audio-Only Pop Active</span>
+                </div>
+                <div className="text-[10px] text-emerald-400/80">
+                  This pop will be placed with audio artwork and zero images required!
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateDraft({ imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' })}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
+              >
+                + Add Photo
+              </button>
+            </div>
+          )}
 
           <div className="text-[11px] text-slate-400 text-center">
             Audio will only be uploaded once you confirm and save your Big Pop.

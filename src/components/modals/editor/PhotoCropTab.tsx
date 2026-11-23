@@ -117,7 +117,9 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-white whitespace-nowrap">Photo Artwork</span>
+                <span className="text-xs font-bold text-white whitespace-nowrap">
+                  {currentDraft.imageUrl ? 'Photo Artwork' : currentDraft.audioDraft ? 'Audio-Only Pop' : 'No Photo'}
+                </span>
                 {isGif ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold whitespace-nowrap">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -125,12 +127,22 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
                   </span>
                 ) : (
                   <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                    {currentDraft.imageUrl ? 'Custom photo' : 'Default photo'}
+                    {currentDraft.imageUrl
+                      ? 'Custom photo'
+                      : currentDraft.audioDraft
+                      ? '🎙️ Audio memory active'
+                      : 'Text or Audio Pop'}
                   </span>
                 )}
               </div>
               <span className="text-[10px] text-slate-400 block truncate">
-                {isGif ? 'Animated GIF loaded' : 'JPG, PNG, WebP or GIF'}
+                {currentDraft.imageUrl
+                  ? isGif
+                    ? 'Animated GIF loaded'
+                    : 'JPG, PNG, WebP or GIF'
+                  : currentDraft.audioDraft
+                  ? 'Pop has audio memory (no images required)'
+                  : 'Photo is optional • Audio & text supported'}
               </span>
             </div>
           </div>
@@ -156,6 +168,17 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             >
               Default
             </button>
+            {currentDraft.imageUrl && (
+              <button
+                type="button"
+                onClick={() => updateDraft({ imageUrl: undefined, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
+                className="h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-[11px] font-semibold text-rose-300 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1"
+                title="Remove photo (allow Audio-Only or Text Pop)"
+              >
+                <span>✕</span>
+                <span>Remove</span>
+              </button>
+            )}
             <label className="h-8 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] hover:opacity-90 text-white text-xs font-bold cursor-pointer transition-opacity shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0">
               <span>{currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}</span>
               <input type="file" accept="image/*,.gif" onChange={onFileUpload} className="hidden" />
@@ -193,6 +216,27 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Notice when no photo is attached */}
+      {!currentDraft.imageUrl && (
+        <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2 text-xs text-purple-200">
+            <span className="text-base">{currentDraft.audioDraft ? '🎙️' : '✨'}</span>
+            <span>
+              {currentDraft.audioDraft
+                ? 'Audio-Only Pop mode active. No images required!'
+                : 'No photo attached. You can create an audio pop, or add a photo anytime.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateDraft({ imageUrl: DEFAULT_PHOTO_URL, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
+            className="px-2.5 py-1 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 border border-pink-500/30 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors"
+          >
+            + Add Photo
+          </button>
+        </div>
+      )}
 
       {/* 2. Active Tool Stage */}
       <div className="p-4 rounded-xl bg-black/50 border border-white/10 min-h-[145px] flex flex-col justify-center">
