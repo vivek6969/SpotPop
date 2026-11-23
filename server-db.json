@@ -722,6 +722,57 @@
       "viewsCount": 1,
       "sharesCount": 0,
       "orderId": "ord_1795182666656_khul"
+    },
+    {
+      "id": "sp_1795428053740_u507",
+      "ownerId": "usr_vivek",
+      "creatorName": "Spot Pioneer",
+      "slug": "spot-pioneer-hbwo",
+      "tier": "big_pop",
+      "x": 187,
+      "y": -247,
+      "width": 170,
+      "height": 210,
+      "rotation": -3.4,
+      "shape": "glass",
+      "background": "radial-gradient(#4A0E4E 15%, #0B0014 90%)",
+      "content": {
+        "headline": "",
+        "text": "Fuck ME",
+        "subtextSize": 32,
+        "author": "Spot Pioneer",
+        "textColor": "#E9D5FF",
+        "fontFamily": "Caveat",
+        "fontSize": 22,
+        "textOpacity": 1,
+        "alignment": "center",
+        "imageUrl": "/uploads/images/73094c951b8201e9/preview.webp",
+        "imageFit": "cover",
+        "photoOpacity": 1,
+        "photoZoom": 1,
+        "photoOffsetX": 0,
+        "photoOffsetY": 0,
+        "stickers": [
+          {
+            "id": "big_stk_2",
+            "emojiOrIcon": "✨",
+            "x": 20,
+            "y": 20,
+            "size": 26,
+            "rotation": 12,
+            "opacity": 0.9
+          }
+        ],
+        "drawingOpacity": 1,
+        "frameStyle": "tape",
+        "badge": "NEW"
+      },
+      "createdAt": "2026-11-23T10:00:53.740Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 1,
+      "sharesCount": 0,
+      "orderId": "ord_1795428053728_u531"
     }
   ],
   "orders": [
@@ -4071,6 +4122,93 @@
       "razorpaySignature": "dev_mock_signature_verified",
       "allocatedSpotId": "sp_1795182666665_1ica",
       "paidAt": "2026-11-20T13:51:06.674Z"
+    },
+    {
+      "id": "ord_1795428053728_u531",
+      "userId": "usr_vivek",
+      "productId": "big_pop",
+      "amountINR": 99,
+      "currency": "INR",
+      "status": "paid",
+      "razorpayOrderId": "order_RTN77W7X_1795428053728",
+      "spotDraft": {
+        "shape": "glass",
+        "background": "radial-gradient(#4A0E4E 15%, #0B0014 90%)",
+        "creatorName": "Spot Pioneer",
+        "content": {
+          "headline": "",
+          "text": "Fuck ME",
+          "subtextSize": 32,
+          "author": "",
+          "textColor": "#E9D5FF",
+          "fontFamily": "Caveat",
+          "fontSize": 22,
+          "textOpacity": 1,
+          "alignment": "center",
+          "imageUrl": "/uploads/images/73094c951b8201e9/preview.webp",
+          "imageFit": "cover",
+          "photoOpacity": 1,
+          "photoZoom": 1,
+          "photoOffsetX": 0,
+          "photoOffsetY": 0,
+          "stickers": [
+            {
+              "id": "big_stk_2",
+              "emojiOrIcon": "✨",
+              "x": 20,
+              "y": 20,
+              "size": 26,
+              "rotation": 12,
+              "opacity": 0.9
+            }
+          ],
+          "drawingOpacity": 1,
+          "frameStyle": "tape",
+          "photoAdjustments": {
+            "brightness": 0,
+            "contrast": 0,
+            "saturation": 0,
+            "exposure": 0,
+            "temperature": 0,
+            "tint": 0,
+            "hue": 0,
+            "blur": 0,
+            "blurType": "gaussian",
+            "sharpen": 0,
+            "vignette": 0,
+            "grain": 0,
+            "highlights": 0,
+            "shadows": 0,
+            "retouchSmooth": 0,
+            "blemishRemoval": 0,
+            "faceGlow": 100,
+            "teethWhitening": 0,
+            "reshapeAmount": 0,
+            "hairTint": "none",
+            "hslRed": 0,
+            "hslGreen": 0,
+            "hslBlue": 0,
+            "hslYellow": 0,
+            "curveRgb": "linear",
+            "flipH": false,
+            "flipV": false,
+            "rotationAngle": 0,
+            "aspectRatio": "circle",
+            "perspectiveSkewX": 0,
+            "perspectiveSkewY": 0,
+            "filter": "none",
+            "effect": "duotone"
+          },
+          "layers": [],
+          "isCurvedText": false,
+          "letterSpacing": 0
+        }
+      },
+      "createdAt": "2026-11-23T10:00:53.728Z",
+      "razorpayPaymentId": "pay_1795428053738_demo",
+      "razorpaySignature": "dev_mock_signature_verified",
+      "allocatedSpotId": "sp_1795428053740_u507",
+      "paidAt": "2026-11-23T10:00:53.751Z"
     }
   ],
   "reports": [],
@@ -4371,6 +4509,15 @@
       "tier": "mini_pop",
       "message": "Cleanup Tester claimed a Mini Pop on SpotPop!",
       "timestamp": "2026-11-22T19:08:24.471Z"
+    },
+    {
+      "id": "act_1795428053740_7mt2",
+      "type": "claimed",
+      "spotId": "sp_1795428053740_u507",
+      "creatorName": "Spot Pioneer",
+      "tier": "big_pop",
+      "message": "Spot Pioneer claimed a Big Pop on SpotPop!",
+      "timestamp": "2026-11-23T10:00:53.740Z"
     }
   ],
   "systemSettings": {

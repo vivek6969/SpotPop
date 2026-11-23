@@ -871,7 +871,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         )}
 
         {/* ================= 2. FULL-BLEED FRAMELESS PHOTO (EDGE-TO-EDGE) ================= */}
-        {(shape === 'frameless' || shape === 'poster') && content.imageUrl && !isTransparent && (
+        {(shape === 'frameless' || shape === 'poster' || photoCropRatio === 'full') && content.imageUrl && !isTransparent && (
           <div
             className={`absolute inset-0 overflow-hidden ${
               interactive
@@ -934,7 +934,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         )}
 
         {/* ================= 3. POLAROID PHOTO CONTAINER ================= */}
-        {shape === 'polaroid' && !isTransparent && (
+        {shape === 'polaroid' && !isTransparent && photoCropRatio !== 'full' && (
           <div
             className={`absolute top-2.5 inset-x-2.5 bg-slate-900 overflow-hidden flex items-center justify-center ${
               isCircleCrop ? 'rounded-full' : 'rounded-xs'
@@ -1024,7 +1024,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
         )}
 
         {/* ================= 4. FRAMED PHOTO CONTAINER FOR OTHER FRAMES (GLASS, GOLD, COMIC, STAMP, CYBER, STICKY) ================= */}
-        {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && !isTransparent && content.imageUrl && (
+        {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && photoCropRatio !== 'full' && !isTransparent && content.imageUrl && (
           <div
             className={`absolute top-2.5 inset-x-2.5 bg-black/40 overflow-hidden ${
               isCircleCrop ? 'rounded-full' : 'rounded-lg'

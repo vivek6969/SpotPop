@@ -245,9 +245,10 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             {/* Aspect Ratio Presets */}
             <div>
               <span className="text-[11px] font-bold text-slate-400 block mb-1.5">Crop Frame Shape</span>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-6 gap-1.5">
                 {[
                   { id: 'free', label: 'Default', icon: '🎴' },
+                  { id: 'full', label: 'Full Frame', icon: '⛶' },
                   { id: '1:1', label: '1:1 Square', icon: '⏹️' },
                   { id: '4:5', label: '4:5 Portrait', icon: '📱' },
                   { id: '16:9', label: '16:9 Cinema', icon: '🖥️' },
@@ -257,14 +258,14 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
                     key={preset.id}
                     type="button"
                     onClick={() => updatePhotoAdjustments({ aspectRatio: preset.id as any })}
-                    className={`py-1.5 px-1 rounded-lg border text-[10px] font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+                    className={`py-1.5 px-0.5 rounded-lg border text-[10px] font-bold flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                       currentRatio === preset.id
                         ? 'border-[#FF2E93] bg-[#FF2E93]/25 text-white shadow-sm'
                         : 'border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     <span className="text-sm">{preset.icon}</span>
-                    <span className="truncate">{preset.label}</span>
+                    <span className="truncate whitespace-nowrap">{preset.label}</span>
                   </button>
                 ))}
               </div>
