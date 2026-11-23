@@ -1706,7 +1706,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 lg:p-4 bg-black/85 backdrop-blur-md overflow-hidden">
-      <div className="relative w-full h-[100dvh] lg:max-w-4xl lg:h-[90vh] flex flex-col bg-[#12141F] lg:border lg:border-white/15 lg:rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
+      <div className="relative w-full h-full lg:max-w-4xl lg:h-[90vh] flex flex-col bg-[#12141F] lg:border lg:border-white/15 lg:rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
 
         {/* Top Header */}
         <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/70 z-30">
@@ -1818,7 +1818,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 }
               }}
               className={`w-full flex-1 min-h-0 flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${
-                mobileActiveSheet !== null ? 'p-1.5 border-b border-white/10' : 'p-3'
+                mobileActiveSheet !== null ? 'p-2 border-b border-white/10' : 'p-4'
               }`}
             >
               {/* Parity Live Status Badge */}
@@ -1827,16 +1827,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 <span>LIVE PREVIEW</span>
               </div>
 
-              {/* Card centered and scaled for mobile viewport to ensure 100% full visibility */}
+              {/* Card centered and scaled for mobile viewport to ensure 100% full visibility with no clipping */}
               <div
-                className={`relative transition-transform duration-300 origin-center ${
-                  mobileActiveSheet !== null ? 'scale-[0.55] xs:scale-[0.60] sm:scale-[0.70]' : 'scale-[0.85] xs:scale-[0.92] sm:scale-100'
+                className={`relative transition-transform duration-300 origin-center my-auto ${
+                  mobileActiveSheet !== null ? 'scale-[0.52] xs:scale-[0.58] sm:scale-[0.68]' : 'scale-[0.82] xs:scale-[0.90] sm:scale-100'
                 }`}
               >
                 {renderSpotCardElement()}
               </div>
 
-              {/* Floating Quick Action Selection Bar (Shown only when sheet is closed so bars never stack) */}
+              {/* Floating Quick Action Selection Bar (Shown only when sheet is closed so bars never stack or cover card) */}
               {selectedItemId && mobileActiveSheet === null && (
                 <div className="absolute bottom-2 inset-x-2 px-3 py-1.5 rounded-xl bg-[#181B2A]/95 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-xl z-30 animate-fade-in">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -1905,7 +1905,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
             {/* Contextual Mobile Bottom Sheet (Native Mobile Style) */}
             {mobileActiveSheet !== null && (
-              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[46vh] relative animate-slide-up">
+              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[44vh] relative animate-slide-up">
                 {/* Grab handle & sheet header */}
                 <div className="shrink-0 px-4 pt-3 pb-2 border-b border-white/10 flex items-center justify-between relative">
                   <div className="w-10 h-1 rounded-full bg-white/30 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
@@ -1926,8 +1926,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   </button>
                 </div>
 
-                {/* Sheet Scrollable Content */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3 min-h-0">
+                {/* Sheet Scrollable Content with generous bottom padding so NO content is ever cut off in any tab */}
+                <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar p-3 pb-24 space-y-3 min-h-0">
                   {renderTabContent(mobileActiveSheet)}
                 </div>
               </div>
@@ -1945,8 +1945,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             )}
 
             {/* Native Horizontal Scrollable 9-Tool Bottom Bar */}
-            <div className="shrink-0 bg-[#0A0C14] border-t border-white/10 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),8px)] flex items-center z-30">
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full py-0.5">
+            <div className="shrink-0 bg-[#0A0C14] border-t border-white/10 px-2 pt-2 pb-[max(env(safe-area-inset-bottom,0px),16px)] flex items-center z-30">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full py-0.5">
                 {MOBILE_TOOLS.map((tool) => {
                   if (tool.bigPopOnly && tier !== 'big_pop') return null;
                   const isActive = mobileActiveSheet === tool.id;
@@ -1955,14 +1955,14 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       key={tool.id}
                       type="button"
                       onClick={() => handleMobileToolSelect(tool.id)}
-                      className={`min-w-[58px] h-[48px] px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
+                      className={`min-w-[62px] h-[52px] px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
                         isActive
                           ? 'bg-[#FF2E93] text-white shadow-lg shadow-pink-500/20'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      <span className="text-base leading-none">{tool.icon}</span>
-                      <span className="text-[10px] font-bold tracking-tight leading-tight">{tool.label}</span>
+                      <span className="text-lg leading-none shrink-0">{tool.icon}</span>
+                      <span className="text-[10px] font-bold tracking-tight leading-tight shrink-0 mt-0.5">{tool.label}</span>
                     </button>
                   );
                 })}
