@@ -1285,7 +1285,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
             {interactive && isPhotoSelected && (
               <div className="absolute inset-2 pointer-events-none z-20 border border-dashed border-[#FF2E93]/70 rounded-lg flex items-end justify-center pb-1">
                 <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded shadow-sm font-sans font-medium">
-                  Drag to pan • Scroll zoom
+                  Drag to pan • Pinch to zoom
                 </span>
               </div>
             )}
@@ -1341,7 +1341,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 <div />
                 <div className="absolute bottom-2 inset-x-0 flex justify-center">
                   <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
-                    Drag to crop • Scroll zoom
+                    Drag to crop • Pinch to zoom
                   </span>
                 </div>
               </div>
@@ -1473,7 +1473,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
                 )}
                 <div className="absolute bottom-1 inset-x-0 flex justify-center">
                   <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
-                    Drag to crop • Scroll zoom
+                    Drag to crop • Pinch to zoom
                   </span>
                 </div>
               </div>

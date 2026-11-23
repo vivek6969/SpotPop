@@ -1761,24 +1761,28 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
           {/* Right Header Controls: Undo, Redo, and Publish CTA */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleUndo}
-              disabled={undoHistory.length === 0}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 disabled:opacity-25 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
-              title="Undo"
-            >
-              ↩
-            </button>
-            <button
-              type="button"
-              onClick={handleRedo}
-              disabled={redoHistory.length === 0}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 disabled:opacity-25 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
-              title="Redo"
-            >
-              ↪
-            </button>
+            {(undoHistory.length > 0 || !isMobile) && (
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoHistory.length === 0}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+                title="Undo"
+              >
+                ↩
+              </button>
+            )}
+            {(redoHistory.length > 0 || !isMobile) && (
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoHistory.length === 0}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+                title="Redo"
+              >
+                ↪
+              </button>
+            )}
 
             {/* Top Right Action Button */}
             <button
@@ -1806,17 +1810,15 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         {isMobile ? (
           /* ================= DEDICATED NATIVE MOBILE STUDIO ================= */
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#07080D]">
-            {/* Live WYSIWYG Canvas Stage */}
+            {/* Live WYSIWYG Canvas Stage (Adapts height flexibly so the card is never clipped) */}
             <div
               onClick={(e) => {
                 if (e.target === e.currentTarget) {
                   handleSelectItemWithMobileSheet(null);
                 }
               }}
-              className={`w-full flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${
-                mobileActiveSheet !== null
-                  ? 'h-[36vh] min-h-[210px] max-h-[250px] shrink-0 border-b border-white/10'
-                  : 'flex-1 min-h-[300px]'
+              className={`w-full flex-1 min-h-0 flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${
+                mobileActiveSheet !== null ? 'p-1.5 border-b border-white/10' : 'p-3'
               }`}
             >
               {/* Parity Live Status Badge */}
@@ -1825,17 +1827,17 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 <span>LIVE PREVIEW</span>
               </div>
 
-              {/* Card centered and scaled for mobile viewport */}
+              {/* Card centered and scaled for mobile viewport to ensure 100% full visibility */}
               <div
                 className={`relative transition-transform duration-300 origin-center ${
-                  mobileActiveSheet !== null ? 'scale-[0.80] sm:scale-85' : 'scale-[1.05] sm:scale-115'
+                  mobileActiveSheet !== null ? 'scale-[0.55] xs:scale-[0.60] sm:scale-[0.70]' : 'scale-[0.85] xs:scale-[0.92] sm:scale-100'
                 }`}
               >
                 {renderSpotCardElement()}
               </div>
 
-              {/* Floating Quick Action Selection Bar (Picsart / Instagram style) */}
-              {selectedItemId && (
+              {/* Floating Quick Action Selection Bar (Shown only when sheet is closed so bars never stack) */}
+              {selectedItemId && mobileActiveSheet === null && (
                 <div className="absolute bottom-2 inset-x-2 px-3 py-1.5 rounded-xl bg-[#181B2A]/95 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-xl z-30 animate-fade-in">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E93] animate-pulse shrink-0" />
@@ -1903,16 +1905,14 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
             {/* Contextual Mobile Bottom Sheet (Native Mobile Style) */}
             {mobileActiveSheet !== null && (
-              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[50vh] animate-slide-up">
+              <div className="shrink-0 flex flex-col bg-[#11131E] border-t border-white/20 rounded-t-3xl shadow-2xl z-40 max-h-[46vh] relative animate-slide-up">
                 {/* Grab handle & sheet header */}
-                <div className="shrink-0 px-4 pt-2.5 pb-2 border-b border-white/10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-1 rounded-full bg-white/30 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
-                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.icon}{' '}
-                      {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.label}
-                    </span>
-                  </div>
+                <div className="shrink-0 px-4 pt-3 pb-2 border-b border-white/10 flex items-center justify-between relative">
+                  <div className="w-10 h-1 rounded-full bg-white/30 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.icon}{' '}
+                    {MOBILE_TOOLS.find((t) => t.id === mobileActiveSheet)?.label}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1920,7 +1920,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       setMobileActiveSheet(null);
                       if (isDrawingMode) setIsDrawingMode(false);
                     }}
-                    className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                    className="px-3.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
                   >
                     <span>✓ Done</span>
                   </button>
@@ -1945,7 +1945,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             )}
 
             {/* Native Horizontal Scrollable 9-Tool Bottom Bar */}
-            <div className="shrink-0 bg-[#0A0C14] border-t border-white/10 px-2 py-1.5 flex items-center z-30">
+            <div className="shrink-0 bg-[#0A0C14] border-t border-white/10 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),8px)] flex items-center z-30">
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full py-0.5">
                 {MOBILE_TOOLS.map((tool) => {
                   if (tool.bigPopOnly && tier !== 'big_pop') return null;
@@ -1955,7 +1955,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       key={tool.id}
                       type="button"
                       onClick={() => handleMobileToolSelect(tool.id)}
-                      className={`min-w-[62px] min-h-[46px] px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
+                      className={`min-w-[58px] h-[48px] px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
                         isActive
                           ? 'bg-[#FF2E93] text-white shadow-lg shadow-pink-500/20'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'

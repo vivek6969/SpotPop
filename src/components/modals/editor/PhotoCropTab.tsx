@@ -102,7 +102,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
     <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
       {/* 1. Photo Action Bar & Status */}
       <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-black/60 border border-white/20 shrink-0">
               {currentDraft.imageUrl ? (
@@ -120,18 +120,10 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
                 <span className="text-xs font-bold text-white whitespace-nowrap">
                   {currentDraft.imageUrl ? 'Photo Artwork' : currentDraft.audioDraft ? 'Audio-Only Pop' : 'No Photo'}
                 </span>
-                {isGif ? (
+                {isGif && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold whitespace-nowrap">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    GIF Active
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                    {currentDraft.imageUrl
-                      ? 'Custom photo'
-                      : currentDraft.audioDraft
-                      ? '🎙️ Audio memory active'
-                      : 'Text or Audio Pop'}
+                    GIF
                   </span>
                 )}
               </div>
@@ -139,51 +131,53 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
                 {currentDraft.imageUrl
                   ? isGif
                     ? 'Animated GIF loaded'
-                    : 'JPG, PNG, WebP or GIF'
+                    : 'Custom photo'
                   : currentDraft.audioDraft
-                  ? 'Pop has audio memory (no images required)'
-                  : 'Photo is optional • Audio & text supported'}
+                  ? 'Pop has audio memory'
+                  : 'Photo is optional'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <label className="h-8 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] hover:opacity-90 active:scale-95 text-white text-xs font-bold cursor-pointer transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <span>{currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}</span>
+            <input type="file" accept="image/*,.gif,.heic,.heif,.png,.jpg,.jpeg,.webp" onChange={onFileUpload} className="hidden" />
+          </label>
+        </div>
+
+        {/* Secondary Action Row: URL, Default, Remove (Always neatly organized without overlapping) */}
+        <div className="flex items-center gap-1.5 pt-1.5 border-t border-white/5 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            className={`h-7 px-2.5 rounded-lg border text-[11px] font-bold transition-colors flex items-center gap-1 whitespace-nowrap cursor-pointer shrink-0 ${
+              showUrlInput
+                ? 'border-pink-500 bg-pink-500/20 text-white'
+                : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
+            }`}
+            title="Paste direct image or GIF URL"
+          >
+            <span>🔗</span>
+            <span>URL</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => updateDraft({ imageUrl: DEFAULT_PHOTO_URL, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
+            className="h-7 px-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-slate-300 transition-colors whitespace-nowrap cursor-pointer shrink-0"
+          >
+            Default
+          </button>
+          {currentDraft.imageUrl && (
             <button
               type="button"
-              onClick={() => setShowUrlInput(!showUrlInput)}
-              className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold transition-colors flex items-center gap-1 whitespace-nowrap cursor-pointer ${
-                showUrlInput
-                  ? 'border-pink-500 bg-pink-500/20 text-white'
-                  : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
-              }`}
-              title="Paste direct image or GIF URL"
+              onClick={() => updateDraft({ imageUrl: undefined, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
+              className="h-7 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-[11px] font-semibold text-rose-300 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0"
+              title="Remove photo (allow Audio-Only or Text Pop)"
             >
-              <span>🔗</span>
-              <span>URL</span>
+              <span>✕</span>
+              <span>Remove</span>
             </button>
-            <button
-              type="button"
-              onClick={() => updateDraft({ imageUrl: DEFAULT_PHOTO_URL, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
-              className="h-8 px-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-slate-300 transition-colors whitespace-nowrap cursor-pointer"
-            >
-              Default
-            </button>
-            {currentDraft.imageUrl && (
-              <button
-                type="button"
-                onClick={() => updateDraft({ imageUrl: undefined, photoZoom: 1, photoOffsetX: 0, photoOffsetY: 0 })}
-                className="h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-[11px] font-semibold text-rose-300 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1"
-                title="Remove photo (allow Audio-Only or Text Pop)"
-              >
-                <span>✕</span>
-                <span>Remove</span>
-              </button>
-            )}
-            <label className="h-8 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] hover:opacity-90 text-white text-xs font-bold cursor-pointer transition-opacity shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0">
-              <span>{currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}</span>
-              <input type="file" accept="image/*,.gif,.heic,.heif,.png,.jpg,.jpeg,.webp" onChange={onFileUpload} className="hidden" />
-            </label>
-          </div>
+          )}
         </div>
 
         {/* Optional URL Paste Field */}
@@ -315,7 +309,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             <div className="flex items-center gap-2 p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-[11px] text-pink-300">
               <span className="text-base shrink-0">💡</span>
               <span>
-                <strong>Tip:</strong> Drag directly on the card photo preview to pan & position it! Scroll wheel zooms.
+                <strong>Tip:</strong> Drag directly on the photo to pan & position it! Pinch with 2 fingers to zoom.
               </span>
             </div>
           </div>
