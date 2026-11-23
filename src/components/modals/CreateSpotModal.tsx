@@ -480,8 +480,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   editSpot,
   authToken,
 }) => {
-  if (!isOpen) return null;
-
   // Modal Step
   const [step, setStep] = useState<'tier' | 'editor' | 'checkout' | 'processing'>('editor');
   const [tier, setTier] = useState<ProductTier>(editSpot ? editSpot.tier : initialTier);
@@ -1725,6 +1723,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       }
     />
   );
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 lg:p-4 bg-black/85 backdrop-blur-md overflow-hidden">

@@ -297,17 +297,19 @@ export function App() {
       {/* ================= MODALS & DRAWERS ================= */}
 
       {/* Creation / Edit Modal */}
-      <CreateSpotModal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setEditingSpot(null);
-        }}
-        initialTier={createModalTier}
-        onSuccess={handleSpotSaved}
-        editSpot={editingSpot}
-        authToken={authToken}
-      />
+      {isCreateModalOpen && (
+        <CreateSpotModal
+          isOpen={isCreateModalOpen}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setEditingSpot(null);
+          }}
+          initialTier={createModalTier}
+          onSuccess={handleSpotSaved}
+          editSpot={editingSpot}
+          authToken={authToken}
+        />
+      )}
 
       {/* Spot Detail Modal */}
       <SpotDetailModal
