@@ -1334,9 +1334,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               top: isCustomHeadline
                 ? content.headlineY
                 : shape === 'polaroid'
-                ? Math.round(cardHeight * 0.65)
+                ? (content.text ? Math.round(cardHeight * 0.59) : Math.round(cardHeight * 0.65))
                 : shape === 'classic' && content.imageUrl
-                ? Math.round(cardHeight * 0.55)
+                ? (content.text ? Math.round(cardHeight * 0.52) : Math.round(cardHeight * 0.58))
                 : Math.round(cardHeight * 0.3),
               maxWidth: isCustomHeadline ? cardWidth - 30 : undefined,
             }}
@@ -1436,9 +1436,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
               top: isCustomSubtext
                 ? content.subtextY
                 : shape === 'polaroid'
-                ? Math.round(cardHeight * 0.79)
+                ? (content.headline ? Math.round(cardHeight * 0.72) : Math.round(cardHeight * 0.64))
                 : shape === 'classic' && content.imageUrl
-                ? Math.round(cardHeight * 0.73)
+                ? (content.headline ? Math.round(cardHeight * 0.70) : Math.round(cardHeight * 0.62))
                 : Math.round(cardHeight * 0.58),
               maxWidth: isCustomSubtext ? cardWidth - 30 : undefined,
             }}

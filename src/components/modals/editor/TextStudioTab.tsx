@@ -152,6 +152,33 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
         </div>
       </div>
 
+      {/* Sub-Tool Strip: Modern Picsart horizontal scrolling row */}
+      <div className="space-y-1.5">
+        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block px-1">
+          Text Controls & Styling
+        </span>
+        <HorizontalScroll className="gap-1.5 py-1">
+          {SUB_TOOLS.map((tool) => {
+            const isActive = activeSubTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => setActiveSubTool(tool.id)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-black shadow-lg scale-105'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
+              >
+                <span className="text-base">{tool.icon}</span>
+                <span className="text-[10px]">{tool.label}</span>
+              </button>
+            );
+          })}
+        </HorizontalScroll>
+      </div>
+
       {/* 2. Focused Single-Control Stage */}
       <div className="p-4 rounded-2xl bg-black/50 border border-white/15 space-y-3.5 shadow-inner">
         {/* Font Studio */}
@@ -245,7 +272,7 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
                         {font.id}
                       </span>
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 font-medium tracking-tight ${
+                        className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 font-medium tracking-tight hidden sm:inline-block ${
                           isSelected
                             ? 'bg-[#FF2E93]/40 text-pink-200'
                             : 'bg-white/10 text-slate-400 group-hover:text-slate-200'
@@ -516,33 +543,6 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      {/* 3. Sub-Tool Strip: Modern Picsart horizontal scrolling row */}
-      <div className="space-y-1.5">
-        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block px-1">
-          Tap Tool to Edit
-        </span>
-        <HorizontalScroll className="gap-1.5 py-1">
-          {SUB_TOOLS.map((tool) => {
-            const isActive = activeSubTool === tool.id;
-            return (
-              <button
-                key={tool.id}
-                type="button"
-                onClick={() => setActiveSubTool(tool.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex flex-col items-center gap-1 shrink-0 cursor-pointer ${
-                  isActive
-                    ? 'bg-white text-black shadow-lg scale-105'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <span className="text-base">{tool.icon}</span>
-                <span className="text-[10px]">{tool.label}</span>
-              </button>
-            );
-          })}
-        </HorizontalScroll>
       </div>
     </div>
   );

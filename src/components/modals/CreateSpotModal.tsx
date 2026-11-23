@@ -1435,292 +1435,258 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     : ALL_FONTS.filter(f => f.category === selectedFontCategory);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-4xl max-h-[96vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 lg:p-4 bg-black/85 backdrop-blur-md overflow-hidden">
+      <div className="relative w-full h-[100dvh] lg:max-w-4xl lg:h-[90vh] flex flex-col bg-[#12141F] lg:border lg:border-white/15 lg:rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
 
         {/* Top Header */}
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40">
-          <div className="flex items-center gap-2.5">
+        <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/60 z-30">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <SpotPopLogo variant="icon" size={24} />
-            <h3 className="font-outfit font-bold text-base sm:text-lg text-white">
-              {editSpot ? '✏️ Edit Your Pop' : 'Studio Spot Creator'}
+            <h3 className="font-outfit font-bold text-sm sm:text-base text-white">
+              {editSpot ? '✏️ Edit Pop' : 'Studio Spot Creator'}
             </h3>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
-              {editSpot ? `Editing (${tier === 'big_pop' ? 'Big Pop' : 'Mini Pop'})` : (tier === 'big_pop' ? 'Big Pop ₹99' : 'Mini Pop ₹29')}
-            </span>
+            {!editSpot ? (
+              <div className="flex items-center p-0.5 bg-black/70 rounded-lg border border-white/10 ml-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan('mini_pop')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                    tier === 'mini_pop'
+                      ? 'bg-amber-400 text-black shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Mini ₹29
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan('big_pop')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                    tier === 'big_pop'
+                      ? 'bg-[#FF2E93] text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Big ₹99
+                </button>
+              </div>
+            ) : (
+              <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
+                Editing ({tier === 'big_pop' ? 'Big Pop' : 'Mini Pop'})
+              </span>
+            )}
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             ✕
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 no-scrollbar space-y-4">
-          {errorMessage && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-fade-in">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base shrink-0">🛡️</span>
-                <span className="leading-relaxed font-medium">{errorMessage}</span>
-              </div>
+        {/* ================= STUDIO WORKSPACE ================= */}
+        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
+
+          {/* LEFT / TOP: LIVE INTERACTIVE WYSIWYG PREVIEW */}
+          <div className="lg:col-span-5 shrink-0 flex flex-col items-center justify-center bg-[#07080D] border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden select-none p-2 sm:p-4 h-[35vh] min-h-[210px] max-h-[275px] lg:h-full lg:min-h-0 lg:max-h-none">
+            {/* Parity Status Badge */}
+            <div className="absolute top-2 left-3 text-[9px] sm:text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE</span>
+              <span className="sm:hidden">LIVE PREVIEW</span>
+            </div>
+
+            {/* Undo / Redo Toolbar */}
+            <div className="absolute top-2 right-3 flex items-center gap-1.5 z-20">
               <button
                 type="button"
-                onClick={() => setErrorMessage(null)}
-                className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
-                title="Dismiss"
+                onClick={handleUndo}
+                disabled={undoHistory.length === 0}
+                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                title="Undo"
               >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {isScanningImage && (
-            <div className="p-3 rounded-2xl bg-[#FF2E93]/15 border border-[#FF2E93]/40 text-white text-xs flex items-center justify-center gap-2.5 shadow-lg animate-pulse">
-              <span className="w-4 h-4 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin shrink-0" />
-              <span className="font-semibold">🛡️ Scanning image safety with MobileNetV2 locally in browser...</span>
-            </div>
-          )}
-
-          {/* Plan Switcher Pills - Hidden in Edit Mode */}
-          {!editSpot && (
-            <div className="flex items-center gap-2 p-1 bg-black/50 rounded-2xl border border-white/10 max-w-md mx-auto">
-              <button
-                type="button"
-                onClick={() => handleSelectPlan('mini_pop')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  tier === 'mini_pop'
-                    ? 'bg-amber-400 text-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <span>📝</span>
-                <span>Mini Pop ₹29</span>
+                ↩
               </button>
               <button
                 type="button"
-                onClick={() => handleSelectPlan('big_pop')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  tier === 'big_pop'
-                    ? 'bg-[#FF2E93] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={handleRedo}
+                disabled={redoHistory.length === 0}
+                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                title="Redo"
               >
-                <span>📸</span>
-                <span>Big Pop ₹99</span>
+                ↪
               </button>
             </div>
-          )}
 
-          {/* ================= STUDIO WORKSPACE ================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-
-            {/* LEFT / TOP: LIVE INTERACTIVE WYSIWYG PREVIEW */}
-            <div className="lg:col-span-5 flex flex-col items-center">
-              <div
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) {
-                    handleSelectItem(null);
-                  }
-                }}
-                className="w-full p-4 sm:p-6 rounded-2xl bg-[#090A0F] border border-white/10 flex flex-col items-center justify-center min-h-[360px] relative overflow-hidden shadow-inner select-none"
-              >
-                <div className="absolute top-2.5 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE</span>
-                </div>
-
-                {/* Undo / Redo Toolbar */}
-                <div className="absolute top-2.5 right-3 flex items-center gap-1.5 z-20">
-                  <button
-                    type="button"
-                    onClick={handleUndo}
-                    disabled={undoHistory.length === 0}
-                    className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                    title="Undo"
-                  >
-                    ↩ Undo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRedo}
-                    disabled={redoHistory.length === 0}
-                    className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                    title="Redo"
-                  >
-                    ↪ Redo
-                  </button>
-                </div>
-
-                {/* THE UNIFIED CANONICAL SPOT CARD */}
-                <div className="relative mt-6">
-                  <SpotCard
-                    tier={tier}
-                    shape={currentDraft.shape}
-                    background={currentDraft.backgroundColor}
-                    content={{
-                      headline: currentDraft.headline,
-                      headlineX: currentDraft.headlineX,
-                      headlineY: currentDraft.headlineY,
-                      text: currentDraft.secondaryText,
-                      subtextX: currentDraft.subtextX,
-                      subtextY: currentDraft.subtextY,
-                      subtextSize: currentDraft.subtextSize,
-                      author: currentDraft.creatorName,
-                      authorX: currentDraft.authorX,
-                      authorY: currentDraft.authorY,
-                      authorSize: currentDraft.authorSize,
-                      authorOpacity: currentDraft.authorOpacity,
-                      textColor: currentDraft.textColor,
-                      fontFamily: currentDraft.fontFamily,
-                      fontSize: currentDraft.fontSize,
-                      textOpacity: currentDraft.textOpacity,
-                      alignment: currentDraft.alignment,
-                      imageUrl: tier === 'big_pop' ? currentDraft.imageUrl : undefined,
-                      imageFit: currentDraft.imageFit,
-                      photoOpacity: currentDraft.photoOpacity,
-                      photoZoom: currentDraft.photoZoom,
-                      photoOffsetX: currentDraft.photoOffsetX,
-                      photoOffsetY: currentDraft.photoOffsetY,
-                      stickers: currentDraft.stickers,
-                      drawingData: currentDraft.drawingDataUrl || undefined,
-                      drawingOpacity: currentDraft.drawingOpacity,
-                      frameStyle: currentDraft.frameStyle,
-                      photoAdjustments: currentDraft.photoAdjustments,
-                      layers: currentDraft.layers,
-                      isCurvedText: currentDraft.isCurvedText,
-                      curveRadius: currentDraft.curveRadius,
-                      textStroke: currentDraft.textStroke,
-                      textGlow: currentDraft.textGlow,
-                      letterSpacing: currentDraft.letterSpacing,
-                      audio: currentDraft.audioDraft
-                        ? {
-                            url: currentDraft.audioDraft.previewUrl,
-                            duration: currentDraft.audioDraft.duration,
-                            type: currentDraft.audioDraft.type,
-                            mimeType: currentDraft.audioDraft.mimeType,
-                            size: currentDraft.audioDraft.size,
-                          }
-                        : editSpot?.content?.audio,
-                    }}
-                    creatorName={currentDraft.creatorName}
-                    interactive={!isDrawingMode}
-                    selectedItemId={selectedItemId}
-                    onSelectItem={handleSelectItem}
-                    onUpdateSticker={handleUpdateSticker}
-                    onDeleteSticker={handleDeleteSticker}
-                    onUpdateLayer={handleUpdateLayer}
-                    onDeleteLayer={handleDeleteLayer}
-                    onUpdateContent={(updates) => {
-                      const draftUpdates: Partial<PlanDraft> = { ...updates };
-                      if (updates.author !== undefined) {
-                        draftUpdates.creatorName = updates.author;
-                      }
-                      if (updates.text !== undefined) {
-                        draftUpdates.secondaryText = updates.text;
-                      }
-                      updateDraft(draftUpdates);
-                    }}
-                    // Overlay full card drawing canvas when drawing mode is toggled (4x HD Retina Supersampled)
-                    drawingCanvasOverlay={
-                      isDrawingMode ? (
-                        <canvas
-                          ref={drawingCanvasRef}
-                          width={tier === 'big_pop' ? 680 : 680}
-                          height={tier === 'big_pop' ? 840 : 680}
-                          onMouseDown={startDrawing}
-                          onMouseMove={draw}
-                          onMouseUp={stopDrawing}
-                          onMouseLeave={stopDrawing}
-                          onTouchStart={startDrawing}
-                          onTouchMove={draw}
-                          onTouchEnd={stopDrawing}
-                          className="w-full h-full cursor-crosshair touch-none rounded-xs"
-                          style={{ background: 'transparent' }}
-                        />
-                      ) : undefined
+            {/* Card centered and scaled for mobile viewport */}
+            <div
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  handleSelectItem(null);
+                }
+              }}
+              className="w-full h-full flex flex-col items-center justify-center relative scale-[0.80] sm:scale-90 lg:scale-100 origin-center transition-transform"
+            >
+              <div className="relative">
+                <SpotCard
+                  tier={tier}
+                  shape={currentDraft.shape}
+                  background={currentDraft.backgroundColor}
+                  content={{
+                    headline: currentDraft.headline,
+                    headlineX: currentDraft.headlineX,
+                    headlineY: currentDraft.headlineY,
+                    text: currentDraft.secondaryText,
+                    subtextX: currentDraft.subtextX,
+                    subtextY: currentDraft.subtextY,
+                    subtextSize: currentDraft.subtextSize,
+                    author: currentDraft.creatorName,
+                    authorX: currentDraft.authorX,
+                    authorY: currentDraft.authorY,
+                    authorSize: currentDraft.authorSize,
+                    authorOpacity: currentDraft.authorOpacity,
+                    textColor: currentDraft.textColor,
+                    fontFamily: currentDraft.fontFamily,
+                    fontSize: currentDraft.fontSize,
+                    textOpacity: currentDraft.textOpacity,
+                    alignment: currentDraft.alignment,
+                    imageUrl: tier === 'big_pop' ? currentDraft.imageUrl : undefined,
+                    imageFit: currentDraft.imageFit,
+                    photoOpacity: currentDraft.photoOpacity,
+                    photoZoom: currentDraft.photoZoom,
+                    photoOffsetX: currentDraft.photoOffsetX,
+                    photoOffsetY: currentDraft.photoOffsetY,
+                    stickers: currentDraft.stickers,
+                    drawingData: currentDraft.drawingDataUrl || undefined,
+                    drawingOpacity: currentDraft.drawingOpacity,
+                    frameStyle: currentDraft.frameStyle,
+                    photoAdjustments: currentDraft.photoAdjustments,
+                    layers: currentDraft.layers,
+                    isCurvedText: currentDraft.isCurvedText,
+                    curveRadius: currentDraft.curveRadius,
+                    textStroke: currentDraft.textStroke,
+                    textGlow: currentDraft.textGlow,
+                    letterSpacing: currentDraft.letterSpacing,
+                    audio: currentDraft.audioDraft
+                      ? {
+                          url: currentDraft.audioDraft.previewUrl,
+                          duration: currentDraft.audioDraft.duration,
+                          type: currentDraft.audioDraft.type,
+                          mimeType: currentDraft.audioDraft.mimeType,
+                          size: currentDraft.audioDraft.size,
+                        }
+                      : editSpot?.content?.audio,
+                  }}
+                  creatorName={currentDraft.creatorName}
+                  interactive={!isDrawingMode}
+                  selectedItemId={selectedItemId}
+                  onSelectItem={handleSelectItem}
+                  onUpdateSticker={handleUpdateSticker}
+                  onDeleteSticker={handleDeleteSticker}
+                  onUpdateLayer={handleUpdateLayer}
+                  onDeleteLayer={handleDeleteLayer}
+                  onUpdateContent={(updates) => {
+                    const draftUpdates: Partial<PlanDraft> = { ...updates };
+                    if (updates.author !== undefined) {
+                      draftUpdates.creatorName = updates.author;
                     }
-                  />
-                </div>
-
-                {/* Helper prompt below card */}
-                <p className="text-[11px] text-slate-400 mt-4 text-center">
-                  {isDrawingMode
-                    ? '✏️ Drawing Mode Active: Sketch anywhere on your spot!'
-                    : '👉 Tap any element (Headline, Subtext, Photo, Sticker) to select & edit instantly!'}
-                </p>
+                    if (updates.text !== undefined) {
+                      draftUpdates.secondaryText = updates.text;
+                    }
+                    updateDraft(draftUpdates);
+                  }}
+                  // Overlay full card drawing canvas when drawing mode is toggled (4x HD Retina Supersampled)
+                  drawingCanvasOverlay={
+                    isDrawingMode ? (
+                      <canvas
+                        ref={drawingCanvasRef}
+                        width={tier === 'big_pop' ? 680 : 680}
+                        height={tier === 'big_pop' ? 840 : 680}
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={stopDrawing}
+                        onMouseLeave={stopDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={stopDrawing}
+                        className="w-full h-full cursor-crosshair touch-none rounded-xs"
+                        style={{ background: 'transparent' }}
+                      />
+                    ) : undefined
+                  }
+                />
               </div>
+            </div>
 
-              {/* ACTIVE SELECTED ITEM FLOATING QUICK STATUS */}
-              {selectedItemId && (
-                <div className="w-full mt-3 px-3.5 py-2.5 rounded-xl bg-[#181B2A] border border-[#FF2E93]/40 flex items-center justify-between shadow-lg animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#FF2E93] animate-pulse" />
-                    <span className="text-xs font-bold text-white">
-                      {activeSelectedSticker
-                        ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
-                        : selectedItemId === 'headline'
-                        ? 'Headline Selected'
-                        : selectedItemId === 'subtext'
-                        ? 'Subtext Selected'
-                        : selectedItemId === 'author'
-                        ? 'Creator Tag Selected'
-                        : selectedItemId === 'photo'
-                        ? 'Photo Selected'
-                        : selectedItemId === 'background'
-                        ? 'Background Selected'
-                        : 'Item Selected'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {activeSelectedSticker && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
-                        className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
-                      >
-                        ✕ Delete
-                      </button>
-                    )}
+            {/* Floating Selection Bar */}
+            {selectedItemId && (
+              <div className="absolute bottom-2 inset-x-2 sm:inset-x-4 px-3 py-1.5 rounded-xl bg-[#181B2A]/90 backdrop-blur-md border border-[#FF2E93]/40 flex items-center justify-between shadow-lg z-20">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF2E93] animate-pulse shrink-0" />
+                  <span className="text-[11px] font-bold text-white truncate">
+                    {activeSelectedSticker
+                      ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
+                      : selectedItemId === 'headline'
+                      ? 'Headline Selected'
+                      : selectedItemId === 'subtext'
+                      ? 'Subtext Selected'
+                      : selectedItemId === 'author'
+                      ? 'Creator Tag Selected'
+                      : selectedItemId === 'photo'
+                      ? 'Photo Selected'
+                      : selectedItemId === 'background'
+                      ? 'Background Selected'
+                      : 'Item Selected'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {activeSelectedSticker && (
                     <button
                       type="button"
-                      onClick={() => setSelectedItemId(null)}
-                      className="px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
+                      onClick={() => handleDeleteSticker(activeSelectedSticker.id)}
+                      className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
                     >
-                      Done
+                      ✕ Delete
                     </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT / BOTTOM: STUDIO TOOLS ACCORDION TABS */}
-            <div className="lg:col-span-7 flex flex-col space-y-3">
-              {/* Tool Navigation Bar with Desktop Left/Right Scroll Arrows & Wheel Scroll */}
-              <div className="relative flex items-center">
-                {/* Left Scroll Arrow */}
-                {canScrollLeft && (
+                  )}
                   <button
                     type="button"
-                    onClick={() => handleScrollTabs('left')}
-                    className="absolute -left-2.5 z-20 w-7 h-7 rounded-full bg-slate-900/95 hover:bg-black text-white border border-white/25 flex items-center justify-center text-sm font-extrabold shadow-lg shadow-black/80 transition-all cursor-pointer hover:scale-110 active:scale-95"
-                    title="Previous Sections"
+                    onClick={() => setSelectedItemId(null)}
+                    className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
                   >
-                    ‹
+                    Done
                   </button>
-                )}
+                </div>
+              </div>
+            )}
+          </div>
 
-                <div
-                  ref={tabsContainerRef}
-                  onScroll={checkTabsScroll}
-                  onWheel={handleTabsWheel}
-                  onPointerDown={handleTabsPointerDown}
-                  onPointerMove={handleTabsPointerMove}
-                  onPointerUp={handleTabsPointerUp}
-                  className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10 overflow-x-auto scroll-smooth no-scrollbar w-full select-none cursor-grab active:cursor-grabbing"
+          {/* RIGHT / BOTTOM: STUDIO TOOLS ACCORDION TABS */}
+          <div className="lg:col-span-7 flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12141F]">
+            {/* Tool Navigation Bar with Desktop Left/Right Scroll Arrows & Wheel Scroll */}
+            <div className="relative flex items-center p-1.5 sm:p-2 border-b border-white/10 bg-[#0E101A] shrink-0">
+              {/* Left Scroll Arrow */}
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  onClick={() => handleScrollTabs('left')}
+                  className="absolute left-1 z-20 w-6 h-6 rounded-full bg-slate-900/95 hover:bg-black text-white border border-white/25 flex items-center justify-center text-xs font-extrabold shadow-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
+                  title="Previous Sections"
                 >
+                  ‹
+                </button>
+              )}
+
+              <div
+                ref={tabsContainerRef}
+                onScroll={checkTabsScroll}
+                onWheel={handleTabsWheel}
+                onPointerDown={handleTabsPointerDown}
+                onPointerMove={handleTabsPointerMove}
+                onPointerUp={handleTabsPointerUp}
+                className="flex items-center gap-1.5 overflow-x-auto scroll-smooth no-scrollbar w-full select-none cursor-grab active:cursor-grabbing px-1"
+              >
                   {/* Tools (Photo Crop & Upload) - Big Pop Only */}
                   {tier === 'big_pop' && (
                     <button
@@ -1896,13 +1862,39 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleScrollTabs('right')}
-                    className="absolute -right-2.5 z-20 w-7 h-7 rounded-full bg-gradient-to-r from-pink-500 to-[#FF2E93] text-white flex items-center justify-center text-sm font-extrabold shadow-lg shadow-pink-500/40 transition-all cursor-pointer hover:scale-110 active:scale-95 animate-pulse"
+                    className="absolute right-1 z-20 w-6 h-6 rounded-full bg-gradient-to-r from-pink-500 to-[#FF2E93] text-white flex items-center justify-center text-xs font-extrabold shadow-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
                     title="More Sections (Draw, Frames, Background, Audio)"
                   >
                     ›
                   </button>
                 )}
               </div>
+
+              {/* Active Tab Scrollable Content */}
+              <div className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 space-y-3">
+                {errorMessage && (
+                  <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base shrink-0">🛡️</span>
+                      <span className="leading-relaxed font-medium">{errorMessage}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setErrorMessage(null)}
+                      className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+                      title="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {isScanningImage && (
+                  <div className="p-3 rounded-2xl bg-[#FF2E93]/15 border border-[#FF2E93]/40 text-white text-xs flex items-center justify-center gap-2.5 shadow-lg animate-pulse">
+                    <span className="w-4 h-4 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin shrink-0" />
+                    <span className="font-semibold">🛡️ Scanning image safety with MobileNetV2 locally in browser...</span>
+                  </div>
+                )}
 
               {/* TAB 1: TOOLS (CROP & PHOTO - BIG POP ONLY) */}
               {activeEditorTab === 'photo' && tier === 'big_pop' && !isDrawingMode && (
@@ -2001,52 +1993,53 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   updateDraft={updateDraft}
                 />
               )}
-
-              {/* ACTION FOOTER */}
-              <div className="pt-2 flex items-center justify-between gap-3 border-t border-white/10">
-                <div className="flex flex-col">
-                  <span className="text-[11px] text-slate-400">
-                    {editSpot ? 'Save Changes:' : 'Total Placement Fee:'}
-                  </span>
-                  <span className="text-lg font-bold text-white">
-                    {editSpot ? 'Free (Owner)' : (tier === 'big_pop' ? '₹99 One-Time' : '₹29 One-Time')}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={handleProceedToPayment}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 cursor-pointer ${
-                      editSpot
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
-                        : tier === 'big_pop'
-                        ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
-                        : 'bg-amber-400 text-black hover:bg-amber-300'
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>{editSpot ? 'Saving Changes...' : 'Publishing Spot...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{editSpot ? '💾 Save Changes' : `Claim & Place Spot (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
             </div>
+          </div>
+        </div>
+
+        {/* PINNED ACTION FOOTER */}
+        <div className="shrink-0 px-4 py-2.5 sm:py-3 bg-[#0a0c14] border-t border-white/10 flex items-center justify-between gap-3 z-30">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium whitespace-nowrap">
+              {editSpot ? 'Save Changes' : 'Placement Fee'}
+            </span>
+            <span className="text-base sm:text-lg font-bold text-white tracking-tight whitespace-nowrap">
+              {editSpot ? 'Free' : (tier === 'big_pop' ? '₹99' : '₹29')}
+              <span className="text-[11px] font-normal text-slate-400 ml-1 sm:inline hidden">one-time</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 sm:px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleProceedToPayment}
+              className={`px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
+                editSpot
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
+                  : tier === 'big_pop'
+                  ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
+                  : 'bg-amber-400 text-black hover:bg-amber-300'
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>{editSpot ? 'Saving...' : 'Publishing...'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{editSpot ? '💾 Save Changes' : `Claim & Place (${tier === 'big_pop' ? '₹99' : '₹29'}) →`}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
