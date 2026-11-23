@@ -128,6 +128,60 @@ export class ImageService {
   }
 
   /**
+   * Normalizes any input image buffer (including camera HEIC/HEIF containers,
+   * Motion Photos, Ultra HDR photos, or burst images that exceed standard libheif limits)
+   * into clean, standardized image bytes for sharp and safe storage.
+   */
+  private async normalizeIncomingBuffer(buffer: Buffer, filename: string): Promise<Buffer> {
+    const isGif = filename.toLowerCase().endsWith('.gif') || buffer.slice(0, 3).toString() === 'GIF';
+    if (isGif) return buffer;
+
+    // Check if buffer is valid for sharp
+    try {
+      const meta = await sharp(buffer).metadata();
+      if (meta.width && meta.height) {
+        return buffer;
+      }
+    } catch (sharpErr: any) {
+      console.warn('[ImageService] Standard sharp parse failed, attempting format recovery:', sharpErr.message);
+
+      // Attempt 1: heic-decode (bypasses libheif security limits such as iinf box > 256 items)
+      try {
+        const heicModule = await import('heic-decode');
+        const decode = (heicModule as any).default || heicModule;
+        const { width, height, data } = await decode({ buffer });
+        const recovered = await sharp(Buffer.from(data), {
+          raw: { width, height, channels: 4 },
+        })
+          .jpeg({ quality: 92 })
+          .toBuffer();
+        console.log(`[ImageService] Successfully recovered HEIC phone photo (${width}x${height}) via heic-decode!`);
+        return recovered;
+      } catch (heicErr: any) {
+        console.warn('[ImageService] heic-decode fallback notice:', heicErr.message);
+
+        // Attempt 2: Extract embedded JPEG stream (Samsung/Pixel Motion Photos, Apple Live Photos)
+        const jpegStart = buffer.indexOf(Buffer.from([0xFF, 0xD8, 0xFF]));
+        if (jpegStart !== -1) {
+          try {
+            const potentialJpeg = buffer.slice(jpegStart);
+            const testMeta = await sharp(potentialJpeg).metadata();
+            if (testMeta.width && testMeta.height) {
+              console.log('[ImageService] Successfully recovered embedded JPEG stream from phone container!');
+              return potentialJpeg;
+            }
+          } catch {}
+        }
+
+        // If recovery was not possible, throw user-friendly error
+        throw new Error('This image format could not be decoded. Please choose another photo or screenshot.');
+      }
+    }
+
+    return buffer;
+  }
+
+  /**
    * Process and store an image buffer or base64 string.
    * Performs deduplication, metadata stripping, multi-resolution WebP compression,
    * and stores only URLs and metadata in the catalog.
@@ -157,10 +211,13 @@ export class ImageService {
       throw new Error('Image buffer is empty');
     }
 
-    // Enforce 12MB upload limit
-    if (buffer.length > 12 * 1024 * 1024) {
-      throw new Error('Image exceeds 12MB size limit');
+    // Enforce 16MB upload limit
+    if (buffer.length > 16 * 1024 * 1024) {
+      throw new Error('Image exceeds 16MB size limit');
     }
+
+    // Automatically recover & normalize phone HEIC / motion photos before safety & compression
+    buffer = await this.normalizeIncomingBuffer(buffer, filename);
 
     // Enforce Strict Server-Side Safety & Nudity Inspection
     const safety = await checkServerImageSafety(buffer);

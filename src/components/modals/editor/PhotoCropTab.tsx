@@ -181,7 +181,7 @@ export const PhotoCropTab: React.FC<PhotoCropTabProps> = ({
             )}
             <label className="h-8 px-3 rounded-xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] hover:opacity-90 text-white text-xs font-bold cursor-pointer transition-opacity shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0">
               <span>{currentDraft.imageUrl ? 'Change Photo' : 'Upload Photo'}</span>
-              <input type="file" accept="image/*,.gif" onChange={onFileUpload} className="hidden" />
+              <input type="file" accept="image/*,.gif,.heic,.heif,.png,.jpg,.jpeg,.webp" onChange={onFileUpload} className="hidden" />
             </label>
           </div>
         </div>

@@ -890,7 +890,8 @@ apiRouter.post('/upload', async (req: Request, res: Response) => {
       filename: filename || 'user_upload.webp',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Image upload error:', err);
+    res.status(400).json({ error: err.message || 'Image processing failed. Please try another photo.' });
   }
 });
 

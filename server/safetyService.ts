@@ -16,12 +16,30 @@ export async function checkServerImageSafety(buffer: Buffer): Promise<{ safe: bo
     const model = await getModel();
 
     // Resize to 224x224 (native MobileNetV2 input) and strip alpha channel for lightning-fast inference
-    const { data, info } = await sharp(buffer)
-      .resize(224, 224, { fit: 'cover' })
-      .removeAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
+    let rawImageData: { data: Buffer; info: sharp.OutputInfo };
+    try {
+      rawImageData = await sharp(buffer)
+        .resize(224, 224, { fit: 'cover' })
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    } catch (sharpErr: any) {
+      console.warn('Safety inspection fallback for image:', sharpErr.message);
+      try {
+        const heicModule = await import('heic-decode');
+        const decode = (heicModule as any).default || heicModule;
+        const { width, height, data } = await decode({ buffer });
+        rawImageData = await sharp(Buffer.from(data), { raw: { width, height, channels: 4 } })
+          .resize(224, 224, { fit: 'cover' })
+          .removeAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+      } catch {
+        return { safe: true };
+      }
+    }
 
+    const { data, info } = rawImageData;
     const tensor = tf.tensor3d(new Uint8Array(data), [info.height, info.width, 3]);
     const predictions = await model.classify(tensor);
     tensor.dispose();

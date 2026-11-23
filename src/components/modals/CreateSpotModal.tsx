@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode, SpotAudio } from '../../types';
 import { api } from '../../services/api';
 import { checkImageSafety } from '../../services/nsfwSafety';
+import { prepareImageForUpload } from '../../services/imageOptimizer';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
 import { PhotoCropTab } from './editor/PhotoCropTab';
@@ -1177,20 +1178,20 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     updateDraft({ drawingDataUrl: null });
   };
 
-  // Image File Upload for Big Pop with Local Client-Side MobileNetV2 Nudity Prevention
+  // Image File Upload for Big Pop with Automatic Phone Photo / HEIC Normalization & Compression
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.gif')) {
-      setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF)');
-      e.target.value = '';
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      setErrorMessage('Image size must be less than 8MB');
+    // Accept all standard images, camera photos, HEIC/HEIF phone formats
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(jpg|jpeg|png|webp|gif|heic|heif|avif|bmp|tiff)$/i.test(file.name);
+
+    if (!isImage) {
+      setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF, or Phone Photo)');
       e.target.value = '';
       return;
     }
@@ -1199,49 +1200,52 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setIsScanningImage(true);
 
     try {
-      // 1. Perform local classification before upload
-      const safety = await checkImageSafety(file);
-      if (!safety.safe) {
-        setErrorMessage(
-          safety.reason ||
-          'This image could not be uploaded because it appears to contain sensitive or adult content. Please choose another photo or artwork!'
-        );
-        e.target.value = ''; // Reset input to allow choosing a different image
+      // 1. Normalize, downscale 48MP+ camera photos, and convert HEIC to clean JPEG
+      const optimized = await prepareImageForUpload(file);
+
+      // 2. Perform safety check on the clean normalized image
+      try {
+        const safety = await checkImageSafety(optimized.dataUrl);
+        if (!safety.safe) {
+          setErrorMessage(
+            safety.reason ||
+            'This image could not be uploaded because it appears to contain sensitive or adult content. Please choose another photo or artwork!'
+          );
+          e.target.value = '';
+          setIsScanningImage(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Safety classification notice:', err);
+      } finally {
         setIsScanningImage(false);
-        return;
       }
-    } catch (err) {
-      console.warn('Safety classification notice:', err);
-    } finally {
+
+      // 3. Instant visual preview for user with normalized clean image
+      updateDraft({
+        imageUrl: optimized.dataUrl,
+        photoZoom: 1,
+        photoOffsetX: 0,
+        photoOffsetY: 0,
+      });
+
+      // 4. Background server-side compression & object storage
+      try {
+        const res = await api.uploadImage(optimized.dataUrl, optimized.filename);
+        if (res?.imageUrl) {
+          updateDraft({ imageUrl: res.imageUrl });
+        }
+      } catch (err: any) {
+        console.warn('Background image upload notice:', err);
+        setErrorMessage(err.message || 'Image upload failed. Please try another photo.');
+        updateDraft({ imageUrl: DEFAULT_SPOT_PHOTO });
+      }
+    } catch (err: any) {
+      console.error('File optimization error:', err);
+      setErrorMessage('Could not process this image file. Please try another photo.');
       setIsScanningImage(false);
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      if (typeof reader.result === 'string') {
-        const rawB64 = reader.result;
-        // Instant visual parity preview for user
-        updateDraft({
-          imageUrl: rawB64,
-          photoZoom: 1,
-          photoOffsetX: 0,
-          photoOffsetY: 0,
-        });
-
-        // Background server-side compression & object storage
-        try {
-          const res = await api.uploadImage(rawB64, file.name);
-          if (res?.imageUrl) {
-            updateDraft({ imageUrl: res.imageUrl });
-          }
-        } catch (err: any) {
-          console.warn('Background image upload notice:', err);
-          setErrorMessage(err.message || 'This image could not be uploaded because it appears to contain sensitive content. Please choose another photo or artwork.');
-          updateDraft({ imageUrl: DEFAULT_SPOT_PHOTO });
-        }
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
