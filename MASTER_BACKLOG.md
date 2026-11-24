@@ -234,3 +234,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing across all 11 suites, clean production build in 1.08s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-027]: Friends-Only Audience Privacy Lock Leakage Remediation & Modal Unlock Flow
+- **Priority**: P0 (Privacy Gating & Social Lock Integrity)
+- **Assigned Agent**: security-engineer & senior-engineer
+- **Description**: Fixed critical privacy leakage where a Friends-Only spot appeared locked and blurred on the canvas ("Follow @Mira_C to unlock"), but clicking it opened `SpotDetailModal` which rendered the card completely unlocked with all photos, drawings, and voice notes visible. Root cause was that `SpotDetailModal.tsx` omitted `isLocked={spot.isLocked}` when rendering `<SpotCard>`, omitted lock checking before mounting `<SpotAudioPlayer>`, and lacked an in-modal follow unlock action. In addition, `GET /api/spots/:idOrSlug` returned the raw spot without viewer-based lock evaluation. Enforced `isLocked` in `SpotDetailModal.tsx`, `FastSpotCard`, and `ViralShareKitModal.tsx`. Built an interactive in-modal "+ Follow @creator to Unlock" banner with real-time optimistic unlocking, confetti celebration, and canvas state sync. Secured `GET /api/spots/:idOrSlug` to calculate `isLocked` and strip private audio payloads for non-followers.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 64/64 unit tests passing across all 11 suites (`tests/social-network-visibility.test.ts`), production build completed in 1.07s.
+- **Review Result**: Approved by CTO.
