@@ -19,6 +19,310 @@ interface PopReelsModalProps {
 
 const QUICK_REACTIONS = ['🔥', '❤️', '👏', '😂', '😮', '🚀', '💯'];
 
+// Memoized Ambient Backdrop: Avoids GPU blur re-rasterization on modal state updates
+const AmbientReelsBackdrop: React.FC<{ spot?: Spot }> = React.memo(
+  ({ spot }) => {
+    if (!spot) return null;
+    return (
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-25 pointer-events-none will-change-transform"
+        style={{
+          backgroundImage: spot.content?.imageUrl ? `url(${spot.content.imageUrl})` : undefined,
+          backgroundColor: spot.background || '#090a0f',
+          filter: 'blur(36px)',
+          transform: 'scale(1.15)',
+        }}
+      />
+    );
+  },
+  (prev, next) =>
+    prev.spot?.id === next.spot?.id &&
+    prev.spot?.content?.imageUrl === next.spot?.content?.imageUrl &&
+    prev.spot?.background === next.spot?.background
+);
+
+interface ReelsAudioPlayerProps {
+  spot: Spot;
+  isActive: boolean;
+  isMuted: boolean;
+  isLocked: boolean;
+  onRequireUnlock?: () => void;
+}
+
+// Dedicated Audio Component: Isolates audio time updates from modal re-renders
+const ReelsAudioPlayer: React.FC<ReelsAudioPlayerProps> = React.memo(
+  ({ spot, isActive, isMuted, isLocked, onRequireUnlock }) => {
+    const audioUrl = spot.content?.audio?.url;
+    const initialDur = spot.content?.audio?.duration || 15;
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(initialDur);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const timelineRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (!isActive || !audioUrl || isLocked) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+        setIsPlaying(false);
+        setCurrentTime(0);
+        return;
+      }
+
+      let isCancelled = false;
+      const playTimer = setTimeout(() => {
+        if (isCancelled || !audioUrl || isMuted || isLocked) return;
+
+        const audio = new Audio(audioUrl);
+        audio.loop = true;
+        audio.muted = isMuted;
+        audio.ontimeupdate = () => {
+          if (!isCancelled && audio) {
+            const cur = audio.currentTime || 0;
+            const rawDur = audio.duration;
+            const dur =
+              rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0
+                ? rawDur
+                : initialDur;
+            setCurrentTime(cur);
+            setDuration(dur);
+          }
+        };
+        audio.onplay = () => {
+          if (!isCancelled) setIsPlaying(true);
+        };
+        audio.onplaying = () => {
+          if (!isCancelled) setIsPlaying(true);
+        };
+        audio.onpause = () => {
+          if (!isCancelled) setIsPlaying(false);
+        };
+        audio.onended = () => {
+          if (!isCancelled) setIsPlaying(false);
+        };
+
+        audioRef.current = audio;
+        audio
+          .play()
+          .then(() => {
+            if (!isCancelled) setIsPlaying(true);
+          })
+          .catch((err) => {
+            console.warn('[ReelsAudio] Autoplay notice:', err);
+            if (!isCancelled) setIsPlaying(false);
+          });
+      }, 120);
+
+      return () => {
+        isCancelled = true;
+        clearTimeout(playTimer);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+      };
+    }, [isActive, audioUrl, isMuted, isLocked, initialDur]);
+
+    useEffect(() => {
+      if (audioRef.current) {
+        audioRef.current.muted = isMuted;
+      }
+    }, [isMuted]);
+
+    useEffect(() => {
+      if (!isActive) return;
+      const handleCustomToggle = () => {
+        if (!audioRef.current && audioUrl) {
+          const audio = new Audio(audioUrl);
+          audio.loop = true;
+          audio.muted = isMuted;
+          audio.ontimeupdate = () => {
+            if (audio) {
+              const cur = audio.currentTime || 0;
+              const rawDur = audio.duration;
+              const dur =
+                rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0
+                  ? rawDur
+                  : initialDur;
+              setCurrentTime(cur);
+              setDuration(dur);
+            }
+          };
+          audio.onplay = () => setIsPlaying(true);
+          audio.onplaying = () => setIsPlaying(true);
+          audio.onpause = () => setIsPlaying(false);
+          audio.onended = () => setIsPlaying(false);
+          audioRef.current = audio;
+          audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+          return;
+        }
+        if (audioRef.current) {
+          if (audioRef.current.paused) {
+            audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+          } else {
+            audioRef.current.pause();
+            setIsPlaying(false);
+          }
+        }
+      };
+      window.addEventListener('spotpop:toggle_reel_audio', handleCustomToggle);
+      return () => window.removeEventListener('spotpop:toggle_reel_audio', handleCustomToggle);
+    }, [isActive, audioUrl, isMuted, initialDur]);
+
+    const togglePlay = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isLocked) {
+        onRequireUnlock?.();
+        return;
+      }
+      if (!audioRef.current) {
+        if (audioUrl) {
+          const audio = new Audio(audioUrl);
+          audio.loop = true;
+          audio.muted = isMuted;
+          audio.ontimeupdate = () => {
+            if (audio) {
+              const cur = audio.currentTime || 0;
+              const rawDur = audio.duration;
+              const dur =
+                rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0
+                  ? rawDur
+                  : initialDur;
+              setCurrentTime(cur);
+              setDuration(dur);
+            }
+          };
+          audio.onplay = () => setIsPlaying(true);
+          audio.onplaying = () => setIsPlaying(true);
+          audio.onpause = () => setIsPlaying(false);
+          audio.onended = () => setIsPlaying(false);
+          audioRef.current = audio;
+          audio
+            .play()
+            .then(() => setIsPlaying(true))
+            .catch(() => setIsPlaying(false));
+        }
+        return;
+      }
+
+      if (!audioRef.current.paused) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
+      }
+    };
+
+    const handleScrub = (
+      e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
+    ) => {
+      e.stopPropagation();
+      if (!timelineRef.current) return;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const clientX =
+        'clientX' in e
+          ? e.clientX
+          : e.touches && e.touches[0]
+          ? e.touches[0].clientX
+          : rect.left;
+      const clickRatio = Math.max(
+        0,
+        Math.min(1, (clientX - rect.left) / rect.width)
+      );
+      const effectiveDur = duration > 0 ? duration : initialDur;
+      const targetTime = clickRatio * effectiveDur;
+      if (audioRef.current) {
+        audioRef.current.currentTime = targetTime;
+      }
+      setCurrentTime(targetTime);
+    };
+
+    if (!audioUrl) return null;
+
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full mt-1.5 p-2 rounded-2xl bg-black/75 border border-white/20 flex flex-col gap-1.5 shadow-2xl select-none"
+      >
+        <div className="flex items-center justify-between gap-2">
+          {/* Play / Pause Toggle Button */}
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="w-8 h-8 rounded-full bg-[#1DB954] hover:bg-[#1ed760] active:scale-90 text-black flex items-center justify-center shadow-lg transition-transform cursor-pointer shrink-0"
+            title={isPlaying ? 'Pause Audio' : 'Play Audio'}
+            aria-label={isPlaying ? 'Pause Audio' : 'Play Audio'}
+          >
+            {isPlaying ? (
+              <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
+                <rect x="6" y="5" width="4" height="14" rx="1" />
+                <rect x="14" y="5" width="4" height="14" rx="1" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
+                <polygon points="6 4 20 12 6 20 6 4" />
+              </svg>
+            )}
+          </button>
+
+          {/* Audio Track Title & Waveform Indicator */}
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            <span className="text-xs">🎵</span>
+            <span className="truncate text-[11px] font-bold text-white tracking-wide">
+              {spot.content?.headline ||
+                `Original Sound • @${spot.creatorName || 'creator'}`}
+            </span>
+            {isPlaying && (
+              <div className="flex items-center gap-0.5 h-3 shrink-0">
+                <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
+                <span
+                  className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <span
+                  className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse"
+                  style={{ animationDelay: '300ms' }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Real-time Timestamp */}
+          <span className="text-[10px] font-mono font-bold text-white/90 shrink-0">
+            {Math.floor(currentTime)}s / {Math.round(duration || 15)}s
+          </span>
+        </div>
+
+        {/* Interactive Scrubber Line */}
+        <div
+          ref={timelineRef}
+          onClick={handleScrub}
+          onTouchMove={handleScrub}
+          className="relative w-full h-2 rounded-full bg-white/25 hover:h-2.5 transition-all cursor-pointer flex items-center group"
+          title="Click or drag to seek audio timeline"
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#1DB954] to-emerald-400 transition-[width] duration-75 ease-linear relative"
+            style={{
+              width: `${Math.min(
+                100,
+                Math.max(0, (currentTime / (duration || 15)) * 100)
+              )}%`,
+            }}
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md scale-0 group-hover:scale-100 transition-transform" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
 export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   isOpen,
   onClose,
@@ -55,13 +359,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [unlockedSpotIds, setUnlockedSpotIds] = useState<Set<string>>(new Set());
-
-  // Audio Playback & Timeline Scrubber State
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(15);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Comments Drawer State
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -218,147 +515,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     }
   }, [activeIndex, isOpen, displaySpots]);
 
-  // Audio Manager with Real-time Time & Timeline Progress Synchronization
-  useEffect(() => {
-    if (!isOpen) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setIsAudioPlaying(false);
-      setAudioCurrentTime(0);
-      return;
-    }
-
-    const currentSpot = displaySpots[activeIndex];
-    const audioUrl = currentSpot?.content?.audio?.url;
-    const initialDur = currentSpot?.content?.audio?.duration || 15;
-    setAudioDuration(initialDur);
-    setAudioCurrentTime(0);
-
-    const isCurrentSpotLocked = Boolean(
-      currentSpot?.isLocked &&
-      !unlockedSpotIds.has(currentSpot.id) &&
-      !followedCreators.has(currentSpot.creatorName)
-    );
-
-    // Stop and clear previous audio immediately
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setIsAudioPlaying(false);
-
-    // 140ms Settle Debounce: Prevents audio stutter and buffer lockups when swiping fast
-    let isCancelled = false;
-    const playTimer = setTimeout(() => {
-      if (isCancelled || !audioUrl || isAudioMuted || isCurrentSpotLocked) return;
-
-      const audio = new Audio(audioUrl);
-      audio.loop = true;
-      audio.ontimeupdate = () => {
-        if (!isCancelled && audio) {
-          const cur = audio.currentTime || 0;
-          const rawDur = audio.duration;
-          const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0)
-            ? rawDur
-            : initialDur;
-          setAudioCurrentTime(cur);
-          setAudioDuration(dur);
-        }
-      };
-      audio.onplay = () => {
-        if (!isCancelled) setIsAudioPlaying(true);
-      };
-      audio.onplaying = () => {
-        if (!isCancelled) setIsAudioPlaying(true);
-      };
-      audio.onpause = () => {
-        if (!isCancelled) setIsAudioPlaying(false);
-      };
-      audio.onended = () => {
-        if (!isCancelled) setIsAudioPlaying(false);
-      };
-      audioRef.current = audio;
-      audio.play()
-        .then(() => {
-          if (!isCancelled) setIsAudioPlaying(true);
-        })
-        .catch(err => {
-          console.warn('[ReelsAudio] Autoplay notice:', err);
-          if (!isCancelled) setIsAudioPlaying(false);
-        });
-    }, 140);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(playTimer);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [activeIndex, isOpen, isAudioMuted, displaySpots]);
-
-  // Audio Play / Pause Toggle
-  const toggleAudioPlay = (e?: React.MouseEvent | React.TouchEvent) => {
-    e?.stopPropagation();
-    const currentSpot = displaySpots[activeIndex];
-    if (currentSpot?.isLocked) {
-      showToast(`Follow @${currentSpot.creatorName} to unlock audio! 👥`);
-      return;
-    }
-    if (!audioRef.current) {
-      if (currentSpot?.content?.audio?.url) {
-        const audio = new Audio(currentSpot.content.audio.url);
-        audio.loop = true;
-        const initialDur = currentSpot.content.audio.duration || 15;
-        audio.ontimeupdate = () => {
-          if (audio) {
-            const cur = audio.currentTime || 0;
-            const rawDur = audio.duration;
-            const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0) ? rawDur : initialDur;
-            setAudioCurrentTime(cur);
-            setAudioDuration(dur);
-          }
-        };
-        audio.onplay = () => setIsAudioPlaying(true);
-        audio.onplaying = () => setIsAudioPlaying(true);
-        audio.onpause = () => setIsAudioPlaying(false);
-        audio.onended = () => setIsAudioPlaying(false);
-        audioRef.current = audio;
-        audio.play()
-          .then(() => setIsAudioPlaying(true))
-          .catch(() => setIsAudioPlaying(false));
-      }
-      return;
-    }
-
-    if (!audioRef.current.paused) {
-      audioRef.current.pause();
-      setIsAudioPlaying(false);
-    } else {
-      audioRef.current.play()
-        .then(() => setIsAudioPlaying(true))
-        .catch(() => setIsAudioPlaying(false));
-    }
-  };
-
-  // Timeline Scrubber Click & Drag Seeking
-  const handleScrub = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!timelineRef.current) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clientX = 'clientX' in e ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left);
-    const clickRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const effectiveDur = audioDuration && audioDuration > 0 ? audioDuration : (displaySpots[activeIndex]?.content?.audio?.duration || 15);
-    const targetTime = clickRatio * effectiveDur;
-    if (audioRef.current) {
-      audioRef.current.currentTime = targetTime;
-    }
-    setAudioCurrentTime(targetTime);
-  };
-
   // Scroll listener using client height for smooth snap detection with RAF throttle
   const handleScroll = useCallback(() => {
     if (scrollRafRef.current) return;
@@ -401,23 +557,23 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
         document.getElementById(`reel-slide-${prevIdx}`)?.scrollIntoView({ behavior: 'smooth' });
       } else if (e.key === ' ') {
         e.preventDefault();
-        toggleAudioPlay();
+        window.dispatchEvent(new CustomEvent('spotpop:toggle_reel_audio'));
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, activeIndex, displaySpots.length, isCommentsOpen, isAudioPlaying, onClose]);
+  }, [isOpen, activeIndex, displaySpots.length, isCommentsOpen, onClose]);
 
   // Instant Double-Click / Double-Tap Like Action
-  const handleToggleLike = async (spot: Spot, clientX?: number, clientY?: number) => {
+  const handleToggleLike = async (spot: Spot, clientX?: number, clientY?: number, isDoubleTap = false) => {
     const spotId = spot.id;
     const currentlyLiked = likedSpotIds.has(spotId);
     const newLiked = !currentlyLiked;
 
-    if (clientX && clientY) {
+    if (isDoubleTap && clientX && clientY) {
       setHeartBurst({ id: spotId, x: clientX, y: clientY });
-      setTimeout(() => setHeartBurst(null), 850);
+      setTimeout(() => setHeartBurst(null), 650);
     }
 
     setLikedSpotIds(prev => {
@@ -623,14 +779,15 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     onOpenShareKit?.(spot);
   };
 
-  // Slide Double-Tap / Click Detection
-  const handleSlideTouch = (e: React.MouseEvent | React.TouchEvent, spot: Spot) => {
+  // Card Double-Tap / Click Detection (Scoped exclusively to card stage)
+  const handleCardDoubleTap = (e: React.MouseEvent | React.TouchEvent, spot: Spot) => {
+    e.stopPropagation();
     const now = Date.now();
-    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
-    const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
+    const clientX = 'clientX' in e ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth / 2);
+    const clientY = 'clientY' in e ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight / 2);
 
     if (now - lastTapRef.current.time < 350) {
-      handleToggleLike(spot, clientX, clientY);
+      handleToggleLike(spot, clientX, clientY, true);
       lastTapRef.current = { time: 0, x: 0, y: 0 };
     } else {
       lastTapRef.current = { time: now, x: clientX, y: clientY };
@@ -672,19 +829,9 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   if (!isOpen || displaySpots.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center select-none overflow-hidden touch-none font-sans">
-      {/* Ambient Backdrop */}
-      {currentSpot && (
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-25 pointer-events-none will-change-transform"
-          style={{
-            backgroundImage: currentSpot.content?.imageUrl ? `url(${currentSpot.content.imageUrl})` : undefined,
-            backgroundColor: currentSpot.background || '#090a0f',
-            filter: 'blur(36px)',
-            transform: 'scale(1.15)',
-          }}
-        />
-      )}
+    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center select-none overflow-hidden touch-none font-sans">
+      {/* Ambient Backdrop (Memoized: Renders only when active spot changes, eliminating GPU compositor flicker) */}
+      <AmbientReelsBackdrop spot={currentSpot} />
       <div className="absolute inset-0 bg-radial from-transparent via-black/40 to-black/90 pointer-events-none z-10" />
 
       {/* Floating In-Reel Toast Notification */}
@@ -709,13 +856,13 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
         </div>
       ))}
 
-      {/* DOUBLE-TAP BURSTING HEART */}
+      {/* DOUBLE-TAP BURSTING HEART (Insta-style smooth bounce, zero screen flash) */}
       {heartBurst && (
         <div
-          className="fixed pointer-events-none z-50 text-7xl animate-ping drop-shadow-[0_0_30px_rgba(255,46,147,0.9)]"
+          className="fixed pointer-events-none z-50 text-6xl animate-bounce drop-shadow-[0_4px_12px_rgba(255,46,147,0.7)]"
           style={{
-            left: heartBurst.x - 36,
-            top: heartBurst.y - 36,
+            left: heartBurst.x - 30,
+            top: heartBurst.y - 30,
           }}
         >
           ❤️
@@ -797,7 +944,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                 key={spot.id}
                 id={`reel-slide-${idx}`}
                 className="h-full w-full snap-start relative shrink-0 overflow-hidden select-none flex flex-col justify-between"
-                onClick={(e) => handleSlideTouch(e, spot)}
               >
                 {/* 
                   STAGE CONTAINER:
@@ -806,6 +952,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                 */}
                 <div className="absolute inset-0 flex items-center justify-center pr-16 pl-4 pointer-events-none z-10">
                   <div
+                    onClick={(e) => handleCardDoubleTap(e, spot)}
                     className="pointer-events-auto transform scale-[1.38] xs:scale-[1.48] sm:scale-[1.58] drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)] cursor-pointer will-change-transform"
                     style={{ transformOrigin: 'center center' }}
                   >
@@ -856,7 +1003,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleToggleLike(spot, e.clientX, e.clientY);
+                      handleToggleLike(spot, undefined, undefined, false);
                     }}
                     className="flex flex-col items-center gap-0.5 group active:scale-75 transition-transform cursor-pointer"
                     aria-label="Like Pop"
@@ -1059,72 +1206,18 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
                   {/* 
                     FULL INTERACTIVE AUDIO CONTROLLER & TIMELINE SCRUBBER
-                    Directly starts audio, shows PAUSE button when playing and PLAY button when paused!
-                    User can click and drag the timeline line to scrub/seek through the audio track!
+                    Isolated memoized component: Prevents modal re-rendering during audio playback
                   */}
                   {hasAudio && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full mt-1.5 p-2 rounded-2xl bg-black/75 backdrop-blur-xl border border-white/20 flex flex-col gap-1.5 shadow-2xl select-none"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Play / Pause Toggle Button */}
-                        <button
-                          type="button"
-                          onClick={toggleAudioPlay}
-                          className="w-8 h-8 rounded-full bg-[#1DB954] hover:bg-[#1ed760] active:scale-90 text-black flex items-center justify-center shadow-lg transition-transform cursor-pointer shrink-0"
-                          title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                          aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                        >
-                          {isAudioPlaying ? (
-                            <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
-                              <rect x="6" y="5" width="4" height="14" rx="1" />
-                              <rect x="14" y="5" width="4" height="14" rx="1" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
-                              <polygon points="6 4 20 12 6 20 6 4" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Audio Track Title & Waveform Indicator */}
-                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          <span className="text-xs">🎵</span>
-                          <span className="truncate text-[11px] font-bold text-white tracking-wide">
-                            {spot.content?.headline || `Original Sound • @${spot.creatorName || 'creator'}`}
-                          </span>
-                          {isAudioPlaying && (
-                            <div className="flex items-center gap-0.5 h-3 shrink-0">
-                              <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
-                              <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                              <span className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Real-time Timestamp (e.g. 5s / 15s) */}
-                        <span className="text-[10px] font-mono font-bold text-white/90 shrink-0">
-                          {Math.floor(audioCurrentTime)}s / {Math.round(audioDuration || 15)}s
-                        </span>
-                      </div>
-
-                      {/* Interactive Scrubber Line: Drag or click anywhere to control audio timeline */}
-                      <div
-                        ref={timelineRef}
-                        onClick={handleScrub}
-                        onTouchMove={handleScrub}
-                        className="relative w-full h-2 rounded-full bg-white/25 hover:h-2.5 transition-all cursor-pointer flex items-center group"
-                        title="Click or drag to seek audio timeline"
-                      >
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#1DB954] to-emerald-400 transition-[width] duration-75 ease-linear relative"
-                          style={{ width: `${Math.min(100, Math.max(0, (audioCurrentTime / (audioDuration || 15)) * 100))}%` }}
-                        >
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md scale-0 group-hover:scale-100 transition-transform" />
-                        </div>
-                      </div>
-                    </div>
+                    <ReelsAudioPlayer
+                      spot={spot}
+                      isActive={isCurrentActive}
+                      isMuted={isAudioMuted}
+                      isLocked={isSpotLocked}
+                      onRequireUnlock={() =>
+                        showToast(`Follow @${spot.creatorName} to unlock audio! 👥`)
+                      }
+                    />
                   )}
                 </div>
               </div>

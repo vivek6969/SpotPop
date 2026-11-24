@@ -1116,7 +1116,8 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   const authorOpacity = content.authorOpacity ?? textOpacity;
   const isCustomAuthor = content.authorX !== undefined && content.authorY !== undefined;
   const authorDisplay = (content.author !== undefined ? content.author : '').trim();
-  const hasAuthor = Boolean(authorDisplay) && (isCustomAuthor || authorDisplay !== 'Spot Pioneer');
+  const isPioneerWatermark = authorDisplay.toLowerCase().includes('spot pioneer');
+  const hasAuthor = Boolean(authorDisplay) && !isPioneerWatermark;
 
   const photoFilterObj = getPhotoFilterStyle(content.photoAdjustments);
   const photoFilterCss = photoFilterObj.filter !== 'none' ? photoFilterObj.filter : undefined;
