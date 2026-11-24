@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
+import { validateInstagramUsername } from '../../utils/instagramUsername';
 
 interface UserAccountModalProps {
   isOpen: boolean;
@@ -42,6 +43,41 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [regUsernameCheck, setRegUsernameCheck] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    error: string | null;
+  }>({ checking: false, available: null, error: null });
+
+  // Debounced check for registration username
+  useEffect(() => {
+    if (!username) {
+      setRegUsernameCheck({ checking: false, available: null, error: null });
+      return;
+    }
+
+    const val = validateInstagramUsername(username);
+    if (!val.isValid) {
+      setRegUsernameCheck({ checking: false, available: false, error: val.error || null });
+      return;
+    }
+
+    setRegUsernameCheck({ checking: true, available: null, error: null });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.checkUsername(username);
+        setRegUsernameCheck({
+          checking: false,
+          available: res.available,
+          error: res.error || null,
+        });
+      } catch {
+        setRegUsernameCheck({ checking: false, available: null, error: null });
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   // Social & Follow stats
   const [networkModalType, setNetworkModalType] = useState<'followers' | 'following' | null>(null);
@@ -226,8 +262,12 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
             <div className="space-y-5">
               {/* Profile Card */}
               <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white/5 border border-white/10">
-                <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#FF2E93] via-purple-500 to-amber-400 flex items-center justify-center text-xl font-bold text-white shadow-md shrink-0">
-                  {currentUser.displayName.charAt(0).toUpperCase()}
+                <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#FF2E93] via-purple-500 to-amber-400 flex items-center justify-center text-xl font-bold text-white shadow-md shrink-0 overflow-hidden">
+                  {currentUser.avatarUrl ? (
+                    <img src={currentUser.avatarUrl} alt={currentUser.displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.displayName.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -632,19 +672,48 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Username
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Username (Instagram Handle)
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {username.length}/30
+                      </span>
+                    </div>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono">@</span>
                       <input
                         type="text"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                        maxLength={30}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
                         placeholder="vivek"
                         required
-                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:border-[#FF2E93] focus:outline-hidden"
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:border-[#FF2E93] focus:outline-hidden"
                       />
+                    </div>
+                    {/* Live Validation & Availability Status Badge */}
+                    <div className="mt-1 text-[11px] min-h-[16px]">
+                      {regUsernameCheck.checking ? (
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <span>⏳</span>
+                          <span>Checking availability...</span>
+                        </span>
+                      ) : regUsernameCheck.available === true ? (
+                        <span className="text-emerald-400 font-medium flex items-center gap-1">
+                          <span>✓</span>
+                          <span>@{username} is available</span>
+                        </span>
+                      ) : regUsernameCheck.error ? (
+                        <span className="text-rose-400 font-medium flex items-center gap-1">
+                          <span>✕</span>
+                          <span>{regUsernameCheck.error}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">
+                          3-30 letters, numbers, periods, and underscores.
+                        </span>
+                      )}
                     </div>
                   </div>
 

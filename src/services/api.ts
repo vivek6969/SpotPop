@@ -127,9 +127,25 @@ export const api = {
     return res.json();
   },
 
+  async checkUsername(
+    username: string,
+    token?: string
+  ): Promise<{ available: boolean; error?: string; cleanUsername?: string; isCurrent?: boolean }> {
+    const headers = getClientHeaders();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/users/check-username?username=${encodeURIComponent(username)}`, {
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to check username');
+    }
+    return res.json();
+  },
+
   async updateCreatorProfile(
     token: string,
-    updates: { displayName?: string; bio?: string; avatarUrl?: string; websiteUrl?: string; category?: string; isPrivate?: boolean }
+    updates: { username?: string; displayName?: string; bio?: string; avatarUrl?: string; websiteUrl?: string; category?: string; isPrivate?: boolean }
   ): Promise<{ user: User }> {
     const res = await fetch(`${API_BASE}/creators/me`, {
       method: 'PUT',

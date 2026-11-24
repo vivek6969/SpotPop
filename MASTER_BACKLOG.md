@@ -264,3 +264,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 69/69 passing tests across 11 test suites (`tests/social-network-visibility.test.ts`), clean production build in 858ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-030]: Instagram Username Rules Engine, Live Availability Check & Profile Photo Customization
+- **Priority**: P0 (Identity Management & Profile Customization)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Implemented Instagram-compliant username engine and profile customization across SpotPop. Created `src/utils/instagramUsername.ts` enforcing Instagram username rules: 3 to 30 characters, characters restricted to lowercase alphanumeric, periods, and underscores `[a-z0-9._]`, cannot start or end with a period, cannot contain consecutive periods (`..`), and rejects system-reserved usernames (`admin`, `api`, `spots`, `explore`, `reels`, `spotpop`, etc.). Implemented real-time debounced availability check (`GET /api/users/check-username`) showing visual validation feedback badges (`✓ @username is available`, `✕ error`). Implemented profile photo upload with client-side file reading, base64 image upload (`api.uploadImage`), and remove photo action. Integrated fields for display name, category, website URL, bio (max 280 characters), and private account toggle in both `CreatorProfileModal.tsx` and `UserAccountModal.tsx`. Updated backend database `updateUser()` to propagate username updates across owned spots, creator names, and follower/following relations.
+- **Status**: Completed
+- **Test Evidence**: 77/77 tests passing across 12 test suites (`tests/instagram-profile-username.test.ts`), 0 TypeScript compiler errors, clean Vite production build in 830ms.
+- **Review Result**: Approved by CTO.

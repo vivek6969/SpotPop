@@ -1109,7 +1109,33 @@ class Database {
   updateUser(id: string, updates: Partial<User>): User | null {
     const idx = this.data.users.findIndex(u => u.id === id);
     if (idx === -1) return null;
-    this.data.users[idx] = { ...this.data.users[idx], ...updates };
+
+    const oldUser = this.data.users[idx];
+    const oldUsername = oldUser.username;
+
+    this.data.users[idx] = { ...oldUser, ...updates };
+
+    // If username changed, propagate to spots and follows
+    if (updates.username && updates.username.toLowerCase() !== oldUsername.toLowerCase()) {
+      const newUsername = updates.username.toLowerCase();
+      // Update owned spots creatorName if matching oldUsername
+      for (const s of this.data.spots) {
+        if (s.ownerId === id || s.creatorName.toLowerCase() === oldUsername.toLowerCase()) {
+          s.ownerId = id;
+          if (updates.displayName) s.creatorName = updates.displayName;
+        }
+      }
+      // Update follows relations
+      for (const f of this.data.follows || []) {
+        if (f.followerId.toLowerCase() === oldUsername.toLowerCase() || f.followerId.toLowerCase() === `usr_${oldUsername.toLowerCase()}`) {
+          f.followerId = id;
+        }
+        if (f.followingId.toLowerCase() === oldUsername.toLowerCase() || f.followingId.toLowerCase() === `usr_${oldUsername.toLowerCase()}`) {
+          f.followingId = id;
+        }
+      }
+    }
+
     this.save();
     return this.data.users[idx];
   }

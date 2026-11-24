@@ -5,6 +5,7 @@ import type { ProductTier, Spot, Order, User, ModerationReport } from '../src/ty
 import { PRODUCTS } from '../src/types/index.ts';
 import { imageService } from './imageService.ts';
 import { audioService } from './audioService.ts';
+import { validateInstagramUsername } from '../src/utils/instagramUsername.ts';
 
 export const apiRouter = Router();
 
@@ -654,6 +655,35 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
   }
 });
 
+// GET check Instagram username availability
+apiRouter.get('/users/check-username', (req: Request, res: Response) => {
+  try {
+    const rawUsername = (req.query.username as string || '').trim();
+    const validation = validateInstagramUsername(rawUsername);
+    if (!validation.isValid) {
+      return res.json({ available: false, error: validation.error, cleanUsername: validation.cleanUsername });
+    }
+
+    const authUser = getAuthenticatedUser(req);
+    const existing = db.getUserByUsername(validation.cleanUsername);
+
+    if (existing) {
+      if (authUser && existing.id === authUser.id) {
+        return res.json({ available: true, isCurrent: true, cleanUsername: validation.cleanUsername });
+      }
+      return res.json({
+        available: false,
+        error: `The username '@${validation.cleanUsername}' isn't available. Please choose another.`,
+        cleanUsername: validation.cleanUsername,
+      });
+    }
+
+    return res.json({ available: true, cleanUsername: validation.cleanUsername });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.put('/creators/me', (req: Request, res: Response) => {
   try {
     const user = getAuthenticatedUser(req);
@@ -661,8 +691,24 @@ apiRouter.put('/creators/me', (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { displayName, bio, avatarUrl, websiteUrl, category, isPrivate } = req.body;
+    const { username, displayName, bio, avatarUrl, websiteUrl, category, isPrivate } = req.body;
     const updates: Partial<User> = {};
+
+    // Instagram username validation and uniqueness check
+    if (username && typeof username === 'string') {
+      const validation = validateInstagramUsername(username);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error });
+      }
+      const existing = db.getUserByUsername(validation.cleanUsername);
+      if (existing && existing.id !== user.id) {
+        return res.status(400).json({
+          error: `The username '@${validation.cleanUsername}' isn't available. Please choose another.`,
+        });
+      }
+      updates.username = validation.cleanUsername;
+    }
+
     if (displayName && typeof displayName === 'string') updates.displayName = displayName.trim().slice(0, 40);
     if (bio !== undefined && typeof bio === 'string') updates.bio = bio.trim().slice(0, 280);
     if (avatarUrl && typeof avatarUrl === 'string') updates.avatarUrl = avatarUrl.trim();
@@ -906,11 +952,11 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-
-    if (!cleanUsername) {
-      return res.status(400).json({ error: 'Username must contain letters, numbers, or underscores' });
+    const validation = validateInstagramUsername(username);
+    if (!validation.isValid) {
+      return res.status(400).json({ error: validation.error });
     }
+    const cleanUsername = validation.cleanUsername;
 
     const existingEmail = db.getUserByEmail(cleanEmail);
     if (existingEmail) {
@@ -919,7 +965,7 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
 
     const existingUsername = db.getUserByUsername(cleanUsername);
     if (existingUsername) {
-      return res.status(400).json({ error: 'Username is already taken. Please choose another.' });
+      return res.status(400).json({ error: `The username '@${cleanUsername}' isn't available. Please choose another.` });
     }
 
     const newUser: User = {

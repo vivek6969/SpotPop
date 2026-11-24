@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Spot, User, FollowStatus, FollowRequestItem } from '../../types';
 import { api } from '../../services/api';
+import { validateInstagramUsername } from '../../utils/instagramUsername';
 
 interface CreatorProfileModalProps {
   username: string | null;
@@ -53,6 +54,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   // Edit Mode state
   const [isEditing, setIsEditing] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editAvatarUrl, setEditAvatarUrl] = useState('');
@@ -60,6 +62,51 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [editCategory, setEditCategory] = useState('');
   const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Real-time Instagram username availability check
+  const [usernameCheck, setUsernameCheck] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    error: string | null;
+  }>({ checking: false, available: null, error: null });
+
+  // Debounced Instagram username validation & check
+  useEffect(() => {
+    if (!editUsername) {
+      setUsernameCheck({ checking: false, available: null, error: null });
+      return;
+    }
+
+    const currentUname = profileData?.user?.username?.toLowerCase();
+    if (editUsername.toLowerCase() === currentUname) {
+      setUsernameCheck({ checking: false, available: true, error: null });
+      return;
+    }
+
+    const clientVal = validateInstagramUsername(editUsername);
+    if (!clientVal.isValid) {
+      setUsernameCheck({ checking: false, available: false, error: clientVal.error || null });
+      return;
+    }
+
+    setUsernameCheck({ checking: true, available: null, error: null });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.checkUsername(editUsername, authToken || undefined);
+        setUsernameCheck({
+          checking: false,
+          available: res.available,
+          error: res.error || null,
+        });
+      } catch {
+        setUsernameCheck({ checking: false, available: null, error: null });
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [editUsername, profileData?.user?.username, authToken]);
 
   // Fetch creator profile
   const fetchProfile = () => {
@@ -73,6 +120,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
         setFollowStatus(data.followStatus || (data.isFollowing ? 'accepted' : 'not_following'));
         setFollowersCount(data.user?.followersCount ?? data.stats?.followersCount ?? 0);
         setFollowingCount(data.user?.followingCount ?? data.stats?.followingCount ?? 0);
+        setEditUsername(data.user.username || '');
         setEditDisplayName(data.user.displayName || '');
         setEditBio(data.user.bio || '');
         setEditAvatarUrl(data.user.avatarUrl || '');
@@ -224,14 +272,63 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     } catch {}
   };
 
+  // Photo file select & upload
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, WebP)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image file is too large (max 10MB)');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result as string;
+          const uploadRes = await api.uploadImage(base64, file.name);
+          setEditAvatarUrl(uploadRes.imageUrl);
+        } catch (err: any) {
+          alert(err.message || 'Failed to upload photo');
+        } finally {
+          setAvatarUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setAvatarUploading(false);
+    }
+  };
+
   // Save profile edits
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authToken) return;
 
+    // Validate Instagram username if changed
+    if (editUsername && editUsername.toLowerCase() !== profileData?.user?.username?.toLowerCase()) {
+      const val = validateInstagramUsername(editUsername);
+      if (!val.isValid) {
+        alert(val.error);
+        return;
+      }
+      if (usernameCheck.available === false) {
+        alert(usernameCheck.error || 'This username is not available.');
+        return;
+      }
+    }
+
     setSavingEdit(true);
     try {
       const res = await api.updateCreatorProfile(authToken, {
+        username: editUsername,
         displayName: editDisplayName,
         bio: editBio,
         avatarUrl: editAvatarUrl,
@@ -507,8 +604,117 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
               {/* Edit Profile Form */}
               {isEditing && (
-                <form onSubmit={handleSaveProfile} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 animate-fade-in text-left">
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Edit Profile & Privacy</h3>
+                <form onSubmit={handleSaveProfile} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3.5 animate-fade-in text-left">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Edit Profile & Username</h3>
+                    <span className="text-[10px] text-slate-400">Instagram Format Compliant</span>
+                  </div>
+
+                  {/* Profile Photo Uploader */}
+                  <div className="flex items-center gap-4 p-3 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="relative shrink-0">
+                      <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-[#FF2E93] to-purple-600 overflow-hidden flex items-center justify-center">
+                        {editAvatarUrl ? (
+                          <img src={editAvatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <span className="text-2xl font-black font-outfit text-white">
+                            {editDisplayName.charAt(0).toUpperCase() || 'P'}
+                          </span>
+                        )}
+                      </div>
+                      {avatarUploading && (
+                        <div className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center">
+                          <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="text-xs font-bold text-white">Profile Photo</div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={avatarUploading}
+                          className="px-3 py-1.5 rounded-xl bg-[#0095F6] hover:bg-[#1877F2] text-white text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>📸</span>
+                          <span>{avatarUploading ? 'Uploading...' : 'Change photo'}</span>
+                        </button>
+                        {editAvatarUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditAvatarUrl('')}
+                            className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-xs font-semibold transition-all cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={handleAvatarFileSelect}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Instagram Username Field with Real-Time Availability Check */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-semibold text-slate-300">
+                        Username (Instagram Handle)
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {editUsername.length}/30
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">@</span>
+                      <input
+                        type="text"
+                        value={editUsername}
+                        maxLength={30}
+                        onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
+                        placeholder="username"
+                        className="w-full pl-7 pr-8 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-hidden focus:border-[#0095F6]"
+                        required
+                      />
+                      {usernameCheck.checking && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-[#0095F6] border-t-transparent rounded-full animate-spin" />
+                      )}
+                    </div>
+
+                    {/* Live Validation & Availability Status Badge */}
+                    <div className="mt-1 text-[11px] min-h-[16px]">
+                      {usernameCheck.checking ? (
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <span>⏳</span>
+                          <span>Checking availability...</span>
+                        </span>
+                      ) : editUsername && editUsername.toLowerCase() === profileData.user.username.toLowerCase() ? (
+                        <span className="text-slate-400">Current username</span>
+                      ) : usernameCheck.available === true ? (
+                        <span className="text-emerald-400 font-medium flex items-center gap-1">
+                          <span>✓</span>
+                          <span>@{editUsername} is available</span>
+                        </span>
+                      ) : usernameCheck.error ? (
+                        <span className="text-rose-400 font-medium flex items-center gap-1">
+                          <span>✕</span>
+                          <span>{usernameCheck.error}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">
+                          3-30 letters, numbers, periods, and underscores.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[11px] text-slate-400 block mb-1">Display Name</label>
                     <input
@@ -536,16 +742,6 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                       value={editWebsiteUrl}
                       onChange={(e) => setEditWebsiteUrl(e.target.value)}
                       placeholder="https://chatdora.in"
-                      className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">Avatar Image URL</label>
-                    <input
-                      type="url"
-                      value={editAvatarUrl}
-                      onChange={(e) => setEditAvatarUrl(e.target.value)}
-                      placeholder="https://..."
                       className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs"
                     />
                   </div>
