@@ -204,3 +204,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, production build completed in 1.01s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-024]: Infinite Canvas High-Performance Optimization & Viewport Image Virtualization
+- **Priority**: P0 (Canvas Smoothness & Rendering Performance)
+- **Assigned Agent**: performance-engineer
+- **Description**: Resolved canvas hanging and stuttering when rendering high volumes of images and animated GIFs. Introduced `FastSpotCard` level-of-detail (LOD) architecture that bounds the DOM tree by rendering full interactive `SpotCard` instances only for the closest 32 cards while rendering peripheral cards as lightweight nodes. Forced `decoding="async"` and `loading="lazy"` across all polaroid photo elements. Removed GPU-expensive 1400x1400 `blur-3xl` filter from canvas container, promoted world container to dedicated hardware composite layer with `will-change: transform`, added CSS layout containment (`contain: layout style`), disabled hover pointer events during drag, and RAF-throttled minimap 2D canvas draws to achieve continuous 60-120 FPS.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, clean production build in 1.03s.
+- **Review Result**: Approved by CTO.

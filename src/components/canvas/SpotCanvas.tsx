@@ -7,7 +7,78 @@ import { getCleanFontFamily, getPhotoFilterStyle } from '../../utils/photoFilter
 const CELL_SIZE = 500;
 const CHUNK_SIZE = 1500;
 const MAX_CLIENT_CACHE = 50000;
-const ZOOM_LOD_THRESHOLD = 0.35; // Canvas overview below this; interactive DOM above this
+const ZOOM_LOD_THRESHOLD = 0.28; // Below 0.28: 2D canvas overview for 120 FPS
+const MAX_FULL_DOM_CARDS = 32;   // Upper bound of heavy interactive SpotCard DOM nodes
+
+interface FastSpotCardProps {
+  spot: Spot;
+}
+
+const FastSpotCard: React.FC<FastSpotCardProps> = React.memo(({ spot }) => {
+  const { content } = spot;
+  const isPolaroid = spot.shape === 'polaroid';
+  const hasImage = Boolean(content?.imageUrl);
+  const isAudio = Boolean(content?.audio);
+
+  return (
+    <div
+      className="w-full h-full rounded-xs shadow-md overflow-hidden relative select-none flex flex-col justify-between p-2 pointer-events-none"
+      style={{
+        background: spot.background || (isPolaroid ? '#FFFFFF' : '#1E293B'),
+        border: spot.borderColor ? `2px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
+        transform: spot.rotation ? `rotate(${spot.rotation}deg)` : undefined,
+      }}
+    >
+      {hasImage ? (
+        <div className="w-full h-[64%] rounded-xs overflow-hidden bg-black/30 shrink-0">
+          <img
+            src={content.imageUrl}
+            alt={content.headline || spot.creatorName}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover pointer-events-none select-none"
+            draggable={false}
+          />
+        </div>
+      ) : isAudio ? (
+        <div className="w-full h-[64%] rounded-xs overflow-hidden bg-gradient-to-tr from-[#FF2E93]/20 to-purple-900/40 border border-pink-500/30 flex items-center justify-center shrink-0">
+          <span className="text-xl">🎵</span>
+        </div>
+      ) : content?.drawingData ? (
+        <div className="w-full h-[64%] rounded-xs overflow-hidden bg-white shrink-0">
+          <img
+            src={content.drawingData}
+            alt="Drawing"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-contain pointer-events-none select-none"
+            draggable={false}
+          />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
+
+      {/* Card Headline & Signature */}
+      <div className="mt-1 min-w-0">
+        {content?.headline && (
+          <p
+            className="font-bold text-[10px] leading-tight truncate"
+            style={{ color: content.textColor || (isPolaroid ? '#0F172A' : '#FFFFFF'), fontFamily: getCleanFontFamily(content.fontFamily) }}
+          >
+            {content.headline}
+          </p>
+        )}
+        <p
+          className="text-[8px] font-semibold opacity-75 truncate mt-0.5"
+          style={{ color: content?.textColor || (isPolaroid ? '#475569' : '#94A3B8') }}
+        >
+          @{spot.creatorName}
+        </p>
+      </div>
+    </div>
+  );
+});
 
 interface SpotCanvasProps {
   spots: Spot[];
@@ -36,6 +107,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     y: 0,
     zoom: 0.85,
   });
+  const [isDragging, setIsDragging] = useState(false);
 
   // Client-Side Spatial Index, Dynamic Chunk Loader & Memory Management
   const spotCacheRef = useRef<Map<string, Spot>>(new Map());
@@ -169,6 +241,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       hasMovedSignificantlyRef.current = true;
+      if (!isDragging) setIsDragging(true);
     }
 
     const nextX = dragStartRef.current.cameraX - dx / camera.zoom;
@@ -182,6 +255,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
   const handleMouseUp = () => {
     isDraggingRef.current = false;
+    setIsDragging(false);
     if (rafCameraRef.current) {
       cancelAnimationFrame(rafCameraRef.current);
       applyPendingCamera();
@@ -239,6 +313,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         hasMovedSignificantlyRef.current = true;
+        if (!isDragging) setIsDragging(true);
       }
 
       const nextX = dragStartRef.current.cameraX - dx / camera.zoom;
@@ -265,6 +340,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
   const handleTouchEnd = () => {
     isDraggingRef.current = false;
+    setIsDragging(false);
     touchDistanceRef.current = null;
     if (rafCameraRef.current) {
       cancelAnimationFrame(rafCameraRef.current);
@@ -429,107 +505,117 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
     };
   }, [mapBounds, camera.x, camera.y, camera.zoom, containerW, containerH]);
 
+  const minimapRafRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!showMinimap) return;
-    const canvas = minimapCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (minimapRafRef.current) cancelAnimationFrame(minimapRafRef.current);
 
-    const dpr = window.devicePixelRatio || 1;
-    const width = canvas.clientWidth || 240;
-    const height = canvas.clientHeight || 150;
+    minimapRafRef.current = requestAnimationFrame(() => {
+      const canvas = minimapCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    ctx.scale(dpr, dpr);
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth || 240;
+      const height = canvas.clientHeight || 150;
 
-    // Clear background
-    ctx.fillStyle = '#0B0D14';
-    ctx.fillRect(0, 0, width, height);
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
 
-    // Coordinate grid overlay
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 32) {
+      // Clear background
+      ctx.fillStyle = '#0B0D14';
+      ctx.fillRect(0, 0, width, height);
+
+      // Coordinate grid overlay
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 32) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      const { viewMinX, viewMinY, viewWidth, viewHeight, isZoomed } = minimapViewBounds;
+      if (viewWidth <= 0 || viewHeight <= 0) return;
+
+      // Dot scale based on zoom level: larger dots when zoomed in
+      const zoomRatio = Math.max(0, Math.min(1, (camera.zoom - 0.1) / (2.0 - 0.1)));
+      const dotScale = isZoomed ? 1 + zoomRatio * 1.6 : 1;
+
+      // Margin for culling
+      const cullMargin = 60;
+      const minX = viewMinX - cullMargin;
+      const maxX = viewMinX + viewWidth + cullMargin;
+      const minY = viewMinY - cullMargin;
+      const maxY = viewMinY + viewHeight + cullMargin;
+
+      const bigR = 2.5 * dotScale;
+      const miniR = 1.8 * dotScale;
+
+      // 1. Draw Big Pops in one batched GPU path (Ultra-high performance)
+      ctx.fillStyle = '#FF2E93';
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 32) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
+      for (let i = 0; i < spots.length; i++) {
+        const s = spots[i];
+        if (s.tier !== 'big_pop' || s.id === 'sp_spotpop_hero') continue;
+        if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
 
-    const { viewMinX, viewMinY, viewWidth, viewHeight, isZoomed } = minimapViewBounds;
-    if (viewWidth <= 0 || viewHeight <= 0) return;
-
-    // Dot scale based on zoom level: larger dots when zoomed in
-    const zoomRatio = Math.max(0, Math.min(1, (camera.zoom - 0.1) / (2.0 - 0.1)));
-    const dotScale = isZoomed ? 1 + zoomRatio * 1.6 : 1;
-
-    // Margin for culling
-    const cullMargin = 60;
-    const minX = viewMinX - cullMargin;
-    const maxX = viewMinX + viewWidth + cullMargin;
-    const minY = viewMinY - cullMargin;
-    const maxY = viewMinY + viewHeight + cullMargin;
-
-    const bigR = 2.5 * dotScale;
-    const miniR = 1.8 * dotScale;
-
-    // 1. Draw Big Pops in one batched GPU path (Ultra-high performance)
-    ctx.fillStyle = '#FF2E93';
-    ctx.beginPath();
-    for (let i = 0; i < spots.length; i++) {
-      const s = spots[i];
-      if (s.tier !== 'big_pop' || s.id === 'sp_spotpop_hero') continue;
-      if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
-
-      const normX = (s.x - viewMinX) / viewWidth;
-      const normY = (s.y - viewMinY) / viewHeight;
-      const px = normX * width;
-      const py = normY * height;
-      ctx.moveTo(px + bigR, py);
-      ctx.arc(px, py, bigR, 0, Math.PI * 2);
-    }
-    ctx.fill();
-
-    // 2. Draw Mini Pops in one batched GPU path
-    ctx.fillStyle = '#FFD700';
-    ctx.beginPath();
-    for (let i = 0; i < spots.length; i++) {
-      const s = spots[i];
-      if (s.tier === 'big_pop' || s.id === 'sp_spotpop_hero') continue;
-      if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
-
-      const normX = (s.x - viewMinX) / viewWidth;
-      const normY = (s.y - viewMinY) / viewHeight;
-      const px = normX * width;
-      const py = normY * height;
-      ctx.moveTo(px + miniR, py);
-      ctx.arc(px, py, miniR, 0, Math.PI * 2);
-    }
-    ctx.fill();
-
-    // 3. Draw Hero Origin spot prominently
-    const heroSpot = spots.find(s => s.id === 'sp_spotpop_hero');
-    if (heroSpot && heroSpot.x >= minX && heroSpot.x <= maxX && heroSpot.y >= minY && heroSpot.y <= maxY) {
-      const normX = (heroSpot.x - viewMinX) / viewWidth;
-      const normY = (heroSpot.y - viewMinY) / viewHeight;
-      const px = normX * width;
-      const py = normY * height;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(px, py, 4.5 * dotScale, 0, Math.PI * 2);
+        const normX = (s.x - viewMinX) / viewWidth;
+        const normY = (s.y - viewMinY) / viewHeight;
+        const px = normX * width;
+        const py = normY * height;
+        ctx.moveTo(px + bigR, py);
+        ctx.arc(px, py, bigR, 0, Math.PI * 2);
+      }
       ctx.fill();
-      ctx.strokeStyle = '#FF2E93';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+
+      // 2. Draw Mini Pops in one batched GPU path
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      for (let i = 0; i < spots.length; i++) {
+        const s = spots[i];
+        if (s.tier === 'big_pop' || s.id === 'sp_spotpop_hero') continue;
+        if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
+
+        const normX = (s.x - viewMinX) / viewWidth;
+        const normY = (s.y - viewMinY) / viewHeight;
+        const px = normX * width;
+        const py = normY * height;
+        ctx.moveTo(px + miniR, py);
+        ctx.arc(px, py, miniR, 0, Math.PI * 2);
+      }
+      ctx.fill();
+
+      // 3. Draw Hero Origin spot prominently
+      const heroSpot = spots.find(s => s.id === 'sp_spotpop_hero');
+      if (heroSpot && heroSpot.x >= minX && heroSpot.x <= maxX && heroSpot.y >= minY && heroSpot.y <= maxY) {
+        const normX = (heroSpot.x - viewMinX) / viewWidth;
+        const normY = (heroSpot.y - viewMinY) / viewHeight;
+        const px = normX * width;
+        const py = normY * height;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(px, py, 4.5 * dotScale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FF2E93';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    });
+
+    return () => {
+      if (minimapRafRef.current) cancelAnimationFrame(minimapRafRef.current);
+    };
   }, [spots, minimapViewBounds, showMinimap, camera.zoom]);
 
   // Viewport culling: calculate items within or near visible boundary using spatial index
@@ -588,6 +674,23 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
 
     return results;
   }, [camera.x, camera.y, camera.zoom, halfViewW, halfViewH, cacheRevision, spots, selectedSpotId, highlightedSpotId]);
+
+  // Level-of-Detail (LOD): Prioritize full interactive SpotCards for the closest spots
+  const fullCardIds = useMemo(() => {
+    if (camera.zoom < 0.40) return new Set<string>();
+    const sorted = [...visibleSpots].sort((a, b) => {
+      const distA = Math.hypot(a.x - camera.x, a.y - camera.y);
+      const distB = Math.hypot(b.x - camera.x, b.y - camera.y);
+      return distA - distB;
+    });
+    const s = new Set<string>();
+    if (selectedSpotId) s.add(selectedSpotId);
+    if (highlightedSpotId) s.add(highlightedSpotId);
+    for (let i = 0; i < Math.min(MAX_FULL_DOM_CARDS, sorted.length); i++) {
+      s.add(sorted[i].id);
+    }
+    return s;
+  }, [visibleSpots, camera.x, camera.y, camera.zoom, selectedSpotId, highlightedSpotId]);
 
   // Dynamic Viewport Chunk Loader with Request Deduplication & Memory Management
   useEffect(() => {
@@ -900,19 +1003,21 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
       />
       {/* Canvas World Container */}
       <div
-        className="absolute top-1/2 left-1/2 w-0 h-0 pointer-events-none canvas-world"
+        className="absolute top-1/2 left-1/2 w-0 h-0 canvas-world"
         style={{
           transform: `translate3d(${-camera.x * camera.zoom}px, ${-camera.y * camera.zoom}px, 0) scale(${camera.zoom})`,
           transformOrigin: '0 0',
+          willChange: 'transform',
+          pointerEvents: isDragging ? 'none' : 'auto',
         }}
       >
         {/* Living Background Cluster Decoration */}
         <div
-          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none opacity-20 filter blur-3xl"
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none opacity-20"
           style={{
             width: 1400,
             height: 1400,
-            background: 'radial-gradient(circle, #FF2E93 0%, #FFB800 40%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(255,46,147,0.3) 0%, rgba(255,184,0,0.12) 40%, transparent 70%)',
           }}
         />
 
@@ -920,8 +1025,8 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
         {visibleSpots.map((spot) => {
           const isSelected = selectedSpotId === spot.id;
           const isHighlighted = highlightedSpotId === spot.id;
-          const { content } = spot;
           const isHero = spot.id === 'sp_spotpop_hero';
+          const isFullCard = isHero || fullCardIds.has(spot.id);
           const spotW = isHero ? spot.width : Math.min(spot.width || 170, 170);
           const spotH = isHero ? spot.height : Math.min(spot.height || (spot.tier === 'big_pop' ? 210 : 170), spot.tier === 'big_pop' ? 210 : 170);
 
@@ -934,7 +1039,9 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                   onSelectSpot(spot);
                 }
               }}
-              className={`absolute pointer-events-auto cursor-pointer transition-transform duration-150 ease-out hover:z-30 hover:scale-[1.04] ${
+              className={`absolute cursor-pointer hover:z-30 hover:scale-[1.04] ${
+                isDragging ? '' : 'transition-transform duration-100 ease-out'
+              } ${
                 isHighlighted
                   ? 'z-50 ring-4 ring-[#FF2E93] ring-offset-4 ring-offset-[#090A0F] scale-110 shadow-[0_0_40px_rgba(255,46,147,0.85)] animate-pulse'
                   : isSelected
@@ -946,37 +1053,19 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                 top: spot.y - spotH / 2,
                 width: spotW,
                 height: spotH,
+                contain: 'layout style',
               }}
             >
               {camera.zoom < 0.12 && !isHero ? (
                 <div
-                  className="w-full h-full rounded-xs shadow-xs select-none"
+                  className="w-full h-full rounded-xs shadow-xs select-none pointer-events-none"
                   style={{
                     background: spot.background,
                     border: spot.borderColor ? `1px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
                   }}
                 />
-              ) : camera.zoom < 0.28 && !isHero ? (
-                <div
-                  className="w-full h-full rounded-xs flex flex-col items-center justify-center p-1 text-center shadow-xs overflow-hidden select-none transition-opacity"
-                  style={{
-                    background: spot.background,
-                    border: spot.borderColor ? `2px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
-                    transform: `rotate(${spot.rotation}deg)`,
-                    filter: (spot.tier === 'mini_pop' || !content.imageUrl) && content.photoAdjustments
-                      ? getPhotoFilterStyle(content.photoAdjustments).filter !== 'none'
-                        ? getPhotoFilterStyle(content.photoAdjustments).filter
-                        : undefined
-                      : undefined,
-                  }}
-                >
-                  <div
-                    className="font-bold text-[10px] leading-tight truncate max-w-full"
-                    style={{ color: content.textColor || '#1E293B', fontFamily: getCleanFontFamily(content.fontFamily) }}
-                  >
-                    {content.headline || spot.creatorName}
-                  </div>
-                </div>
+              ) : !isFullCard ? (
+                <FastSpotCard spot={spot} />
               ) : (
                 <SpotCard
                   tier={spot.tier}

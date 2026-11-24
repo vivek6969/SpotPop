@@ -1490,8 +1490,8 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 <img
                   src={content.imageUrl}
                   alt={content.headline || creatorName}
-                  loading={isGif ? 'eager' : 'lazy'}
-                  decoding={isGif ? 'sync' : 'async'}
+                  loading="lazy"
+                  decoding="async"
                   className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
                     }`}
                   style={{
