@@ -89,6 +89,9 @@ export interface PlanDraft {
   customFontUrl?: string;
   allowComments?: boolean;
   visibility?: 'public' | 'friends_only' | 'private';
+  title?: string;
+  description?: string;
+  location?: string;
   tags?: string[];
   audioDraft?: AudioDraft | null;
   audio?: SpotAudio | null;

@@ -20,14 +20,15 @@ interface SearchDrawerProps {
 }
 
 const SUGGESTIONS = [
+  '#Travel',
+  '#Photography',
+  '#Art',
+  '#Love',
+  '📍 Paris',
+  '📍 Mumbai',
   '🔥 Trending',
   '📸 Photos',
   '📝 Notes',
-  '👑 Big Pop',
-  'Vivek',
-  'Travel',
-  'Art',
-  'Love',
 ];
 
 export const SearchDrawer: React.FC<SearchDrawerProps> = ({
@@ -392,16 +393,40 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
                       {/* Content details */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-white text-sm truncate">
-                            {spot.content.headline || spot.creatorName}
+                            {spot.title || spot.content?.title || spot.content.headline || spot.creatorName}
                           </span>
+                          {(spot.location || spot.content?.location) && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 font-medium shrink-0 flex items-center gap-0.5">
+                              <span>📍</span>
+                              <span className="truncate max-w-[120px]">{spot.location || spot.content?.location}</span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="text-xs text-slate-400 truncate mt-0.5">
                           By <span className="text-slate-200">{spot.creatorName}</span>
-                          {spot.content.text ? ` · "${spot.content.text}"` : ''}
+                          {(spot.description || spot.content?.description)
+                            ? ` · ${spot.description || spot.content?.description}`
+                            : spot.content.text
+                            ? ` · "${spot.content.text}"`
+                            : ''}
                         </div>
+
+                        {/* Hashtags preview */}
+                        {((spot.tags && spot.tags.length > 0) || (spot.content?.tags && spot.content.tags.length > 0)) && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {[...(spot.tags || []), ...(spot.content?.tags || [])].slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-2">
                           <span>#{spot.id}</span>

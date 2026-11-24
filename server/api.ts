@@ -459,22 +459,37 @@ apiRouter.get('/search', (req: Request, res: Response) => {
     let matchingSpots = allSpots;
 
     if (q) {
+      const cleanQ = q.startsWith('#') ? q.slice(1) : q;
       matchingSpots = matchingSpots.filter(s => {
+        const title = (s.title || s.content?.title || '').toLowerCase();
+        const description = (s.description || s.content?.description || '').toLowerCase();
+        const location = (s.location || s.content?.location || '').toLowerCase();
         const headline = (s.content?.headline || '').toLowerCase();
         const text = (s.content?.text || '').toLowerCase();
         const creator = (s.creatorName || '').toLowerCase();
         const id = s.id.toLowerCase();
         const slug = (s.slug || '').toLowerCase();
-        const tags = (s.content?.tags || []).map(t => t.toLowerCase()).join(' ');
+        const tags = [
+          ...(s.tags || []),
+          ...(s.content?.tags || []),
+        ].map(t => t.toLowerCase()).join(' ');
         const badge = (s.content?.badge || '').toLowerCase();
 
         return (
           id.includes(q) ||
           creator.includes(q) ||
           slug.includes(q) ||
+          title.includes(q) ||
+          (cleanQ && title.includes(cleanQ)) ||
+          description.includes(q) ||
+          (cleanQ && description.includes(cleanQ)) ||
+          location.includes(q) ||
+          (cleanQ && location.includes(cleanQ)) ||
           headline.includes(q) ||
+          (cleanQ && headline.includes(cleanQ)) ||
           text.includes(q) ||
           tags.includes(q) ||
+          (cleanQ && tags.includes(cleanQ)) ||
           badge.includes(q)
         );
       });
@@ -1145,7 +1160,7 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
       return res.status(403).json({ error: 'You do not have permission to edit this Pop' });
     }
 
-    const { content, background, borderColor, shape, creatorName, allowComments, visibility } = req.body;
+    const { content, background, borderColor, shape, creatorName, allowComments, visibility, title, description, location, tags } = req.body;
     const updates: Partial<Spot> = {};
 
     if (background) updates.background = background;
@@ -1154,11 +1169,19 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
     if (creatorName) updates.creatorName = creatorName.trim();
     if (allowComments !== undefined) updates.allowComments = allowComments;
     if (visibility !== undefined) updates.visibility = visibility;
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (location !== undefined) updates.location = location;
+    if (tags !== undefined) updates.tags = tags;
     if (content) {
       updates.content = {
         ...spot.content,
         ...content,
       };
+      if (content.title !== undefined) updates.title = content.title;
+      if (content.description !== undefined) updates.description = content.description;
+      if (content.location !== undefined) updates.location = content.location;
+      if (content.tags !== undefined) updates.tags = content.tags;
     }
 
     const updated = db.updateSpot(spot.id, updates);
@@ -1320,6 +1343,10 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       creatorName: draft.creatorName || 'Pop Creator',
       slug,
       tier: order.productId,
+      title: draft.title || draft.content?.title || draft.content?.headline || undefined,
+      description: draft.description || draft.content?.description || undefined,
+      location: draft.location || draft.content?.location || undefined,
+      tags: draft.tags || draft.content?.tags || [],
       x,
       y,
       width: product.width,
@@ -1329,6 +1356,10 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       background: draft.background || '#FFF8E7',
       borderColor: draft.borderColor,
       content: {
+        title: draft.title || draft.content?.title || draft.content?.headline || undefined,
+        description: draft.description || draft.content?.description || undefined,
+        location: draft.location || draft.content?.location || undefined,
+        tags: draft.tags || draft.content?.tags || [],
         headline: draft.content?.headline || '',
         headlineX: draft.content?.headlineX,
         headlineY: draft.content?.headlineY,

@@ -441,6 +441,10 @@ const DEFAULT_MINI_DRAFT: PlanDraft = {
   layers: [],
   isCurvedText: false,
   letterSpacing: 0,
+  title: '',
+  description: '',
+  location: '',
+  tags: [],
 };
 
 const DEFAULT_BIG_DRAFT: PlanDraft = {
@@ -471,6 +475,10 @@ const DEFAULT_BIG_DRAFT: PlanDraft = {
   layers: [],
   isCurvedText: false,
   letterSpacing: 0,
+  title: '',
+  description: '',
+  location: '',
+  tags: [],
 };
 
 export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
@@ -545,7 +553,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         letterSpacing: editSpot.content?.letterSpacing || 0,
         allowComments: editSpot.allowComments ?? true,
         visibility: editSpot.visibility || 'public',
-        tags: editSpot.content?.tags || [],
+        title: editSpot.title || editSpot.content?.title || '',
+        description: editSpot.description || editSpot.content?.description || '',
+        location: editSpot.location || editSpot.content?.location || '',
+        tags: editSpot.tags || editSpot.content?.tags || [],
         audioDraft: editSpot.content?.audio
           ? {
               previewUrl: editSpot.content.audio.url,
@@ -1438,7 +1449,15 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         creatorName: resolvedCreator,
         allowComments: currentDraft.allowComments ?? true,
         visibility: currentDraft.visibility || 'public',
+        title: currentDraft.title?.trim() || resolvedHeadline || undefined,
+        description: currentDraft.description?.trim() || undefined,
+        location: currentDraft.location?.trim() || undefined,
+        tags: currentDraft.tags || [],
         content: {
+          title: currentDraft.title?.trim() || resolvedHeadline || undefined,
+          description: currentDraft.description?.trim() || undefined,
+          location: currentDraft.location?.trim() || undefined,
+          tags: currentDraft.tags || [],
           headline: resolvedHeadline,
           headlineX: currentDraft.headlineX,
           headlineY: currentDraft.headlineY,
@@ -1501,6 +1520,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             creatorName: resolvedCreator,
             allowComments: currentDraft.allowComments ?? true,
             visibility: currentDraft.visibility || 'public',
+            title: currentDraft.title?.trim() || resolvedHeadline || undefined,
+            description: currentDraft.description?.trim() || undefined,
+            location: currentDraft.location?.trim() || undefined,
+            tags: currentDraft.tags || [],
             content: draftSpot.content,
           },
           authToken || undefined
@@ -1587,7 +1610,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     ...(tier === 'big_pop'
       ? [{ id: 'audio', label: 'Audio', icon: '🎙️', bigPopOnly: true }]
       : []),
-    { id: 'audience', label: 'Audience', icon: '🔒' },
+    { id: 'audience', label: 'Details', icon: '📝' },
   ];
 
   const handleMobileToolSelect = (toolId: string) => {

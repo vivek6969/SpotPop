@@ -294,8 +294,10 @@ export interface SpotContent {
   drawingOpacity?: number;
   frameStyle: FrameStyle;
   badge?: string;
-  tags?: string[];
+  title?: string;
   description?: string;
+  location?: string;
+  tags?: string[];
   audio?: SpotAudio; // Optional voice note or sound clip (Big Pop only)
 }
 
@@ -305,6 +307,10 @@ export interface Spot {
   creatorName: string;
   slug: string;
   tier: ProductTier;
+  title?: string;
+  description?: string;
+  location?: string;
+  tags?: string[];
   x: number;
   y: number;
   width: number;

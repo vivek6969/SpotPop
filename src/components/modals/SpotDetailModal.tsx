@@ -491,6 +491,40 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
             />
           )}
 
+          {/* Metadata Card: Title, Location, Story & Hashtags */}
+          {((spot.title || spot.content?.title) || (spot.location || spot.content?.location) || (spot.description || spot.content?.description) || (spot.tags && spot.tags.length > 0) || (spot.content?.tags && spot.content.tags.length > 0)) && (
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-left">
+              {(spot.title || spot.content?.title) && (
+                <h3 className="text-sm font-bold text-white font-outfit">
+                  {spot.title || spot.content?.title}
+                </h3>
+              )}
+              {(spot.location || spot.content?.location) && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-300 font-medium">
+                  <span>📍</span>
+                  <span>{spot.location || spot.content?.location}</span>
+                </div>
+              )}
+              {(spot.description || spot.content?.description) && (
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {spot.description || spot.content?.description}
+                </p>
+              )}
+              {((spot.tags && spot.tags.length > 0) || (spot.content?.tags && spot.content.tags.length > 0)) && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {Array.from(new Set([...(spot.tags || []), ...(spot.content?.tags || [])])).map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/25 font-mono font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ================= SOCIAL ENGAGEMENT & REACTION BAR ================= */}
           <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/5 border border-white/10">
             <div className="flex items-center justify-between gap-2">
