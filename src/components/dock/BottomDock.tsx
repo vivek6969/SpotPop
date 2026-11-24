@@ -1,42 +1,171 @@
 import React from 'react';
-import { ProductTier } from '../../types';
+import { ProductTier, User } from '../../types';
+
+export type NavTab = 'home' | 'search' | 'create' | 'reels' | 'profile';
 
 interface BottomDockProps {
+  activeTab?: NavTab;
+  onTabChange?: (tab: NavTab) => void;
   onStartCreate: (tier?: ProductTier) => void;
+  onOpenSearch?: () => void;
+  onOpenReels?: () => void;
+  onOpenAccount?: () => void;
+  onHomeClick?: () => void;
   selectedTier?: ProductTier;
   onChangeSelectedTier?: (tier: ProductTier) => void;
+  currentUser?: User | null;
 }
 
 export const BottomDock: React.FC<BottomDockProps> = ({
+  activeTab = 'home',
+  onTabChange,
   onStartCreate,
+  onOpenSearch,
+  onOpenReels,
+  onOpenAccount,
+  onHomeClick,
   selectedTier = 'big_pop',
+  currentUser,
 }) => {
+  const handleHome = () => {
+    onTabChange?.('home');
+    onHomeClick?.();
+  };
+
+  const handleSearch = () => {
+    onTabChange?.('search');
+    onOpenSearch?.();
+  };
+
+  const handleCreate = () => {
+    onTabChange?.('create');
+    onStartCreate(selectedTier);
+  };
+
+  const handleReels = () => {
+    onTabChange?.('reels');
+    onOpenReels?.();
+  };
+
+  const handleProfile = () => {
+    onTabChange?.('profile');
+    onOpenAccount?.();
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pb-safe pointer-events-none flex justify-center">
-      {/* Floating Action Button */}
-      <div className="pointer-events-auto">
-        <button
-          onClick={() => onStartCreate(selectedTier)}
-          className="group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-gradient-to-r from-[#FF2E93] via-[#FF007F] to-[#E6007A] hover:from-[#FF45A2] hover:to-[#FF1493] text-white font-outfit font-extrabold text-sm sm:text-base tracking-wide shadow-2xl shadow-pink-500/40 hover:shadow-pink-500/60 border border-white/25 flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-        >
-          {/* Subtle pulse / glow ring */}
-          <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#FF2E93] to-[#FFB800] opacity-30 group-hover:opacity-70 blur-md transition duration-300 pointer-events-none" />
+    <nav
+      role="navigation"
+      aria-label="Instagram-style Navigation"
+      className="fixed bottom-0 inset-x-0 z-40 pb-safe pointer-events-auto"
+    >
+      {/* Outer Floating Shell */}
+      <div className="w-full max-w-md mx-auto px-4 sm:px-0 sm:pb-3">
+        <div className="bg-black/90 dark:bg-[#0c0d14]/95 backdrop-blur-xl border border-white/15 sm:rounded-full shadow-2xl shadow-black/80 px-4 py-2 sm:py-2.5 flex items-center justify-between">
+          
+          {/* 1. Home Tab */}
+          <button
+            type="button"
+            onClick={handleHome}
+            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'home'
+                ? 'text-white scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title="Home Wall"
+            aria-label="Home"
+          >
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            <span className={`w-1 h-1 rounded-full bg-white mt-1 transition-opacity ${activeTab === 'home' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
 
-          {/* Plus icon */}
-          <span className="relative w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold leading-none shadow-xs group-hover:rotate-90 transition-transform duration-300">
-            +
-          </span>
+          {/* 2. Search / Explore Tab */}
+          <button
+            type="button"
+            onClick={handleSearch}
+            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'search'
+                ? 'text-white scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title="Search & Explore"
+            aria-label="Search"
+          >
+            <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.5" y2="16.5" strokeWidth="2.5" />
+            </svg>
+            <span className={`w-1 h-1 rounded-full bg-white mt-1 transition-opacity ${activeTab === 'search' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
 
-          {/* Button text */}
-          <span className="relative font-bold drop-shadow-sm">
-            Add Your Spot
-          </span>
+          {/* 3. Center Create (+) Button - Instagram Post Icon */}
+          <button
+            type="button"
+            onClick={handleCreate}
+            className="group relative flex items-center justify-center w-12 h-11 cursor-pointer transition-transform active:scale-90"
+            title="Add Your Spot"
+            aria-label="Create Pop"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-[#FF007F] hover:from-[#FF45A2] hover:to-[#FF1493] text-white flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:shadow-pink-500/60 transition-all border border-white/20">
+              <svg className="w-5 h-5 fill-none stroke-white stroke-2.5" viewBox="0 0 24 24">
+                <line x1="12" y1="6" x2="12" y2="18" strokeLinecap="round" />
+                <line x1="6" y1="12" x2="18" y2="12" strokeLinecap="round" />
+              </svg>
+            </div>
+          </button>
 
-          <span className="relative text-base group-hover:translate-x-1 transition-transform">
-            →
-          </span>
-        </button>
+          {/* 4. Reels Tab - Instagram Reels Clapperboard Icon */}
+          <button
+            type="button"
+            onClick={handleReels}
+            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'reels'
+                ? 'text-[#FF2E93] scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title="Pop Reels (Watch All Pops)"
+            aria-label="Reels"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              {/* Clapperboard Body */}
+              <rect x="2" y="3" width="20" height="18" rx="4" strokeWidth="2" />
+              <line x1="2" y1="8" x2="22" y2="8" strokeWidth="1.8" />
+              <line x1="7" y1="3" x2="5" y2="8" strokeWidth="1.8" />
+              <line x1="17" y1="3" x2="15" y2="8" strokeWidth="1.8" />
+              {/* Play Triangle in center */}
+              <polygon points="10 11 16 14.5 10 18 10 11" fill="currentColor" stroke="none" />
+            </svg>
+            <span className={`w-1 h-1 rounded-full bg-[#FF2E93] mt-1 transition-opacity ${activeTab === 'reels' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
+
+          {/* 5. Profile Tab */}
+          <button
+            type="button"
+            onClick={handleProfile}
+            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'profile'
+                ? 'text-white scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title={currentUser ? `@${currentUser.username}` : 'Sign In / Profile'}
+            aria-label="Profile"
+          >
+            {currentUser ? (
+              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-500 text-white flex items-center justify-center text-xs font-black shadow-xs ring-1 ring-white/40">
+                {currentUser.username?.[0]?.toUpperCase() || 'U'}
+              </div>
+            ) : (
+              <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                <circle cx="12" cy="7" r="4" />
+                <path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2" />
+              </svg>
+            )}
+            <span className={`w-1 h-1 rounded-full bg-white mt-1 transition-opacity ${activeTab === 'profile' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
+
+        </div>
       </div>
-    </div>
+    </nav>
   );
 };
