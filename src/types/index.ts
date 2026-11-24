@@ -305,6 +305,7 @@ export interface Spot {
   moderationStatus: 'approved' | 'flagged' | 'under_review' | 'removed';
   viewsCount: number;
   sharesCount: number;
+  likesCount?: number;
   orderId?: string;
 }
 
@@ -349,7 +350,7 @@ export interface ModerationReport {
 
 export interface ActivityEvent {
   id: string;
-  type: 'claimed' | 'shared' | 'milestone';
+  type: 'claimed' | 'shared' | 'milestone' | 'liked';
   spotId?: string;
   creatorName: string;
   tier: ProductTier;

@@ -130,6 +130,22 @@ export const api = {
     }
   },
 
+  async toggleSpotLike(spotId: string, action: 'like' | 'unlike' = 'like'): Promise<{ success: boolean; likesCount: number; spot?: Spot } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/spots/${spotId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Could not record like event', e);
+    }
+    return null;
+  },
+
   async createOrder(params: {
     productId: ProductTier;
     spotDraft: Partial<Spot>;

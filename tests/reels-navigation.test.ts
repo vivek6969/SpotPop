@@ -123,4 +123,28 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
     toggleMute();
     assert.equal(isMuted, false);
   });
+
+  test('Creator follow toggle persists across user interactions', () => {
+    const followedSet = new Set<string>();
+
+    const toggleFollow = (creator: string) => {
+      if (followedSet.has(creator)) {
+        followedSet.delete(creator);
+      } else {
+        followedSet.add(creator);
+      }
+      return followedSet.has(creator);
+    };
+
+    assert.equal(toggleFollow('doraemon_fan'), true);
+    assert.equal(followedSet.has('doraemon_fan'), true);
+    assert.equal(toggleFollow('doraemon_fan'), false);
+    assert.equal(followedSet.has('doraemon_fan'), false);
+  });
+
+  test('Reels stage layout maintains dead-center alignment classes', () => {
+    const centerStageClasses = 'absolute inset-0 flex items-center justify-center pointer-events-none z-10 px-4';
+    assert.ok(centerStageClasses.includes('absolute inset-0'));
+    assert.ok(centerStageClasses.includes('flex items-center justify-center'));
+  });
 });

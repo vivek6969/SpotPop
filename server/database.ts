@@ -913,6 +913,29 @@ class Database {
     }
   }
 
+  toggleSpotLike(id: string, increment: boolean = true) {
+    const spot = this.data.spots.find(s => s.id === id);
+    if (spot) {
+      if (increment) {
+        spot.likesCount = (spot.likesCount || 0) + 1;
+        this.addActivity({
+          id: `act_${Date.now()}`,
+          type: 'liked',
+          spotId: spot.id,
+          creatorName: spot.creatorName,
+          tier: spot.tier,
+          message: `${spot.creatorName}'s spot received some love! ❤️`,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        spot.likesCount = Math.max(0, (spot.likesCount || 1) - 1);
+      }
+      this.save();
+      return spot;
+    }
+    return null;
+  }
+
   // Users
   getUsers(): User[] {
     return this.data.users;

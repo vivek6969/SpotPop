@@ -279,6 +279,23 @@ apiRouter.post('/spots/:id/share', (req: Request, res: Response) => {
   }
 });
 
+// POST record like event
+apiRouter.post('/spots/:id/like', (req: Request, res: Response) => {
+  try {
+    const { action } = req.body || {};
+    const increment = action !== 'unlike';
+    const updatedSpot = db.toggleSpotLike(req.params.id, increment);
+    if (updatedSpot) {
+      broadcastSpotEvent('spot_updated', { spot: updatedSpot });
+      res.json({ success: true, likesCount: updatedSpot.likesCount || 0, spot: updatedSpot });
+    } else {
+      res.status(404).json({ error: 'Spot not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =================== SEARCH & DISCOVERY ===================
 
 apiRouter.get('/search', (req: Request, res: Response) => {
