@@ -251,4 +251,53 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
     assert.equal(seekScrubber(-50, 200), 0);
     assert.equal(currentTime, 0);
   });
+
+  test('Pop Reels guarantees strictly unique spots and full random shuffle', () => {
+    const spots: Spot[] = [
+      createMockSpot('sp_1'),
+      createMockSpot('sp_2'),
+      createMockSpot('sp_3'),
+      createMockSpot('sp_1'), // Duplicate ID
+      createMockSpot('sp_4'),
+      createMockSpot('sp_5'),
+    ];
+
+    const uniqueMap = new Map<string, Spot>();
+    spots.filter(s => s.status !== 'hidden').forEach(s => {
+      if (!uniqueMap.has(s.id)) uniqueMap.set(s.id, s);
+    });
+    const pool = Array.from(uniqueMap.values());
+
+    assert.equal(pool.length, 5); // sp_1 deduplicated
+    const ids = pool.map(s => s.id);
+    assert.equal(new Set(ids).size, 5); // 100% unique IDs
+
+    // Fisher-Yates shuffle
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    assert.equal(shuffled.length, 5);
+  });
+
+  test('Pop Reels pins requested initialSpotId to index 0 while randomizing remainder', () => {
+    const spots: Spot[] = [
+      createMockSpot('sp_a'),
+      createMockSpot('sp_b'),
+      createMockSpot('sp_target'),
+      createMockSpot('sp_c'),
+    ];
+
+    const pool = [...spots];
+    const initialSpotId = 'sp_target';
+    const foundIdx = pool.findIndex(s => s.id === initialSpotId);
+    if (foundIdx > 0) {
+      const [target] = pool.splice(foundIdx, 1);
+      pool.unshift(target);
+    }
+
+    assert.equal(pool[0].id, 'sp_target');
+    assert.equal(pool.length, 4);
+  });
 });

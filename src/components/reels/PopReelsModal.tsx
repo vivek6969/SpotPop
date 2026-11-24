@@ -79,29 +79,47 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const viewedSpotsRef = useRef<Set<string>>(new Set());
+  const scrollRafRef = useRef<number | null>(null);
 
-  // Discovery / Random Perspective Feed
+  // Automatically randomize feed every time Reels modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setShuffleKey(prev => prev + 1);
+      setActiveIndex(0);
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
+    }
+  }, [isOpen]);
+
+  // Discovery / Random Perspective Feed: Always fully randomized and unique
   const displaySpots = useMemo(() => {
     const published = spots.filter(s => s.status !== 'hidden');
-    if (shuffleKey === 0) {
-      if (initialSpotId) {
-        const found = published.find(s => s.id === initialSpotId || s.slug === initialSpotId);
-        const rest = published.filter(s => s.id !== initialSpotId && s.slug !== initialSpotId);
-        return found ? [found, ...rest] : published;
+    // Ensure all spots in feed are strictly unique by id
+    const uniqueMap = new Map<string, Spot>();
+    published.forEach(s => {
+      if (!uniqueMap.has(s.id)) {
+        uniqueMap.set(s.id, s);
       }
-      const copy = [...published];
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy;
-    }
-    const copy = [...published];
-    for (let i = copy.length - 1; i > 0; i--) {
+    });
+    const pool = Array.from(uniqueMap.values());
+
+    // True Fisher-Yates pure randomization
+    for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
+      [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    return copy;
+
+    // If an initial spot was selected, place it first followed by the randomized pool
+    if (initialSpotId) {
+      const foundIdx = pool.findIndex(s => s.id === initialSpotId || s.slug === initialSpotId);
+      if (foundIdx > 0) {
+        const [target] = pool.splice(foundIdx, 1);
+        pool.unshift(target);
+      }
+    }
+
+    return pool;
   }, [spots, shuffleKey, initialSpotId]);
 
   const showToast = useCallback((msg: string) => {
@@ -166,14 +184,22 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       !followedCreators.has(currentSpot.creatorName)
     );
 
-    if (audioUrl && !isAudioMuted && !isCurrentSpotLocked) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+    // Stop and clear previous audio immediately
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsAudioPlaying(false);
+
+    // 140ms Settle Debounce: Prevents audio stutter and buffer lockups when swiping fast
+    let isCancelled = false;
+    const playTimer = setTimeout(() => {
+      if (isCancelled || !audioUrl || isAudioMuted || isCurrentSpotLocked) return;
+
       const audio = new Audio(audioUrl);
       audio.loop = true;
       audio.ontimeupdate = () => {
-        if (audio) {
+        if (!isCancelled && audio) {
           const cur = audio.currentTime || 0;
           const rawDur = audio.duration;
           const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0)
@@ -183,24 +209,26 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
           setAudioDuration(dur);
         }
       };
-      audio.onplay = () => setIsAudioPlaying(true);
-      audio.onpause = () => setIsAudioPlaying(false);
+      audio.onplay = () => {
+        if (!isCancelled) setIsAudioPlaying(true);
+      };
+      audio.onpause = () => {
+        if (!isCancelled) setIsAudioPlaying(false);
+      };
       audio.play()
-        .then(() => setIsAudioPlaying(true))
+        .then(() => {
+          if (!isCancelled) setIsAudioPlaying(true);
+        })
         .catch(err => {
-          console.warn('[ReelsAudio] Autoplay blocked, tap to play:', err);
-          setIsAudioPlaying(false);
+          console.warn('[ReelsAudio] Autoplay notice:', err);
+          if (!isCancelled) setIsAudioPlaying(false);
         });
       audioRef.current = audio;
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setIsAudioPlaying(false);
-    }
+    }, 140);
 
     return () => {
+      isCancelled = true;
+      clearTimeout(playTimer);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -255,20 +283,25 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     setAudioCurrentTime(targetTime);
   };
 
-  // Scroll listener using client height for smooth snap detection
+  // Scroll listener using client height for smooth snap detection with RAF throttle
   const handleScroll = useCallback(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    const scrollPos = container.scrollTop;
-    const slideHeight = container.clientHeight;
-    if (slideHeight > 0) {
-      const newIndex = Math.round(scrollPos / slideHeight);
-      if (newIndex >= 0 && newIndex < displaySpots.length && newIndex !== activeIndex) {
-        setActiveIndex(newIndex);
-        setIsCommentsOpen(false);
-        setShowReactionsBar(false);
+    if (scrollRafRef.current) return;
+
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      if (!containerRef.current) return;
+      const container = containerRef.current;
+      const scrollPos = container.scrollTop;
+      const slideHeight = container.clientHeight;
+      if (slideHeight > 0) {
+        const newIndex = Math.round(scrollPos / slideHeight);
+        if (newIndex >= 0 && newIndex < displaySpots.length && newIndex !== activeIndex) {
+          setActiveIndex(newIndex);
+          setIsCommentsOpen(false);
+          setShowReactionsBar(false);
+        }
       }
-    }
+    });
   }, [activeIndex, displaySpots.length]);
 
   // Keyboard navigation (ArrowUp, ArrowDown, Space, Escape)
@@ -564,13 +597,15 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center select-none overflow-hidden touch-none font-sans">
-      {/* Dynamic Ambient Background Blur */}
+      {/* Ambient Backdrop */}
       {currentSpot && (
         <div
-          className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-30 scale-125 transition-all duration-700 pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center opacity-25 pointer-events-none will-change-transform"
           style={{
             backgroundImage: currentSpot.content?.imageUrl ? `url(${currentSpot.content.imageUrl})` : undefined,
             backgroundColor: currentSpot.background || '#090a0f',
+            filter: 'blur(36px)',
+            transform: 'scale(1.15)',
           }}
         />
       )}
@@ -624,9 +659,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/80 font-medium">
                 Reels
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-pink-300 font-mono font-bold">
-                {activeIndex + 1}/{displaySpots.length}
-              </span>
             </div>
           </div>
 
@@ -669,11 +701,11 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
           </div>
         </div>
 
-        {/* Vertical Snap Scroll Container */}
+        {/* Vertical Snap Scroll Container - Hardware accelerated, no scroll-smooth conflict */}
         <div
           ref={containerRef}
           onScroll={handleScroll}
-          className="w-full h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth relative z-20 no-scrollbar touch-pan-y"
+          className="w-full h-full overflow-y-scroll snap-y snap-mandatory relative z-20 no-scrollbar touch-pan-y overscroll-contain"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {displaySpots.map((spot, idx) => {
@@ -686,6 +718,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
             const totalReactions = Object.values(spotReactions).reduce((a, b) => a + b, 0);
             const hasAudio = Boolean(spot.content?.audio?.url);
             const isCurrentActive = idx === activeIndex;
+            const isNear = Math.abs(idx - activeIndex) <= 1;
             const isFollowing = spot.creatorName ? followedCreators.has(spot.creatorName) : false;
             const commentsDisabled = spot.allowComments === false;
             const isSpotLocked = Boolean(
@@ -704,23 +737,30 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                 {/* 
                   STAGE CONTAINER:
                   Framed cleanly with `pr-16 pl-3` so the Pop card never touches the action rail!
-                  hideAudioBar={true} strips the duplicate static card dock so only the real interactive reel scrubber controls audio!
+                  Virtualized: Only active and adjacent slides render full SpotCard
                 */}
                 <div className="absolute inset-0 flex items-center justify-center pr-16 pl-4 pointer-events-none z-10">
                   <div
-                    className="pointer-events-auto transform scale-[1.38] xs:scale-[1.48] sm:scale-[1.58] transition-transform duration-300 drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)] filter cursor-pointer"
+                    className="pointer-events-auto transform scale-[1.38] xs:scale-[1.48] sm:scale-[1.58] drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)] cursor-pointer will-change-transform"
                     style={{ transformOrigin: 'center center' }}
                   >
-                    <SpotCard
-                      tier={spot.tier}
-                      shape={spot.shape}
-                      background={spot.background}
-                      borderColor={spot.borderColor}
-                      content={spot.content}
-                      creatorName={spot.creatorName}
-                      interactive={false}
-                      hideAudioBar={true}
-                    />
+                    {isNear ? (
+                      <SpotCard
+                        tier={spot.tier}
+                        shape={spot.shape}
+                        background={spot.background}
+                        borderColor={spot.borderColor}
+                        content={spot.content}
+                        creatorName={spot.creatorName}
+                        interactive={false}
+                        hideAudioBar={true}
+                      />
+                    ) : (
+                      <div
+                        className="w-[170px] h-[210px] rounded-2xl bg-white/5 opacity-40 flex items-center justify-center"
+                        style={{ background: spot.background }}
+                      />
+                    )}
 
                     {/* Friends Only Locked Reel Card Overlay */}
                     {isSpotLocked && (
