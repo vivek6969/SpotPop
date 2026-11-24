@@ -244,3 +244,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 64/64 unit tests passing across all 11 suites (`tests/social-network-visibility.test.ts`), production build completed in 1.07s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-028]: Spot Detail Modal Social Interaction Suite (Likes, Comments & Reactions)
+- **Priority**: P0 (Feature Parity & Social Engagement)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Implemented full social interaction capabilities directly inside `SpotDetailModal.tsx`. Integrated real-time Like toggle with optimistic counter increments, confetti particle effect, and backend persistence. Added interactive quick Pop React emoji picker (`['🔥', '❤️', '👏', '😂', '😮', '🚀', '💯']`) with reaction counts and floating upward emoji animations. Expanded stats strip to a 4-column overview displaying Likes, Views, Comments, and Shares. Built full-featured in-modal Comments and Replies thread supporting threaded replies, clickable @mentions and #hashtags, time formatting, and direct comment posting with allowComments validation.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 64/64 passing tests across 11 test suites, clean production build in 1.26s.
+- **Review Result**: Approved by CTO.
