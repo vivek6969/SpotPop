@@ -1790,12 +1790,23 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
               <p
                 className="leading-snug break-words select-none"
                 style={{
-                  fontFamily: getCleanFontFamily(content.fontFamily),
+                  fontFamily: getCleanFontFamily(content.subtextFontFamily || content.fontFamily),
                   fontSize: subtextSize,
-                  color: content.textColor || (isTransparent ? '#F1F5F9' : shape === 'polaroid' ? '#475569' : '#334155'),
-                  opacity: textOpacity * 0.9,
+                  color: content.subtextGradient
+                    ? undefined
+                    : (content.subtextColor || (content.textColor ? content.textColor : (isTransparent ? '#F1F5F9' : shape === 'polaroid' ? '#475569' : '#334155'))),
+                  background: content.subtextGradient || undefined,
+                  WebkitBackgroundClip: content.subtextGradient ? 'text' : undefined,
+                  WebkitTextFillColor: content.subtextGradient ? 'transparent' : undefined,
+                  opacity: (content.subtextOpacity ?? textOpacity) * 0.9,
                   textAlign: isCustomSubtext ? 'left' : content.alignment || 'center',
-                  textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                  textShadow: content.subtext3D
+                    ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.15), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3)'
+                    : content.subtextGlow
+                      ? `0 0 14px ${content.subtextGlow}`
+                      : isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                  WebkitTextStroke: content.subtextStroke || undefined,
+                  letterSpacing: content.subtextLetterSpacing ? `${content.subtextLetterSpacing}px` : undefined,
                 }}
               >
                 {content.text}
@@ -1854,10 +1865,16 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
               <span
                 className="truncate font-semibold select-none flex items-center gap-1"
                 style={{
-                  color: content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
+                  fontFamily: getCleanFontFamily(content.authorFontFamily || content.fontFamily),
+                  color: content.authorColor || content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
                   fontSize: authorSize,
                   opacity: authorOpacity,
-                  textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                  textShadow: content.author3D
+                    ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.15)'
+                    : content.authorGlow
+                      ? `0 0 10px ${content.authorGlow}`
+                      : isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                  WebkitTextStroke: content.authorStroke || undefined,
                 }}
               >
                 <span>{authorDisplay}</span>

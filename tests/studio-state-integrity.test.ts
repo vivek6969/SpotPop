@@ -475,4 +475,53 @@ describe('Verified Tier-Isolated Undo/Redo Engine', () => {
     }
     assert.equal(editor.miniUndoHistory.length, 30);
   });
+
+  test('Per-element text styling isolation: Subtext font & color do not pollute headline', () => {
+    const editor = new TierIsolatedStudioSimulator('big_pop');
+    // Baseline state
+    assert.equal(editor.currentDraft.fontFamily, 'Caveat');
+    assert.equal(editor.currentDraft.fontSize, 22);
+    assert.equal(editor.currentDraft.textColor, '#FFFFFF');
+
+    // Simulate styling when Subtext ('BITCH') is targeted
+    editor.updateDraft({
+      subtextFontFamily: 'Poppins',
+      subtextSize: 18,
+      subtextColor: '#FF2E93',
+      subtext3D: true,
+      subtextGlow: '#00F0FF',
+      subtextStroke: '1px #000000',
+      subtextLetterSpacing: 2,
+    });
+
+    // Headline styling MUST remain completely pristine and unaltered
+    assert.equal(editor.currentDraft.fontFamily, 'Caveat');
+    assert.equal(editor.currentDraft.fontSize, 22);
+    assert.equal(editor.currentDraft.textColor, '#FFFFFF');
+    assert.equal(editor.currentDraft.text3D, undefined);
+    assert.equal(editor.currentDraft.textGlow, undefined);
+    assert.equal(editor.currentDraft.textStroke, undefined);
+
+    // Subtext styling MUST strictly contain the applied properties
+    assert.equal(editor.currentDraft.subtextFontFamily, 'Poppins');
+    assert.equal(editor.currentDraft.subtextSize, 18);
+    assert.equal(editor.currentDraft.subtextColor, '#FF2E93');
+    assert.equal(editor.currentDraft.subtext3D, true);
+    assert.equal(editor.currentDraft.subtextGlow, '#00F0FF');
+    assert.equal(editor.currentDraft.subtextStroke, '1px #000000');
+    assert.equal(editor.currentDraft.subtextLetterSpacing, 2);
+
+    // Now update Creator Tag (Author)
+    editor.updateDraft({
+      authorFontFamily: 'Inter',
+      authorColor: '#10B981',
+      authorSize: 12,
+    });
+
+    // Subtext and Headline remain isolated
+    assert.equal(editor.currentDraft.fontFamily, 'Caveat');
+    assert.equal(editor.currentDraft.subtextFontFamily, 'Poppins');
+    assert.equal(editor.currentDraft.authorFontFamily, 'Inter');
+    assert.equal(editor.currentDraft.authorColor, '#10B981');
+  });
 });
