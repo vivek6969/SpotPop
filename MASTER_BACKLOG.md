@@ -214,3 +214,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, clean production build in 1.03s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-025]: Pop Reels Live Re-Shuffle Loop & SSE Feedback Stutter Elimination
+- **Priority**: P0 (Reel Stability & Scroll Smoothness)
+- **Assigned Agent**: senior-engineer
+- **Description**: Diagnosed and eliminated the root cause of Pop Reels rapidly cycling through pops on open and repeating previously seen spots on scroll. Removed the reactive feedback loop where recording slide views triggered backend SSE `spot_updated` events that continuously re-shuffled `displaySpots`. Decoupled `displaySpots` into stable persistent state `shuffledSpots`, initialized once upon modal open or on explicit `Mix` button click. Implemented in-place metadata synchronization so real-time like/view increments update without altering reel slide ordering, guaranteeing 100% stable, non-repeating scroll navigation.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, production build completed in 900ms.
+- **Review Result**: Approved by CTO.

@@ -31,7 +31,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   initialSpotId,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [shuffleKey, setShuffleKey] = useState(0);
   const [likedSpotIds, setLikedSpotIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('spotpop_liked_spots');
@@ -81,46 +80,10 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const viewedSpotsRef = useRef<Set<string>>(new Set());
   const scrollRafRef = useRef<number | null>(null);
 
-  // Automatically randomize feed every time Reels modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setShuffleKey(prev => prev + 1);
-      setActiveIndex(0);
-      if (containerRef.current) {
-        containerRef.current.scrollTop = 0;
-      }
-    }
-  }, [isOpen]);
-
-  // Discovery / Random Perspective Feed: Always fully randomized and unique
-  const displaySpots = useMemo(() => {
-    const published = spots.filter(s => s.status !== 'hidden');
-    // Ensure all spots in feed are strictly unique by id
-    const uniqueMap = new Map<string, Spot>();
-    published.forEach(s => {
-      if (!uniqueMap.has(s.id)) {
-        uniqueMap.set(s.id, s);
-      }
-    });
-    const pool = Array.from(uniqueMap.values());
-
-    // True Fisher-Yates pure randomization
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-
-    // If an initial spot was selected, place it first followed by the randomized pool
-    if (initialSpotId) {
-      const foundIdx = pool.findIndex(s => s.id === initialSpotId || s.slug === initialSpotId);
-      if (foundIdx > 0) {
-        const [target] = pool.splice(foundIdx, 1);
-        pool.unshift(target);
-      }
-    }
-
-    return pool;
-  }, [spots, shuffleKey, initialSpotId]);
+  // Shuffled Feed State: Initialized on modal open, preserved across views, and re-shuffled only on explicit Mix click
+  const [shuffledSpots, setShuffledSpots] = useState<Spot[]>([]);
+  const hasOpenedRef = useRef(false);
+  const lastInitialSpotIdRef = useRef<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -129,6 +92,91 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       setToastMessage(null);
     }, 2400);
   }, []);
+
+  // Pure Fisher-Yates shuffle generator (guarantees deduplication and 100% unique order)
+  const createShuffledPool = useCallback((sourceSpots: Spot[], pinnedId?: string | null) => {
+    const published = sourceSpots.filter(s => s.status !== 'hidden');
+    const uniqueMap = new Map<string, Spot>();
+    published.forEach(s => {
+      if (!uniqueMap.has(s.id)) {
+        uniqueMap.set(s.id, s);
+      }
+    });
+    const pool = Array.from(uniqueMap.values());
+
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    if (pinnedId) {
+      const foundIdx = pool.findIndex(s => s.id === pinnedId || s.slug === pinnedId);
+      if (foundIdx > 0) {
+        const [target] = pool.splice(foundIdx, 1);
+        pool.unshift(target);
+      }
+    }
+
+    return pool;
+  }, []);
+
+  // Initialize feed strictly when modal opens or initialSpotId changes
+  useEffect(() => {
+    if (isOpen) {
+      const isInitialOpen = !hasOpenedRef.current;
+      const isNewInitial = initialSpotId !== lastInitialSpotIdRef.current;
+      hasOpenedRef.current = true;
+      lastInitialSpotIdRef.current = initialSpotId || null;
+
+      if (isInitialOpen || isNewInitial || shuffledSpots.length === 0) {
+        const fresh = createShuffledPool(spots, initialSpotId);
+        setShuffledSpots(fresh);
+        setActiveIndex(0);
+        if (containerRef.current) {
+          containerRef.current.scrollTop = 0;
+        }
+      }
+    } else {
+      hasOpenedRef.current = false;
+      viewedSpotsRef.current.clear();
+    }
+  }, [isOpen, initialSpotId, createShuffledPool]);
+
+  // Handle explicit user shuffle/mix request
+  const handleShuffleClick = useCallback(() => {
+    const fresh = createShuffledPool(spots);
+    setShuffledSpots(fresh);
+    setActiveIndex(0);
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    showToast('Shuffled Reels discovery feed! 🔀');
+  }, [spots, createShuffledPool, showToast]);
+
+  // Sync background updates (likes, views, comments) in-place without altering feed ordering
+  useEffect(() => {
+    if (!isOpen || shuffledSpots.length === 0) return;
+    const spotMap = new Map(spots.map(s => [s.id, s]));
+    let hasChanges = false;
+    const updated = shuffledSpots.map(s => {
+      const fresh = spotMap.get(s.id);
+      if (fresh && (
+        fresh.viewsCount !== s.viewsCount ||
+        fresh.likesCount !== s.likesCount ||
+        fresh.commentsCount !== s.commentsCount ||
+        fresh.reactions !== s.reactions
+      )) {
+        hasChanges = true;
+        return { ...s, ...fresh };
+      }
+      return s;
+    });
+    if (hasChanges) {
+      setShuffledSpots(updated);
+    }
+  }, [spots, isOpen]);
+
+  const displaySpots = shuffledSpots.length > 0 ? shuffledSpots : spots;
 
   // Sync initial like, view, and reaction counts
   useEffect(() => {
@@ -685,10 +733,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
           <div className="flex items-center gap-2">
             {/* Perspective Shuffle / Discover Button */}
             <button
-              onClick={() => {
-                setShuffleKey(prev => prev + 1);
-                showToast('Shuffled Reels discovery feed! 🔀');
-              }}
+              onClick={handleShuffleClick}
               className="px-2.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 text-xs font-bold hover:bg-white/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-md"
               title="Shuffle / Discover New Pops"
               aria-label="Discover"

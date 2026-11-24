@@ -289,7 +289,7 @@ apiRouter.post('/spots/:id/view', (req: Request, res: Response) => {
   try {
     const updated = db.incrementSpotViews(req.params.id);
     if (updated) {
-      broadcastSpotEvent('spot_updated', { spot: updated });
+      // Return updated count without broadcasting full SSE event to avoid client re-render storms
       res.json({ success: true, viewsCount: updated.viewsCount });
     } else {
       res.status(404).json({ error: 'Spot not found' });
