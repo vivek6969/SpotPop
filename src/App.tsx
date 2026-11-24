@@ -464,6 +464,8 @@ export function App() {
       {/* Live Canvas Activity Drawer */}
       <ActivityDrawer
         isOpen={isActivityOpen}
+        currentUser={currentUser}
+        authToken={authToken}
         onClose={() => setIsActivityOpen(false)}
         onUpdateUnreadCount={setUnreadActivityCount}
         onSelectSpotById={(spotId) => {

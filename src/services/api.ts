@@ -1,4 +1,4 @@
-import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationReport, Comment } from '../types';
+import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationReport, Comment, FollowStatus, FollowRequestItem, FollowResponse } from '../types';
 
 const API_BASE = '/api';
 
@@ -110,10 +110,16 @@ export const api = {
 
   async getCreatorProfile(username: string): Promise<{
     user: User;
-    stats: { totalSpots: number; totalViews: number; totalShares: number };
+    stats: { totalSpots: number; totalViews: number; totalShares: number; followersCount?: number; followingCount?: number };
+    followStatus?: FollowStatus;
+    isFollowing?: boolean;
+    isRequested?: boolean;
+    isLockedAccount?: boolean;
     spots: Spot[];
   }> {
-    const res = await fetch(`${API_BASE}/creators/${encodeURIComponent(username)}`);
+    const res = await fetch(`${API_BASE}/creators/${encodeURIComponent(username)}`, {
+      headers: getClientHeaders(),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Creator not found');
@@ -123,7 +129,7 @@ export const api = {
 
   async updateCreatorProfile(
     token: string,
-    updates: { displayName?: string; bio?: string; avatarUrl?: string }
+    updates: { displayName?: string; bio?: string; avatarUrl?: string; websiteUrl?: string; category?: string; isPrivate?: boolean }
   ): Promise<{ user: User }> {
     const res = await fetch(`${API_BASE}/creators/me`, {
       method: 'PUT',
@@ -396,12 +402,7 @@ export const api = {
   },
 
   // Social & Follows
-  async followUser(username: string, token?: string): Promise<{
-    success: boolean;
-    isFollowing: boolean;
-    followersCount: number;
-    followingCount: number;
-  }> {
+  async followUser(username: string, token?: string): Promise<FollowResponse> {
     const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -416,12 +417,109 @@ export const api = {
     return res.json();
   },
 
+  async getFollowRequests(username: string, token?: string): Promise<{ requests: FollowRequestItem[]; count: number }> {
+    const headers: Record<string, string> = { ...getClientHeaders() };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/follow-requests`, {
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to load follow requests');
+    }
+    return res.json();
+  },
+
+  async acceptFollowRequest(
+    requestId: string,
+    targetUsername?: string,
+    token?: string
+  ): Promise<{ success: boolean; followerName: string; followersCount: number; followingCount: number }> {
+    const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/follow-requests/${encodeURIComponent(requestId)}/accept`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ targetUsername }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to accept follow request');
+    }
+    return res.json();
+  },
+
+  async declineFollowRequest(
+    requestId: string,
+    targetUsername?: string,
+    token?: string
+  ): Promise<{ success: boolean }> {
+    const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/follow-requests/${encodeURIComponent(requestId)}/decline`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ targetUsername }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to decline follow request');
+    }
+    return res.json();
+  },
+
+  async removeFollower(
+    username: string,
+    followerId: string,
+    token?: string
+  ): Promise<{ success: boolean; followersCount: number }> {
+    const headers: Record<string, string> = { ...getClientHeaders() };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/followers/${encodeURIComponent(followerId)}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to remove follower');
+    }
+    return res.json();
+  },
+
+  async updateAccountPrivacy(
+    username: string,
+    isPrivate: boolean,
+    token?: string
+  ): Promise<{ success: boolean; isPrivate: boolean }> {
+    const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/privacy`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ isPrivate }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update privacy');
+    }
+    return res.json();
+  },
+
   async getUserNetwork(username: string, token?: string): Promise<{
     followers: Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>;
     following: Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>;
     followersCount: number;
     followingCount: number;
+    followStatus: FollowStatus;
     isFollowing: boolean;
+    isRequested: boolean;
+    pendingRequestsCount?: number;
+    followRequests?: FollowRequestItem[];
   }> {
     const headers: Record<string, string> = { ...getClientHeaders() };
     if (token) headers['Authorization'] = `Bearer ${token}`;

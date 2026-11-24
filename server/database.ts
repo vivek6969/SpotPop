@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier, Comment, FollowRelation } from '../src/types/index.ts';
+import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier, Comment, FollowRelation, FollowStatus } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
 import { SpatialIndex } from './spatialIndex.ts';
 import { imageService } from './imageService.ts';
@@ -710,6 +710,30 @@ class Database {
         const parsed = JSON.parse(raw);
         parsed.comments = parsed.comments || [];
         parsed.follows = parsed.follows || [];
+
+        // Ensure seed creators with private/friends_only spots are registered with Instagram private account settings
+        const privateUserSeeds = [
+          { id: 'usr_mira_c', username: 'Mira_C', displayName: 'Mira_C', isPrivate: true, bio: 'Visual artist & pop creator 🌸 Friends-only pops. Follow to unlock!' },
+          { id: 'usr_neotokio', username: 'NeoTokio', displayName: 'NeoTokio', isPrivate: true, bio: 'Cyberpunk beats & midnight aesthetics 🌃' },
+          { id: 'usr_simran_b', username: 'Simran_B', displayName: 'Simran_B', isPrivate: true, bio: 'Design & coffee notes ☕ Follow to unlock!' },
+        ];
+        parsed.users = parsed.users || [];
+        for (const seed of privateUserSeeds) {
+          const existing = parsed.users.find((u: any) => u.id?.toLowerCase() === seed.id.toLowerCase() || u.username?.toLowerCase() === seed.username.toLowerCase());
+          if (existing) {
+            if (existing.isPrivate === undefined) existing.isPrivate = true;
+          } else {
+            parsed.users.push({
+              ...seed,
+              role: 'user',
+              createdAt: new Date().toISOString(),
+              ownedSpotIds: [],
+              followersCount: 0,
+              followingCount: 0,
+            });
+          }
+        }
+
         return parsed;
       }
     } catch (e) {
@@ -760,8 +784,11 @@ class Database {
         return true;
       })
       .map(s => {
-        // If friends only, check if viewer follows creator or is owner
-        if (s.visibility === 'friends_only') {
+        const creatorUser = s.ownerId ? this.getUserById(s.ownerId) : this.getUserByUsername(s.creatorName);
+        const isPrivateCreator = creatorUser?.isPrivate ?? false;
+
+        // If friends only or creator is private, check if viewer follows creator (accepted status) or is owner
+        if (s.visibility === 'friends_only' || isPrivateCreator) {
           if (!rawViewer) {
             return { ...s, isLocked: true };
           }
@@ -930,7 +957,10 @@ class Database {
         return true;
       })
       .map(s => {
-        if (s.visibility === 'friends_only') {
+        const creatorUser = s.ownerId ? this.getUserById(s.ownerId) : this.getUserByUsername(s.creatorName);
+        const isPrivateCreator = creatorUser?.isPrivate ?? false;
+
+        if (s.visibility === 'friends_only' || isPrivateCreator) {
           if (!rawViewer) return { ...s, isLocked: true };
           const isOwner = s.ownerId?.toLowerCase() === rawViewer || s.creatorName.toLowerCase() === rawViewer;
           if (isOwner) return { ...s, isLocked: false };
@@ -1094,14 +1124,20 @@ class Database {
     return `usr_${raw.replace(/[^a-z0-9_]/g, '_')}`;
   }
 
-  followUser(followerInput: string, targetInput: string): { isFollowing: boolean; followersCount: number; followingCount: number } {
+  followUser(followerInput: string, targetInput: string): {
+    followStatus: FollowStatus;
+    isFollowing: boolean;
+    isRequested: boolean;
+    followersCount: number;
+    followingCount: number;
+  } {
     this.data.follows = this.data.follows || [];
     const followerId = this.normalizeUserKey(followerInput);
     const targetId = this.normalizeUserKey(targetInput);
 
-    if (!followerId || !targetId || followerId === targetId) {
+    if (!followerId || !targetId || followerId.toLowerCase() === targetId.toLowerCase()) {
       const counts = this.getFollowCounts(targetInput);
-      return { isFollowing: false, ...counts };
+      return { followStatus: 'not_following', isFollowing: false, isRequested: false, ...counts };
     }
 
     const existingIdx = this.data.follows.findIndex(
@@ -1109,35 +1145,63 @@ class Database {
            (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
-    let isFollowing = false;
+    let followStatus: FollowStatus = 'not_following';
+
     if (existingIdx !== -1) {
-      // Unfollow
+      // Unfollow or Cancel Request
       this.data.follows.splice(existingIdx, 1);
-      isFollowing = false;
+      followStatus = 'not_following';
     } else {
-      // Follow
-      this.data.follows.push({
-        id: `flw_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        followerId,
-        followingId: targetId,
-        createdAt: new Date().toISOString(),
-      });
-      isFollowing = true;
+      // Check if target account is private
+      const targetUser = this.getUserById(targetId) || this.getUserByUsername(targetInput);
+      const isPrivate = targetUser?.isPrivate ?? false;
 
       const followerUser = this.getUserById(followerId) || this.getUserByUsername(followerInput);
-      const targetUser = this.getUserById(targetId) || this.getUserByUsername(targetInput);
       const followerName = followerUser?.displayName || followerInput;
       const targetName = targetUser?.displayName || targetInput;
 
-      this.addActivity({
-        id: `act_${Date.now()}`,
-        type: 'shared',
-        spotId: 'network',
-        creatorName: followerName,
-        tier: 'mini_pop',
-        message: `${followerName} started following @${targetName}! ✨`,
-        timestamp: new Date().toISOString(),
-      });
+      if (isPrivate) {
+        // Pending Follow Request (Instagram logic: approval required)
+        followStatus = 'pending';
+        this.data.follows.push({
+          id: `flw_req_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          followerId,
+          followingId: targetId,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        });
+
+        this.addActivity({
+          id: `act_${Date.now()}`,
+          type: 'shared',
+          spotId: 'network',
+          creatorName: followerName,
+          tier: 'mini_pop',
+          message: `${followerName} requested to follow @${targetName}. 📩`,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Instant Follow for Public Profile
+        followStatus = 'accepted';
+        this.data.follows.push({
+          id: `flw_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          followerId,
+          followingId: targetId,
+          status: 'accepted',
+          createdAt: new Date().toISOString(),
+          acceptedAt: new Date().toISOString(),
+        });
+
+        this.addActivity({
+          id: `act_${Date.now()}`,
+          type: 'shared',
+          spotId: 'network',
+          creatorName: followerName,
+          tier: 'mini_pop',
+          message: `${followerName} started following @${targetName}! ✨`,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     const counts = this.getFollowCounts(targetInput);
@@ -1149,12 +1213,36 @@ class Database {
     const fUser = this.data.users.find(u => u.id.toLowerCase() === followerId.toLowerCase() || u.username.toLowerCase() === followerInput.toLowerCase());
     if (fUser) {
       fUser.followingCount = this.data.follows.filter(
-        f => f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()
+        f => (f.status === 'accepted' || !f.status) &&
+             (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
       ).length;
     }
 
     this.save();
-    return { isFollowing, followersCount: counts.followersCount, followingCount: counts.followingCount };
+    return {
+      followStatus,
+      isFollowing: followStatus === 'accepted',
+      isRequested: followStatus === 'pending',
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount,
+    };
+  }
+
+  getFollowStatus(followerInput?: string, targetInput?: string): FollowStatus {
+    if (!followerInput || !targetInput) return 'not_following';
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const targetId = this.normalizeUserKey(targetInput);
+    if (followerId.toLowerCase() === targetId.toLowerCase()) return 'not_following';
+
+    const relation = this.data.follows.find(
+      f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+
+    if (!relation) return 'not_following';
+    if (relation.status === 'pending') return 'pending';
+    return 'accepted';
   }
 
   isUserFollowing(followerInput?: string, targetInput?: string): boolean {
@@ -1163,16 +1251,157 @@ class Database {
     const followerId = this.normalizeUserKey(followerInput);
     const targetId = this.normalizeUserKey(targetInput);
     return this.data.follows.some(
+      f => (f.status === 'accepted' || !f.status) &&
+           (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+  }
+
+  getFollowRequests(targetInput: string): Array<{
+    id: string;
+    followerId: string;
+    followingId: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string;
+    createdAt: string;
+  }> {
+    this.data.follows = this.data.follows || [];
+    const targetId = this.normalizeUserKey(targetInput);
+    const pendingRelations = this.data.follows.filter(
+      f => f.status === 'pending' &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+
+    return pendingRelations.map(r => {
+      const u = this.getUserById(r.followerId) || this.getUserByUsername(r.followerId);
+      const rawName = r.followerId.replace(/^usr_/, '');
+      return {
+        id: r.id,
+        followerId: r.followerId,
+        followingId: r.followingId,
+        username: u?.username || rawName,
+        displayName: u?.displayName || (rawName.startsWith('v_') ? 'Spot Explorer' : rawName),
+        avatarUrl: u?.avatarUrl,
+        createdAt: r.createdAt,
+      };
+    });
+  }
+
+  acceptFollowRequest(requestId: string, targetInput: string): {
+    success: boolean;
+    followerName: string;
+    followerId: string;
+    followersCount: number;
+    followingCount: number;
+  } | null {
+    this.data.follows = this.data.follows || [];
+    const targetId = this.normalizeUserKey(targetInput);
+
+    const relation = this.data.follows.find(
+      f => f.id === requestId &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+
+    if (!relation) return null;
+
+    relation.status = 'accepted';
+    relation.acceptedAt = new Date().toISOString();
+
+    const followerUser = this.getUserById(relation.followerId) || this.getUserByUsername(relation.followerId);
+    const targetUser = this.getUserById(targetId) || this.getUserByUsername(targetInput);
+    const followerName = followerUser?.displayName || relation.followerId;
+    const targetName = targetUser?.displayName || targetInput;
+
+    this.addActivity({
+      id: `act_${Date.now()}`,
+      type: 'shared',
+      spotId: 'network',
+      creatorName: targetName,
+      tier: 'mini_pop',
+      message: `@${targetName} accepted ${followerName}'s follow request! ✨`,
+      timestamp: new Date().toISOString(),
+    });
+
+    const counts = this.getFollowCounts(targetInput);
+    if (targetUser) targetUser.followersCount = counts.followersCount;
+    if (followerUser) {
+      followerUser.followingCount = this.data.follows.filter(
+        f => (f.status === 'accepted' || !f.status) &&
+             (f.followerId.toLowerCase() === followerUser.id.toLowerCase() || f.followerId.toLowerCase() === followerUser.username.toLowerCase())
+      ).length;
+    }
+
+    this.save();
+    return {
+      success: true,
+      followerName,
+      followerId: relation.followerId,
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount,
+    };
+  }
+
+  declineFollowRequest(requestId: string, targetInput: string): boolean {
+    this.data.follows = this.data.follows || [];
+    const targetId = this.normalizeUserKey(targetInput);
+
+    const idx = this.data.follows.findIndex(
+      f => f.id === requestId &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+
+    if (idx === -1) return false;
+
+    this.data.follows.splice(idx, 1);
+    this.save();
+    return true;
+  }
+
+  removeFollower(followerInput: string, targetInput: string): boolean {
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const targetId = this.normalizeUserKey(targetInput);
+
+    const idx = this.data.follows.findIndex(
       f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
            (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
+
+    if (idx === -1) return false;
+
+    this.data.follows.splice(idx, 1);
+
+    const counts = this.getFollowCounts(targetInput);
+    const tUser = this.data.users.find(u => u.id.toLowerCase() === targetId.toLowerCase() || u.username.toLowerCase() === targetInput.toLowerCase());
+    if (tUser) tUser.followersCount = counts.followersCount;
+
+    const fUser = this.data.users.find(u => u.id.toLowerCase() === followerId.toLowerCase() || u.username.toLowerCase() === followerInput.toLowerCase());
+    if (fUser) {
+      fUser.followingCount = this.data.follows.filter(
+        f => (f.status === 'accepted' || !f.status) &&
+             (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+      ).length;
+    }
+
+    this.save();
+    return true;
+  }
+
+  setAccountPrivacy(userInput: string, isPrivate: boolean): boolean {
+    const user = this.getUserById(userInput) || this.getUserByUsername(userInput);
+    if (!user) return false;
+    user.isPrivate = isPrivate;
+    this.save();
+    return true;
   }
 
   getUserFollowers(targetInput: string): Array<{ id: string; username: string; displayName: string; avatarUrl?: string }> {
     this.data.follows = this.data.follows || [];
     const targetId = this.normalizeUserKey(targetInput);
     const relations = this.data.follows.filter(
-      f => f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase()
+      f => (f.status === 'accepted' || !f.status) &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     return relations.map(r => {
@@ -1193,7 +1422,8 @@ class Database {
     this.data.follows = this.data.follows || [];
     const followerId = this.normalizeUserKey(followerInput);
     const relations = this.data.follows.filter(
-      f => f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()
+      f => (f.status === 'accepted' || !f.status) &&
+           (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
     );
 
     return relations.map(r => {
@@ -1214,10 +1444,12 @@ class Database {
     this.data.follows = this.data.follows || [];
     const userKey = this.normalizeUserKey(userInput);
     const followersCount = this.data.follows.filter(
-      f => f.followingId.toLowerCase() === userKey.toLowerCase() || f.followingId.toLowerCase() === userInput.toLowerCase()
+      f => (f.status === 'accepted' || !f.status) &&
+           (f.followingId.toLowerCase() === userKey.toLowerCase() || f.followingId.toLowerCase() === userInput.toLowerCase())
     ).length;
     const followingCount = this.data.follows.filter(
-      f => f.followerId.toLowerCase() === userKey.toLowerCase() || f.followerId.toLowerCase() === userInput.toLowerCase()
+      f => (f.status === 'accepted' || !f.status) &&
+           (f.followerId.toLowerCase() === userKey.toLowerCase() || f.followerId.toLowerCase() === userInput.toLowerCase())
     ).length;
     return { followersCount, followingCount };
   }

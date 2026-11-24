@@ -327,11 +327,34 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export type FollowStatus = 'not_following' | 'pending' | 'accepted';
+
 export interface FollowRelation {
   id: string;
   followerId: string;
   followingId: string;
+  status: FollowStatus;
   createdAt: string;
+  acceptedAt?: string;
+}
+
+export interface FollowRequestItem {
+  id: string;
+  followerId: string;
+  followingId: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface FollowResponse {
+  success: boolean;
+  followStatus: FollowStatus;
+  isFollowing: boolean;
+  isRequested: boolean;
+  followersCount: number;
+  followingCount: number;
 }
 
 export interface User {
@@ -341,11 +364,15 @@ export interface User {
   displayName: string;
   avatarUrl?: string;
   bio?: string;
+  websiteUrl?: string;
+  category?: string;
+  isPrivate?: boolean;
   role: 'user' | 'admin';
   createdAt: string;
   ownedSpotIds: string[];
   followersCount?: number;
   followingCount?: number;
+  pendingRequestsCount?: number;
 }
 
 export interface Order {

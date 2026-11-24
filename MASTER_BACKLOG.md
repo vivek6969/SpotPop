@@ -254,3 +254,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 64/64 passing tests across 11 test suites, clean production build in 1.26s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-029]: Full Instagram Follower/Following Logic, Private Account Architecture & Follow Requests
+- **Priority**: P0 (Core Social Graph Architecture & Privacy Enforcement)
+- **Assigned Agent**: senior-engineer & security-engineer & ui-ux-engineer
+- **Description**: Re-architected SpotPop's social graph to 100% replicate Instagram's follower/following logic. Added `isPrivate` account setting, `FollowStatus` ('not_following' | 'pending' | 'accepted'), and `acceptedAt` tracking. If an account is Private (e.g. `@Mira_C`), clicking "Follow" transitions to `pending` ("Requested ⏳") rather than immediately granting follower status. While pending, the viewer CANNOT view or unlock private/friends-only pops (isLocked remains true, audio stripped). The creator receives a Follow Request in their notifications/profile with Confirm (Accept) and Delete (Decline) controls. Accepting sets status to `accepted`, which immediately unlocks the creator's pops for that follower. Built full Instagram profile UI matching reference: circular avatar with gradient ring and "Note... 💭" bubble, posts/followers/following metric columns, display name, category, clickable website link, multi-line bio, Private Account toggle setting, story highlights carousel row (`affordable`, `chatdora.in`, `exciting offer`, `+ New`), posts/reels tabs, iconic Instagram private account lock screen, and followers list modal with search and "Remove" follower capability. Also added Follow Requests management to `ActivityDrawer.tsx` and updated `SpotDetailModal.tsx` to display pending request feedback.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 69/69 passing tests across 11 test suites (`tests/social-network-visibility.test.ts`), clean production build in 858ms.
+- **Review Result**: Approved by CTO.

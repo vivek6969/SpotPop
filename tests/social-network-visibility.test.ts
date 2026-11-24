@@ -123,10 +123,11 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
 
           const isFollowing = followsTable.some(
             f =>
-              (f.followerId.toLowerCase() === rawViewer &&
+              (f.status === 'accepted' || (f.status as any) === undefined) &&
+              ((f.followerId.toLowerCase() === rawViewer &&
                 f.followingId.toLowerCase() === s.ownerId.toLowerCase()) ||
               (f.followerId.toLowerCase() === rawViewer &&
-                f.followingId.toLowerCase() === s.creatorName.toLowerCase())
+                f.followingId.toLowerCase() === s.creatorName.toLowerCase()))
           );
           return { ...s, isLocked: !isFollowing };
         }
@@ -177,6 +178,7 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       id: 'flw_1',
       followerId: mockViewerUser.id.toLowerCase(),
       followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'accepted',
       createdAt: new Date().toISOString(),
     });
 
@@ -222,6 +224,7 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       id: 'fol_1',
       followerId: mockViewerUser.id.toLowerCase(),
       followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'accepted',
       createdAt: new Date().toISOString(),
     }];
 
@@ -229,5 +232,104 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
     const unlockedSpot = followerSpots.find(s => s.id === 'sp_friends_1');
     assert.ok(unlockedSpot);
     assert.equal(unlockedSpot.isLocked, false, 'Modal showcase must display fully unlocked card after follow');
+  });
+
+  // ================= INSTAGRAM FOLLOWER / FOLLOWING LOGIC TESTS =================
+
+  test('Instagram follow request: requesting to follow creates pending relation and does NOT count as follower', () => {
+    followsTable = [];
+
+    // Viewer requests to follow private creator
+    followsTable.push({
+      id: 'flw_req_101',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    });
+
+    const activeFollowersCount = followsTable.filter(
+      f => f.followingId === mockCreatorUser.id.toLowerCase() && f.status === 'accepted'
+    ).length;
+    assert.equal(activeFollowersCount, 0, 'Pending request must not increment active followers count');
+  });
+
+  test('Instagram privacy enforcement: pending follower CANNOT see or unlock friends-only pop (isLocked remains true)', () => {
+    followsTable = [{
+      id: 'flw_req_101',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }];
+
+    const spotsForPendingViewer = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const lockedSpot = spotsForPendingViewer.find(s => s.id === 'sp_friends_1');
+    assert.ok(lockedSpot, 'Spot is listed');
+    assert.equal(
+      lockedSpot.isLocked,
+      true,
+      'Pop MUST remain locked while follow request is pending approval'
+    );
+  });
+
+  test('Instagram approval: creator accepting follow request transitions status to accepted and unlocks pop', () => {
+    // Creator accepts follow request
+    const pendingRelation = followsTable.find(f => f.id === 'flw_req_101');
+    assert.ok(pendingRelation, 'Pending relation exists');
+    pendingRelation.status = 'accepted';
+    pendingRelation.acceptedAt = new Date().toISOString();
+
+    const spotsForApprovedViewer = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const unlockedSpot = spotsForApprovedViewer.find(s => s.id === 'sp_friends_1');
+    assert.ok(unlockedSpot);
+    assert.equal(
+      unlockedSpot.isLocked,
+      false,
+      'Pop MUST unlock once creator accepts the follow request'
+    );
+
+    const activeFollowersCount = followsTable.filter(
+      f => f.followingId === mockCreatorUser.id.toLowerCase() && f.status === 'accepted'
+    ).length;
+    assert.equal(activeFollowersCount, 1, 'Accepted follow request increments followers count');
+  });
+
+  test('Instagram rejection: declining follow request removes relation and keeps pop locked', () => {
+    followsTable = [{
+      id: 'flw_req_102',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }];
+
+    // Creator declines request
+    const idx = followsTable.findIndex(f => f.id === 'flw_req_102');
+    assert.ok(idx !== -1);
+    followsTable.splice(idx, 1);
+
+    const spotsAfterDecline = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const lockedSpot = spotsAfterDecline.find(s => s.id === 'sp_friends_1');
+    assert.equal(lockedSpot?.isLocked, true, 'Spot remains locked when request is declined');
+  });
+
+  test('Instagram remove follower: creator removing an approved follower revokes access and relocks pop', () => {
+    followsTable = [{
+      id: 'flw_103',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: mockCreatorUser.id.toLowerCase(),
+      status: 'accepted',
+      createdAt: new Date().toISOString(),
+    }];
+
+    // Creator removes follower
+    const idx = followsTable.findIndex(f => f.followerId === mockViewerUser.id.toLowerCase());
+    assert.ok(idx !== -1);
+    followsTable.splice(idx, 1);
+
+    const spotsAfterRemoval = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const relockedSpot = spotsAfterRemoval.find(s => s.id === 'sp_friends_1');
+    assert.equal(relockedSpot?.isLocked, true, 'Spot must immediately re-lock when follower is removed');
   });
 });

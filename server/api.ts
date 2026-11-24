@@ -279,9 +279,12 @@ apiRouter.get('/spots/:idOrSlug', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Spot not found' });
     }
 
-    // Friends-only: calculate lock state
+    // Friends-only or Private creator: calculate lock state
+    const creatorUser = rawSpot.ownerId ? db.getUserById(rawSpot.ownerId) : db.getUserByUsername(rawSpot.creatorName);
+    const isPrivateCreator = creatorUser?.isPrivate ?? false;
+
     let isLocked = false;
-    if (rawSpot.visibility === 'friends_only') {
+    if (rawSpot.visibility === 'friends_only' || isPrivateCreator) {
       if (!isOwner) {
         const isFollowing = rawViewer
           ? (db.isUserFollowing(rawViewer, rawSpot.creatorName) || (rawSpot.ownerId ? db.isUserFollowing(rawViewer, rawSpot.ownerId) : false))
@@ -586,13 +589,37 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
     const username = user?.username || rawUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const avatarUrl = user?.avatarUrl || creatorSpots.find(s => s.content?.imageUrl)?.content?.imageUrl;
     const bio = user?.bio || `Creator on SpotPop. Claimed ${creatorSpots.length} spot${creatorSpots.length === 1 ? '' : 's'} on the permanent canvas.`;
+    const websiteUrl = user?.websiteUrl;
+    const category = user?.category || 'Creator';
+    const isPrivate = user?.isPrivate ?? false;
     const createdAt = user?.createdAt || creatorSpots[creatorSpots.length - 1]?.createdAt || new Date().toISOString();
 
     const totalViews = creatorSpots.reduce((sum, s) => sum + (s.viewsCount || 0), 0);
     const totalShares = creatorSpots.reduce((sum, s) => sum + (s.sharesCount || 0), 0);
     const followCounts = db.getFollowCounts(username);
     const viewer = getViewerIdentifier(req);
-    const isFollowing = viewer ? db.isUserFollowing(viewer, username) : false;
+    const rawViewer = (viewer || '').trim().toLowerCase();
+    const isOwner = Boolean(
+      rawViewer &&
+      (user?.id?.toLowerCase() === rawViewer ||
+       username.toLowerCase() === rawViewer ||
+       displayName.toLowerCase() === rawViewer)
+    );
+    const followStatus = viewer ? db.getFollowStatus(viewer, username) : 'not_following';
+    const isFollowing = followStatus === 'accepted';
+    const isRequested = followStatus === 'pending';
+    const isLockedAccount = isPrivate && !isOwner && !isFollowing;
+
+    const spots = isLockedAccount
+      ? creatorSpots.map(s => ({
+          ...s,
+          isLocked: true,
+          content: {
+            ...s.content,
+            audio: undefined,
+          },
+        }))
+      : creatorSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({
       user: {
@@ -601,6 +628,9 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
         displayName,
         avatarUrl,
         bio,
+        websiteUrl,
+        category,
+        isPrivate,
         createdAt,
         role: user?.role || 'user',
         followersCount: followCounts.followersCount,
@@ -613,8 +643,11 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
         followersCount: followCounts.followersCount,
         followingCount: followCounts.followingCount,
       },
+      followStatus,
       isFollowing,
-      spots: creatorSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      isRequested,
+      isLockedAccount,
+      spots,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -628,11 +661,14 @@ apiRouter.put('/creators/me', (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { displayName, bio, avatarUrl } = req.body;
+    const { displayName, bio, avatarUrl, websiteUrl, category, isPrivate } = req.body;
     const updates: Partial<User> = {};
     if (displayName && typeof displayName === 'string') updates.displayName = displayName.trim().slice(0, 40);
     if (bio !== undefined && typeof bio === 'string') updates.bio = bio.trim().slice(0, 280);
     if (avatarUrl && typeof avatarUrl === 'string') updates.avatarUrl = avatarUrl.trim();
+    if (websiteUrl !== undefined && typeof websiteUrl === 'string') updates.websiteUrl = websiteUrl.trim().slice(0, 150);
+    if (category !== undefined && typeof category === 'string') updates.category = category.trim().slice(0, 50);
+    if (isPrivate !== undefined && typeof isPrivate === 'boolean') updates.isPrivate = isPrivate;
 
     const updated = db.updateUser(user.id, updates);
     res.json({ user: updated });
@@ -643,7 +679,7 @@ apiRouter.put('/creators/me', (req: Request, res: Response) => {
 
 // =================== FOLLOWERS & SOCIAL GRAPH ===================
 
-// POST toggle follow/unfollow user
+// POST toggle follow/unfollow user (or cancel request)
 apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
   try {
     const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
@@ -665,17 +701,137 @@ apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
     broadcastSpotEvent('user_follow_updated', {
       targetUsername,
       followerId: viewerId,
+      followStatus: result.followStatus,
       isFollowing: result.isFollowing,
+      isRequested: result.isRequested,
       followersCount: result.followersCount,
       followingCount: result.followingCount,
     });
 
     res.json({
       success: true,
+      followStatus: result.followStatus,
       isFollowing: result.isFollowing,
+      isRequested: result.isRequested,
       followersCount: result.followersCount,
       followingCount: result.followingCount,
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET pending follow requests for a user
+apiRouter.get('/users/:username/follow-requests', (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const requests = db.getFollowRequests(targetUsername);
+    res.json({ requests, count: requests.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST accept follow request
+apiRouter.post('/users/follow-requests/:requestId/accept', (req: Request, res: Response) => {
+  try {
+    const requestId = req.params.requestId;
+    const authUser = getAuthenticatedUser(req);
+    const targetUsername =
+      authUser?.username ||
+      authUser?.id ||
+      (req.body.targetUsername as string) ||
+      (req.headers['x-viewer-id'] as string);
+
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Target user identity is required' });
+    }
+
+    const result = db.acceptFollowRequest(requestId, targetUsername);
+    if (!result) {
+      return res.status(404).json({ error: 'Follow request not found or already processed' });
+    }
+
+    broadcastSpotEvent('user_follow_updated', {
+      targetUsername,
+      followerId: result.followerId,
+      followStatus: 'accepted',
+      isFollowing: true,
+      isRequested: false,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+
+    res.json({
+      success: true,
+      followerName: result.followerName,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST decline follow request
+apiRouter.post('/users/follow-requests/:requestId/decline', (req: Request, res: Response) => {
+  try {
+    const requestId = req.params.requestId;
+    const authUser = getAuthenticatedUser(req);
+    const targetUsername =
+      authUser?.username ||
+      authUser?.id ||
+      (req.body.targetUsername as string) ||
+      (req.headers['x-viewer-id'] as string);
+
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Target user identity is required' });
+    }
+
+    const success = db.declineFollowRequest(requestId, targetUsername);
+    res.json({ success });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove a follower
+apiRouter.delete('/users/:username/followers/:followerId', (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    const followerId = req.params.followerId;
+
+    const success = db.removeFollower(followerId, targetUsername);
+    const counts = db.getFollowCounts(targetUsername);
+
+    broadcastSpotEvent('user_follow_updated', {
+      targetUsername,
+      followerId,
+      followStatus: 'not_following',
+      isFollowing: false,
+      isRequested: false,
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount,
+    });
+
+    res.json({ success, followersCount: counts.followersCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT update account privacy
+apiRouter.put('/users/:username/privacy', (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    const { isPrivate } = req.body;
+
+    db.setAccountPrivacy(targetUsername, Boolean(isPrivate));
+    res.json({ success: true, isPrivate: Boolean(isPrivate) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -699,14 +855,21 @@ apiRouter.get('/users/:username/network', (req: Request, res: Response) => {
     const followers = db.getUserFollowers(targetUsername);
     const following = db.getUserFollowing(targetUsername);
     const counts = db.getFollowCounts(targetUsername);
-    const isFollowing = viewerId ? db.isUserFollowing(viewerId, targetUsername) : false;
+    const followStatus = viewerId ? db.getFollowStatus(viewerId, targetUsername) : 'not_following';
+    const isFollowing = followStatus === 'accepted';
+    const isRequested = followStatus === 'pending';
+    const followRequests = db.getFollowRequests(targetUsername);
 
     res.json({
       followers,
       following,
       followersCount: counts.followersCount,
       followingCount: counts.followingCount,
+      followStatus,
       isFollowing,
+      isRequested,
+      pendingRequestsCount: followRequests.length,
+      followRequests,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

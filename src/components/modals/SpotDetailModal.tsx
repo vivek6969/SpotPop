@@ -68,6 +68,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       return false;
     }
   });
+  const [isRequested, setIsRequested] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [unlockedLocally, setUnlockedLocally] = useState(false);
 
@@ -86,8 +87,9 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
     setIsFollowingLoading(true);
     try {
       const res = await api.followUser(spot.creatorName, authToken || undefined);
-      if (res.isFollowing) {
+      if (res.followStatus === 'accepted' || res.isFollowing) {
         setIsFollowing(true);
+        setIsRequested(false);
         setUnlockedLocally(true);
         try {
           const saved = localStorage.getItem('spotpop_followed_creators');
@@ -102,6 +104,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
           origin: { y: 0.6, x: 0.5 },
           colors: ['#FF2E93', '#7928CA', '#00F0FF'],
         });
+      } else if (res.followStatus === 'pending' || res.isRequested) {
+        setIsRequested(true);
+        setIsFollowing(false);
+        setUnlockedLocally(false);
       }
     } catch (e) {
       console.warn('Follow error in modal:', e);
@@ -392,14 +398,26 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   Only followers of @{spot.creatorName} can see this photo, drawing, and voice memory.
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={isFollowingLoading}
-                onClick={handleFollowToUnlock}
-                className="mt-1 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:from-[#FF4EAA] hover:to-purple-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-pink-500/30 transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <span>{isFollowingLoading ? 'Unlocking...' : `+ Follow @${spot.creatorName} to Unlock`}</span>
-              </button>
+              {isRequested ? (
+                <div className="mt-1 flex flex-col items-center gap-1.5 w-full">
+                  <div className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 text-xs font-bold flex items-center gap-2">
+                    <span>⏳</span>
+                    <span>Follow Requested — Waiting for Approval</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 text-center max-w-xs">
+                    This account is private. As soon as @{spot.creatorName} accepts your request, this Pop will unlock.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isFollowingLoading}
+                  onClick={handleFollowToUnlock}
+                  className="mt-1 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:from-[#FF4EAA] hover:to-purple-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-pink-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>{isFollowingLoading ? 'Sending Request...' : `+ Follow @${spot.creatorName} to Unlock`}</span>
+                </button>
+              )}
             </div>
           )}
 

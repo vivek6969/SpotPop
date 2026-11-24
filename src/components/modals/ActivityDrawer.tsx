@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityEvent } from '../../types';
+import { ActivityEvent, User, FollowRequestItem } from '../../types';
 import { api } from '../../services/api';
 
 interface ActivityDrawerProps {
   isOpen: boolean;
+  currentUser?: User | null;
+  authToken?: string | null;
   onClose: () => void;
   onSelectSpotById: (spotId: string) => void;
   onUpdateUnreadCount?: (count: number) => void;
@@ -11,11 +13,14 @@ interface ActivityDrawerProps {
 
 export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
   isOpen,
+  currentUser,
+  authToken,
   onClose,
   onSelectSpotById,
   onUpdateUnreadCount,
 }) => {
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FollowRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(() => {
@@ -27,12 +32,20 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
     }
   });
 
-  // Fetch activity & poll
+  // Fetch activity & follow requests
   const fetchActivity = async () => {
     try {
       const res = await api.getActivity();
       const list = res.activity || [];
       setActivities(list);
+
+      // If user is logged in, fetch pending follow requests
+      if (currentUser?.username) {
+        try {
+          const reqRes = await api.getFollowRequests(currentUser.username, authToken || undefined);
+          setPendingRequests(reqRes.requests || []);
+        } catch {}
+      }
 
       // Calculate unread count
       const unread = list.filter(a => new Date(a.timestamp).getTime() > lastReadTimestamp).length;
@@ -50,7 +63,28 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
     fetchActivity();
     const interval = setInterval(fetchActivity, 12000);
     return () => clearInterval(interval);
-  }, [lastReadTimestamp]);
+  }, [lastReadTimestamp, currentUser?.username]);
+
+  const handleAcceptFollowRequest = async (requestId: string) => {
+    if (!currentUser?.username) return;
+    try {
+      await api.acceptFollowRequest(requestId, currentUser.username, authToken || undefined);
+      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      fetchActivity();
+    } catch (e: any) {
+      alert(e.message || 'Failed to accept request');
+    }
+  };
+
+  const handleDeclineFollowRequest = async (requestId: string) => {
+    if (!currentUser?.username) return;
+    try {
+      await api.declineFollowRequest(requestId, currentUser.username, authToken || undefined);
+      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch (e: any) {
+      alert(e.message || 'Failed to decline request');
+    }
+  };
 
   const markAllAsRead = () => {
     const now = Date.now();
@@ -144,6 +178,51 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
 
         {/* Activity Feed List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 no-scrollbar">
+          {/* Instagram Follow Requests Section */}
+          {pendingRequests.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-[#FF2E93]/20 to-purple-600/20 border border-amber-400/40 space-y-2.5 mb-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">📬</span>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Follow Requests ({pendingRequests.length})
+                  </h4>
+                </div>
+                <span className="text-[10px] text-amber-300 font-semibold">Requires Approval</span>
+              </div>
+
+              <div className="space-y-2">
+                {pendingRequests.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between gap-2.5 p-2 rounded-xl bg-black/40 border border-white/10">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF2E93] to-amber-500 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                        {req.avatarUrl ? <img src={req.avatarUrl} alt="" className="w-full h-full object-cover" /> : req.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="text-xs font-bold text-white truncate">{req.displayName}</div>
+                        <div className="text-[10px] text-slate-400 truncate font-mono">@{req.username}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleAcceptFollowRequest(req.id)}
+                        className="px-2.5 py-1 rounded-lg bg-[#0095F6] hover:bg-[#1877F2] text-white text-[11px] font-bold shadow-sm transition-all cursor-pointer"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => handleDeclineFollowRequest(req.id)}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[11px] font-semibold transition-all cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="py-14 text-center text-slate-400 text-sm flex flex-col items-center justify-center gap-2">
               <span className="w-5 h-5 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin" />

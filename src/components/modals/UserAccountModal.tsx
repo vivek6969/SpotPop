@@ -48,6 +48,18 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   const [networkUsers, setNetworkUsers] = useState<Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>>([]);
   const [networkLoading, setNetworkLoading] = useState(false);
   const [networkCounts, setNetworkCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 });
+  const [isPrivateAccount, setIsPrivateAccount] = useState<boolean>(Boolean(currentUser?.isPrivate));
+
+  const handleTogglePrivacy = async () => {
+    if (!currentUser?.username) return;
+    const nextVal = !isPrivateAccount;
+    setIsPrivateAccount(nextVal);
+    try {
+      await api.updateAccountPrivacy(currentUser.username, nextVal);
+    } catch {
+      setIsPrivateAccount(!nextVal);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser?.username) return;
@@ -278,6 +290,32 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Instagram Private Account Setting */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">🔒</span>
+                  <div>
+                    <div className="text-xs font-bold text-white">Private Account</div>
+                    <div className="text-[10px] text-slate-400">
+                      When active, users must request to follow you. Only approved followers can see your pops.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTogglePrivacy}
+                  className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    isPrivateAccount ? 'bg-[#0095F6]' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      isPrivateAccount ? 'right-0.5' : 'left-0.5'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Owned Spots List Header */}
@@ -761,19 +799,40 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 networkUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                    className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
-                      {u.avatarUrl ? (
-                        <img src={u.avatarUrl} alt={u.displayName} className="w-full h-full object-cover" />
-                      ) : (
-                        u.displayName?.charAt(0).toUpperCase() || 'U'
-                      )}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl} alt={u.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          u.displayName?.charAt(0).toUpperCase() || 'U'
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-white truncate">{u.displayName}</div>
+                        <div className="text-[10px] text-slate-400 truncate font-mono">@{u.username}</div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white truncate">{u.displayName}</div>
-                      <div className="text-[10px] text-slate-400 truncate font-mono">@{u.username}</div>
-                    </div>
+
+                    {networkModalType === 'followers' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!currentUser?.username) return;
+                          try {
+                            await api.removeFollower(currentUser.username, u.id);
+                            setNetworkUsers(prev => prev.filter(x => x.id !== u.id));
+                            setNetworkCounts(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+                          } catch (e: any) {
+                            alert(e.message || 'Failed to remove follower');
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/10 text-[10px] font-semibold transition-all cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))
               )}
