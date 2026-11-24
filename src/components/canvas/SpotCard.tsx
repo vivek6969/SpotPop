@@ -1123,6 +1123,16 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   );
   const photoCropRatio = content.photoAdjustments?.aspectRatio || 'free';
   const isCircleCrop = photoCropRatio === 'circle';
+  const isLightCard = !isTransparent && (
+    shape === 'polaroid' ||
+    shape === 'sticky' ||
+    !background ||
+    background === '#FFFFFF' ||
+    background === '#FEF08A' ||
+    background.startsWith('#fff') ||
+    background.startsWith('#FE') ||
+    background.startsWith('rgb(255')
+  );
 
   // Card shape specific styling
   const getCardStyle = (): React.CSSProperties => {
@@ -1659,7 +1669,9 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
               top: isCustomHeadline
                 ? content.headlineY
                 : shape === 'polaroid'
-                ? (content.text ? Math.round(cardHeight * 0.59) : Math.round(cardHeight * 0.65))
+                ? (content.audio
+                    ? (content.text ? Math.round(cardHeight * 0.57) : Math.round(cardHeight * 0.63))
+                    : (content.text ? Math.round(cardHeight * 0.59) : Math.round(cardHeight * 0.65)))
                 : shape === 'classic' && content.imageUrl
                 ? (content.text ? Math.round(cardHeight * 0.52) : Math.round(cardHeight * 0.58))
                 : Math.round(cardHeight * 0.3),
@@ -1766,7 +1778,9 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
               top: isCustomSubtext
                 ? content.subtextY
                 : shape === 'polaroid'
-                ? (content.headline ? Math.round(cardHeight * 0.72) : Math.round(cardHeight * 0.64))
+                ? (content.audio
+                    ? (content.headline ? Math.round(cardHeight * 0.67) : Math.round(cardHeight * 0.60))
+                    : (content.headline ? Math.round(cardHeight * 0.72) : Math.round(cardHeight * 0.64)))
                 : shape === 'classic' && content.imageUrl
                 ? (content.headline ? Math.round(cardHeight * 0.70) : Math.round(cardHeight * 0.62))
                 : Math.round(cardHeight * 0.58),
@@ -1831,7 +1845,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
             }}
             className={`touch-none select-none ${
               interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-              } ${isCustomAuthor ? 'absolute' : `absolute ${content.audio ? 'bottom-11' : 'bottom-2'} inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
+              } ${isCustomAuthor ? 'absolute' : `absolute ${content.audio ? 'bottom-8.5' : 'bottom-2'} inset-x-3.5 flex items-center justify-between ${isTransparent || content.audio ? 'border-none pt-0' : 'border-t border-black/10 pt-1'}`} ${
               isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
             }`}
             style={{
@@ -2003,60 +2017,69 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
           );
         })}
 
-        {/* ================= SLIM BOTTOM AUDIO PLAYER (As Drawn in Blueprint) ================= */}
+        {/* ================= SLIM THEME-MATCHED BOTTOM AUDIO PLAYER ================= */}
         {content.audio && (
           <div
             onClick={(e) => {
               e.stopPropagation();
               togglePlayAudio(e);
             }}
-            className={`absolute bottom-0 inset-x-0 z-35 flex flex-col items-center justify-center py-1.5 px-2 cursor-pointer transition-all select-none rounded-b-[inherit] ${
+            className={`absolute bottom-0 inset-x-0 z-35 h-7.5 px-3 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none rounded-b-[inherit] ${
               isTransparent
-                ? 'bg-black/70 backdrop-blur-md border-t border-white/20 text-white'
-                : shape === 'polaroid'
-                ? 'bg-slate-100/95 dark:bg-slate-900/95 border-t border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100'
-                : 'bg-black/10 dark:bg-black/40 backdrop-blur-xs border-t border-black/15 dark:border-white/15 text-current'
-            } hover:brightness-105 active:brightness-95`}
+                ? 'bg-black/60 backdrop-blur-md border-t border-white/20 text-white'
+                : isLightCard
+                ? 'bg-slate-50/95 hover:bg-slate-100/95 border-t border-slate-200 text-slate-800'
+                : 'bg-black/40 hover:bg-black/50 backdrop-blur-xs border-t border-white/15 text-white'
+            }`}
             title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
             role="button"
             aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
           >
-            {/* Real-time Slim Playback Progress Track */}
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-black/10 dark:bg-white/10 overflow-hidden">
-              <div
-                className={`h-full transition-[width] duration-150 ${
-                  isAudioPlaying ? 'bg-[#1DB954]' : 'bg-[#FF2E93]'
-                }`}
-                style={{ width: `${audioProgress}%` }}
-              />
-            </div>
-
-            {/* Duration / Timer Label: "15 sec" as requested in drawing */}
-            <span className="text-[9px] font-mono font-bold tracking-wider opacity-85 leading-none mb-1">
-              {isAudioPlaying && audioCurrentTime > 0
-                ? `${Math.floor(audioCurrentTime)}s / ${Math.round(content.audio.duration || 15)} sec`
-                : `${Math.round(content.audio.duration || 15)} sec`}
-            </span>
-
-            {/* Circular Play / Pause Button: (▶) */}
+            {/* Circular Spotify Green Play / Pause Button */}
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110 active:scale-95 ${
-                isAudioPlaying
-                  ? 'bg-[#1DB954] text-black ring-2 ring-[#1DB954]/50 scale-105 animate-pulse'
-                  : 'bg-black/85 hover:bg-black text-white dark:bg-white dark:text-black dark:hover:bg-white/90'
+              className={`w-5 h-5 shrink-0 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-xs transition-transform ${
+                isAudioPlaying ? 'ring-2 ring-[#1DB954]/50 scale-105' : 'hover:scale-105 active:scale-90'
               }`}
             >
               {isAudioPlaying ? (
-                <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 fill-black" viewBox="0 0 24 24">
                   <rect x="6" y="5" width="4" height="14" rx="1" />
                   <rect x="14" y="5" width="4" height="14" rx="1" />
                 </svg>
               ) : (
-                <svg className="w-2.5 h-2.5 fill-current translate-x-0.5" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
                   <polygon points="6 4 20 12 6 20 6 4" />
                 </svg>
               )}
             </div>
+
+            {/* Real-time Progress Bar & Mini Equalizer Wave */}
+            <div className="flex-1 flex items-center gap-1.5 h-full">
+              <div className={`flex-1 h-1 rounded-full overflow-hidden ${isLightCard ? 'bg-slate-200' : 'bg-white/20'}`}>
+                <div
+                  className="h-full bg-[#1DB954] transition-[width] duration-150 rounded-full"
+                  style={{ width: `${audioProgress}%` }}
+                />
+              </div>
+              {isAudioPlaying && (
+                <div className="flex items-center gap-0.5 h-2.5 shrink-0">
+                  <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
+                  <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                </div>
+              )}
+            </div>
+
+            {/* Duration / Timer Label: "15 sec" in crisp modern typography */}
+            <span
+              className={`text-[10px] font-sans font-bold tracking-tight shrink-0 select-none ${
+                isLightCard ? 'text-slate-500' : 'text-slate-300'
+              }`}
+            >
+              {isAudioPlaying && audioCurrentTime > 0
+                ? `${Math.floor(audioCurrentTime)}s`
+                : `${Math.round(content.audio.duration || 15)} sec`}
+            </span>
           </div>
         )}
       </div>
