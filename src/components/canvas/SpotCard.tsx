@@ -33,6 +33,9 @@ const triggerHaptic = (ms = 10) => {
   }
 };
 
+// Global reference ensuring only one card plays audio across the canvas
+let activeCardAudioInstance: HTMLAudioElement | null = null;
+
 const SpotCardComponent: React.FC<SpotCardProps> = ({
   tier = 'mini_pop',
   shape,
@@ -68,12 +71,17 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
 
   // Audio Playback Engine on Card
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     return () => {
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
+        if (activeCardAudioInstance === audioPlayerRef.current) {
+          activeCardAudioInstance = null;
+        }
         audioPlayerRef.current = null;
       }
     };
@@ -88,14 +96,44 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
     if (isAudioPlaying && audioPlayerRef.current) {
       audioPlayerRef.current.pause();
       setIsAudioPlaying(false);
+      if (activeCardAudioInstance === audioPlayerRef.current) {
+        activeCardAudioInstance = null;
+      }
       triggerHaptic(10);
     } else {
       triggerHaptic(15);
       if (!audioPlayerRef.current || audioPlayerRef.current.src !== content.audio.url) {
         audioPlayerRef.current = new Audio(content.audio.url);
-        audioPlayerRef.current.onended = () => setIsAudioPlaying(false);
-        audioPlayerRef.current.onerror = () => setIsAudioPlaying(false);
+        audioPlayerRef.current.ontimeupdate = () => {
+          if (audioPlayerRef.current && audioPlayerRef.current.duration) {
+            setAudioProgress((audioPlayerRef.current.currentTime / audioPlayerRef.current.duration) * 100);
+            setAudioCurrentTime(audioPlayerRef.current.currentTime);
+          }
+        };
+        audioPlayerRef.current.onended = () => {
+          setIsAudioPlaying(false);
+          setAudioProgress(0);
+          setAudioCurrentTime(0);
+          if (activeCardAudioInstance === audioPlayerRef.current) {
+            activeCardAudioInstance = null;
+          }
+        };
+        audioPlayerRef.current.onerror = () => {
+          setIsAudioPlaying(false);
+          setAudioProgress(0);
+          setAudioCurrentTime(0);
+          if (activeCardAudioInstance === audioPlayerRef.current) {
+            activeCardAudioInstance = null;
+          }
+        };
       }
+
+      // Stop any other active audio playing in the app
+      if (activeCardAudioInstance && activeCardAudioInstance !== audioPlayerRef.current) {
+        activeCardAudioInstance.pause();
+      }
+      activeCardAudioInstance = audioPlayerRef.current;
+
       audioPlayerRef.current.currentTime = 0;
       audioPlayerRef.current.play().then(() => {
         setIsAudioPlaying(true);
@@ -1524,33 +1562,6 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Common Spotify-style Play Button for All Audio Pops */}
-            {content.audio && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayAudio(e);
-                }}
-                className={`absolute bottom-2 right-2 z-35 w-8.5 h-8.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-lg shadow-black/60 transition-all transform hover:scale-110 active:scale-90 cursor-pointer ${
-                  isAudioPlaying ? 'ring-4 ring-[#1DB954]/40 scale-105 animate-pulse' : ''
-                }`}
-                title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-              >
-                {isAudioPlaying ? (
-                  <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
-                    <rect x="6" y="5" width="4" height="14" rx="1.5" />
-                    <rect x="14" y="5" width="4" height="14" rx="1.5" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
-                    <polygon points="6 4 20 12 6 20 6 4" />
-                  </svg>
-                )}
-              </button>
-            )}
           </div>
         )}
 
@@ -1624,33 +1635,6 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                   </span>
                 </div>
               </div>
-            )}
-
-            {/* Common Spotify-style Play Button for All Audio Pops */}
-            {content.audio && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayAudio(e);
-                }}
-                className={`absolute bottom-2 right-2 z-35 w-8.5 h-8.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-lg shadow-black/60 transition-all transform hover:scale-110 active:scale-90 cursor-pointer ${
-                  isAudioPlaying ? 'ring-4 ring-[#1DB954]/40 scale-105 animate-pulse' : ''
-                }`}
-                title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-              >
-                {isAudioPlaying ? (
-                  <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
-                    <rect x="6" y="5" width="4" height="14" rx="1.5" />
-                    <rect x="14" y="5" width="4" height="14" rx="1.5" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
-                    <polygon points="6 4 20 12 6 20 6 4" />
-                  </svg>
-                )}
-              </button>
             )}
           </div>
         )}
@@ -1847,7 +1831,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
             }}
             className={`touch-none select-none ${
               interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-              } ${isCustomAuthor ? 'absolute' : `absolute bottom-2 inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
+              } ${isCustomAuthor ? 'absolute' : `absolute ${content.audio ? 'bottom-11' : 'bottom-2'} inset-x-3.5 flex items-center justify-between ${isTransparent ? 'border-none' : 'border-t border-black/10 pt-1'}`} ${
               isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
             }`}
             style={{
@@ -2018,6 +2002,63 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
             </div>
           );
         })}
+
+        {/* ================= SLIM BOTTOM AUDIO PLAYER (As Drawn in Blueprint) ================= */}
+        {content.audio && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlayAudio(e);
+            }}
+            className={`absolute bottom-0 inset-x-0 z-35 flex flex-col items-center justify-center py-1.5 px-2 cursor-pointer transition-all select-none rounded-b-[inherit] ${
+              isTransparent
+                ? 'bg-black/70 backdrop-blur-md border-t border-white/20 text-white'
+                : shape === 'polaroid'
+                ? 'bg-slate-100/95 dark:bg-slate-900/95 border-t border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100'
+                : 'bg-black/10 dark:bg-black/40 backdrop-blur-xs border-t border-black/15 dark:border-white/15 text-current'
+            } hover:brightness-105 active:brightness-95`}
+            title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+            role="button"
+            aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+          >
+            {/* Real-time Slim Playback Progress Track */}
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-black/10 dark:bg-white/10 overflow-hidden">
+              <div
+                className={`h-full transition-[width] duration-150 ${
+                  isAudioPlaying ? 'bg-[#1DB954]' : 'bg-[#FF2E93]'
+                }`}
+                style={{ width: `${audioProgress}%` }}
+              />
+            </div>
+
+            {/* Duration / Timer Label: "15 sec" as requested in drawing */}
+            <span className="text-[9px] font-mono font-bold tracking-wider opacity-85 leading-none mb-1">
+              {isAudioPlaying && audioCurrentTime > 0
+                ? `${Math.floor(audioCurrentTime)}s / ${Math.round(content.audio.duration || 15)} sec`
+                : `${Math.round(content.audio.duration || 15)} sec`}
+            </span>
+
+            {/* Circular Play / Pause Button: (▶) */}
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110 active:scale-95 ${
+                isAudioPlaying
+                  ? 'bg-[#1DB954] text-black ring-2 ring-[#1DB954]/50 scale-105 animate-pulse'
+                  : 'bg-black/85 hover:bg-black text-white dark:bg-white dark:text-black dark:hover:bg-white/90'
+              }`}
+            >
+              {isAudioPlaying ? (
+                <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+                  <rect x="6" y="5" width="4" height="14" rx="1" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" />
+                </svg>
+              ) : (
+                <svg className="w-2.5 h-2.5 fill-current translate-x-0.5" viewBox="0 0 24 24">
+                  <polygon points="6 4 20 12 6 20 6 4" />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= DRAWING LAYER (Full Space Canvas Overlay) ================= */}
