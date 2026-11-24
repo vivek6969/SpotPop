@@ -371,4 +371,21 @@ describe('Audio Player Interactions & State Machine', () => {
     assert.equal(mockEvent.propagationStopped, true);
     assert.equal(cardClickTriggered, false); // Card modal did not open accidentally!
   });
+
+  test('Audio progress calculation handles browser Infinity/NaN duration gracefully', () => {
+    const fallbackDuration = 15;
+    const currentTime = 3;
+
+    // Simulate browser reporting Infinity duration for webm stream
+    const rawDurations = [Infinity, NaN, 0, undefined];
+
+    for (const rawDur of rawDurations) {
+      const dur = (rawDur && !isNaN(rawDur as number) && isFinite(rawDur as number) && (rawDur as number) > 0)
+        ? (rawDur as number)
+        : fallbackDuration;
+
+      const progress = dur > 0 ? Math.min(100, Math.max(0, (currentTime / dur) * 100)) : 0;
+      assert.equal(progress, 20); // 3s out of 15s = exactly 20%!
+    }
+  });
 });

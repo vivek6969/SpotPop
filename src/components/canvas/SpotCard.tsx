@@ -75,6 +75,21 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  const totalAudioDuration = (
+    audioPlayerRef.current &&
+    !isNaN(audioPlayerRef.current.duration) &&
+    isFinite(audioPlayerRef.current.duration) &&
+    audioPlayerRef.current.duration > 0
+  )
+    ? audioPlayerRef.current.duration
+    : (content.audio?.duration || 15);
+
+  const effectiveProgress = audioProgress > 0
+    ? audioProgress
+    : (audioCurrentTime > 0 && totalAudioDuration > 0
+        ? Math.min(100, Math.max(0, (audioCurrentTime / totalAudioDuration) * 100))
+        : 0);
+
   useEffect(() => {
     return () => {
       if (audioPlayerRef.current) {
@@ -105,9 +120,15 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
       if (!audioPlayerRef.current || audioPlayerRef.current.src !== content.audio.url) {
         audioPlayerRef.current = new Audio(content.audio.url);
         audioPlayerRef.current.ontimeupdate = () => {
-          if (audioPlayerRef.current && audioPlayerRef.current.duration) {
-            setAudioProgress((audioPlayerRef.current.currentTime / audioPlayerRef.current.duration) * 100);
-            setAudioCurrentTime(audioPlayerRef.current.currentTime);
+          if (audioPlayerRef.current) {
+            const cur = audioPlayerRef.current.currentTime || 0;
+            const rawDur = audioPlayerRef.current.duration;
+            const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0)
+              ? rawDur
+              : (content.audio?.duration || 15);
+            const progress = dur > 0 ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
+            setAudioCurrentTime(cur);
+            setAudioProgress(progress);
           }
         };
         audioPlayerRef.current.onended = () => {
@@ -2055,10 +2076,26 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
 
             {/* Real-time Progress Bar & Mini Equalizer Wave */}
             <div className="flex-1 flex items-center gap-1.5 h-full">
-              <div className={`flex-1 h-1 rounded-full overflow-hidden ${isLightCard ? 'bg-slate-200' : 'bg-white/20'}`}>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!audioPlayerRef.current || !content.audio) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const seekPct = Math.max(0, Math.min(1, clickX / rect.width));
+                  const newTime = seekPct * totalAudioDuration;
+                  audioPlayerRef.current.currentTime = newTime;
+                  setAudioCurrentTime(newTime);
+                  setAudioProgress(seekPct * 100);
+                }}
+                className={`flex-1 h-1.5 rounded-full overflow-hidden relative cursor-pointer ${
+                  isLightCard ? 'bg-slate-200' : 'bg-white/20'
+                }`}
+                title="Tap to scrub audio"
+              >
                 <div
-                  className="h-full bg-[#1DB954] transition-[width] duration-150 rounded-full"
-                  style={{ width: `${audioProgress}%` }}
+                  className="h-full bg-[#1DB954] transition-[width] duration-100 ease-linear rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(0, effectiveProgress))}%` }}
                 />
               </div>
               {isAudioPlaying && (
