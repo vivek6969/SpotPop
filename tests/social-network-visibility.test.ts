@@ -48,7 +48,7 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       viewsCount: 150,
       sharesCount: 30,
       createdAt: '2026-11-20T12:00:00.000Z',
-      content: { headline: 'Century Celebration!' },
+      content: { headline: 'Century Celebration!' } as any,
     },
     {
       id: 'sp_friends_1',
@@ -69,7 +69,7 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       viewsCount: 45,
       sharesCount: 5,
       createdAt: '2026-11-21T12:00:00.000Z',
-      content: { headline: 'Backstage Dressing Room' },
+      content: { headline: 'Backstage Dressing Room' } as any,
     },
     {
       id: 'sp_private_1',
@@ -90,7 +90,7 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       viewsCount: 2,
       sharesCount: 0,
       createdAt: '2026-11-22T12:00:00.000Z',
-      content: { headline: 'Private Strategy Notes' },
+      content: { headline: 'Private Strategy Notes' } as any,
     },
   ];
 

@@ -1052,7 +1052,7 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         subtextX: draft.content?.subtextX,
         subtextY: draft.content?.subtextY,
         subtextSize: draft.content?.subtextSize,
-        author: draft.creatorName || draft.content?.author || 'Anonymous',
+        author: draft.content?.author !== undefined ? draft.content.author : (draft.creatorName || ''),
         authorX: draft.content?.authorX,
         authorY: draft.content?.authorY,
         authorSize: draft.content?.authorSize,

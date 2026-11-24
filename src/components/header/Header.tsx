@@ -26,13 +26,13 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Top Nav Bar */}
       <div className="w-full bg-[#090A0F]/85 backdrop-blur-md border-b border-white/10 pointer-events-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          {/* Brand Logo Only (Icon only, no font/text) */}
+          {/* Brand Logo with Icon & Text */}
           <div
             className="flex items-center cursor-pointer select-none py-1 hover:scale-105 active:scale-95 transition-transform"
             onClick={() => window.location.href = '/'}
             title="SpotPop Home"
           >
-            <SpotPopLogo variant="icon" size={38} />
+            <SpotPopLogo variant="full" size={32} />
           </div>
 
           {/* Action Controls */}

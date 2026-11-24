@@ -5,6 +5,7 @@ interface SpotPopLogoProps {
   size?: number | string;
   className?: string;
   showText?: boolean;
+  textSize?: string;
 }
 
 export const SpotPopLogo: React.FC<SpotPopLogoProps> = ({
@@ -12,6 +13,7 @@ export const SpotPopLogo: React.FC<SpotPopLogoProps> = ({
   size = 36,
   className = '',
   showText = false,
+  textSize,
 }) => {
   const isFull = variant === 'full' || showText;
 
@@ -109,9 +111,9 @@ export const SpotPopLogo: React.FC<SpotPopLogoProps> = ({
 
       {/* Brand Text (When Full Variant) */}
       {isFull && (
-        <div className="flex items-center tracking-tight font-outfit text-2xl font-black leading-none select-none">
+        <div className={`flex items-center tracking-tight font-outfit font-black leading-none select-none ${textSize || 'text-xl sm:text-2xl'}`}>
           <span className="text-white">Spot</span>
-          <span className="text-[#FF1493] bg-gradient-to-r from-[#FF1493] to-[#FF0077] bg-clip-text text-transparent">
+          <span className="text-[#FF2E93] bg-gradient-to-r from-[#FF2E93] to-[#FF007F] bg-clip-text text-transparent">
             Pop
           </span>
         </div>

@@ -31,7 +31,7 @@ export interface SpotCardProps {
 
 const triggerHaptic = (ms = 10) => {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-    try { navigator.vibrate(ms); } catch (_) {}
+    try { navigator.vibrate(ms); } catch (_) { }
   }
 };
 
@@ -91,8 +91,8 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   const effectiveProgress = audioProgress > 0
     ? audioProgress
     : (audioCurrentTime > 0 && totalAudioDuration > 0
-        ? Math.min(100, Math.max(0, (audioCurrentTime / totalAudioDuration) * 100))
-        : 0);
+      ? Math.min(100, Math.max(0, (audioCurrentTime / totalAudioDuration) * 100))
+      : 0);
 
   useEffect(() => {
     return () => {
@@ -1114,8 +1114,8 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   const subtextSize = content.subtextSize ?? 14;
   const authorSize = content.authorSize ?? 11;
   const authorOpacity = content.authorOpacity ?? textOpacity;
-  const authorDisplay = content.author !== undefined ? content.author : creatorName;
-  const hasAuthor = Boolean(authorDisplay && authorDisplay.trim());
+  const authorDisplay = (content.author !== undefined ? content.author : '').trim();
+  const hasAuthor = Boolean(authorDisplay);
 
   const photoFilterObj = getPhotoFilterStyle(content.photoAdjustments);
   const photoFilterCss = photoFilterObj.filter !== 'none' ? photoFilterObj.filter : undefined;
@@ -1270,6 +1270,27 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
       {/* Frame Accents (top pins/tape) */}
       {!isTransparent && renderFrameAccents(content.frameStyle)}
 
+      {/* Audio Memory Indicator Badge (Big Pop Only) */}
+      {content.audio && !hideAudioBar && (
+        <button
+          type="button"
+          onClick={(e) => {
+            if (interactive) {
+              e.stopPropagation();
+              togglePlayAudio(e);
+            }
+          }}
+          className={`absolute top-2 right-2 z-35 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md select-none transition-all ${interactive ? 'cursor-pointer hover:border-[#FF2E93] hover:scale-105 active:scale-95' : 'pointer-events-none'
+            } ${isAudioPlaying ? 'border-[#1DB954] bg-[#1DB954]/25 text-[#1DB954] ring-1 ring-[#1DB954]/40' : ''}`}
+          title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+        >
+          <span className="text-[10px] leading-none">
+            {isAudioPlaying ? '⏸' : content.audio.type === 'voice' ? '🎙️' : '🎵'}
+          </span>
+          <span className="text-[8px] font-mono font-bold opacity-90">{Math.round(content.audio.duration || 0)}s</span>
+        </button>
+      )}
+
       {/* Friends-Only Locked State Overlay */}
       {isLocked && (
         <div className="absolute inset-0 z-35 rounded-[inherit] bg-black/65 backdrop-blur-sm flex flex-col items-center justify-center p-3 text-center pointer-events-auto">
@@ -1314,193 +1335,112 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
               }}
             />
           )}
-        {/* HOLOGRAPHIC FOIL SHIMMER OVERLAY */}
-        {shape === 'holographic' && !isTransparent && (
-          <div
-            className="absolute inset-0 pointer-events-none z-15 opacity-30 mix-blend-overlay"
-            style={{
-              background: 'linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.8) 45%, rgba(0,240,255,0.6) 55%, transparent 75%)',
-            }}
-          />
-        )}
-
-        {/* TICKET NOTCHES & PERFORATION */}
-        {shape === 'ticket' && !isTransparent && (
-          <>
-            <div className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0A0D14] pointer-events-none z-20 shadow-inner" />
-            <div className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0A0D14] pointer-events-none z-20 shadow-inner" />
-            <div className="absolute top-1/2 inset-x-3 -translate-y-1/2 border-t-2 border-dashed border-black/25 pointer-events-none z-15" />
-          </>
-        )}
-
-        {/* CYBER HUD BRACKETS */}
-        {shape === 'cyber' && !isTransparent && (
-          <>
-            <div className="absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-[#00F0FF] pointer-events-none z-20" />
-            <div className="absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-[#00F0FF] pointer-events-none z-20" />
-            <div className="absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-[#FF2E93] pointer-events-none z-20" />
-            <div className="absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-[#FF2E93] pointer-events-none z-20" />
-          </>
-        )}
-
-        {/* GOLD FRAME CORNER RIVETS */}
-        {shape === 'gold' && !isTransparent && (
-          <>
-            <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
-            <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
-            <div className="absolute bottom-1 left-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
-            <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
-          </>
-        )}
-
-        {/* ================= 1. TRANSPARENT CUTOUT PNG / ARTWORK (PNG ONLY MODE) ================= */}
-        {isTransparent && content.imageUrl && (
-          <div
-            className={`absolute inset-0 flex items-center justify-center p-2 ${
-              interactive
-                ? isPhotoSelected
-                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
-                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
-                : 'pointer-events-none z-10'
-            }`}
-            onPointerDown={handlePhotoPointerDown}
-            onWheel={handlePhotoWheel}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
-          >
-            <img
-              src={content.imageUrl}
-              alt="Cutout Art"
-              loading={isGif ? 'eager' : 'lazy'}
-              decoding={isGif ? 'sync' : 'async'}
-              className={`max-w-full max-h-full select-none pointer-events-none transition-transform duration-75 ${
-                imageFit === 'contain' ? 'object-contain' : 'object-cover'
-              }`}
+          {/* HOLOGRAPHIC FOIL SHIMMER OVERLAY */}
+          {shape === 'holographic' && !isTransparent && (
+            <div
+              className="absolute inset-0 pointer-events-none z-15 opacity-30 mix-blend-overlay"
               style={{
-                opacity: photoOpacity,
-                filter: photoFilterCss ? `${photoFilterCss} drop-shadow(0 12px 24px rgba(0,0,0,0.6))` : 'drop-shadow(0 12px 24px rgba(0,0,0,0.6))',
-                transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
+                background: 'linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.8) 45%, rgba(0,240,255,0.6) 55%, transparent 75%)',
               }}
-              draggable={false}
             />
-            {interactive && isPhotoSelected && (
-              <div className="absolute inset-2 pointer-events-none z-20 border border-dashed border-[#FF2E93]/70 rounded-lg flex items-end justify-center pb-1">
-                <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded shadow-sm font-sans font-medium">
-                  Drag to pan • Pinch to zoom
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* ================= 2. FULL-BLEED FRAMELESS PHOTO (EDGE-TO-EDGE) ================= */}
-        {(shape === 'frameless' || shape === 'poster' || photoCropRatio === 'full') && content.imageUrl && !isTransparent && (
-          <div
-            className={`absolute inset-0 overflow-hidden ${
-              interactive
+          {/* TICKET NOTCHES & PERFORATION */}
+          {shape === 'ticket' && !isTransparent && (
+            <>
+              <div className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0A0D14] pointer-events-none z-20 shadow-inner" />
+              <div className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0A0D14] pointer-events-none z-20 shadow-inner" />
+              <div className="absolute top-1/2 inset-x-3 -translate-y-1/2 border-t-2 border-dashed border-black/25 pointer-events-none z-15" />
+            </>
+          )}
+
+          {/* CYBER HUD BRACKETS */}
+          {shape === 'cyber' && !isTransparent && (
+            <>
+              <div className="absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-[#00F0FF] pointer-events-none z-20" />
+              <div className="absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-[#00F0FF] pointer-events-none z-20" />
+              <div className="absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-[#FF2E93] pointer-events-none z-20" />
+              <div className="absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-[#FF2E93] pointer-events-none z-20" />
+            </>
+          )}
+
+          {/* GOLD FRAME CORNER RIVETS */}
+          {shape === 'gold' && !isTransparent && (
+            <>
+              <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
+              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
+              <div className="absolute bottom-1 left-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
+              <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#FFF388] shadow-xs pointer-events-none z-20" />
+            </>
+          )}
+
+          {/* ================= 1. TRANSPARENT CUTOUT PNG / ARTWORK (PNG ONLY MODE) ================= */}
+          {isTransparent && content.imageUrl && (
+            <div
+              className={`absolute inset-0 flex items-center justify-center p-2 ${interactive
                 ? isPhotoSelected
                   ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
                   : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
                 : 'pointer-events-none z-10'
-            }`}
-            onPointerDown={handlePhotoPointerDown}
-            onWheel={handlePhotoWheel}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
-          >
-            <img
-              src={content.imageUrl}
-              alt="Full Bleed Artwork"
-              loading={isGif ? 'eager' : 'lazy'}
-              decoding={isGif ? 'sync' : 'async'}
-              className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
-                imageFit === 'contain' ? 'object-contain' : 'object-cover'
-              }`}
-              style={{
-                opacity: photoOpacity,
-                filter: photoFilterCss,
-                transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
-              }}
-              draggable={false}
-            />
-            {/* Scrim gradient so text is readable over full bleed artwork */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
-            {interactive && isPhotoSelected && (
-              <div className="absolute inset-0 pointer-events-none z-20 grid grid-cols-3 grid-rows-3 border-2 border-[#FF2E93]">
-                <div className="border-r border-b border-white/20" />
-                <div className="border-r border-b border-white/20" />
-                <div className="border-b border-white/20" />
-                <div className="border-r border-b border-white/20" />
-                <div className="border-r border-b border-white/20" />
-                <div className="border-b border-white/20" />
-                <div className="border-r border-b border-white/20" />
-                <div className="border-r border-b border-white/20" />
-                <div />
-                <div className="absolute bottom-2 inset-x-0 flex justify-center">
-                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
-                    Drag to crop • Pinch to zoom
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ================= 3. POLAROID PHOTO CONTAINER ================= */}
-        {shape === 'polaroid' && !isTransparent && photoCropRatio !== 'full' && (
-          <div
-            className={`absolute top-2.5 inset-x-2.5 bg-slate-900 overflow-hidden flex items-center justify-center ${
-              isCircleCrop ? 'rounded-full' : 'rounded-xs'
-            } ${
-              interactive
-                ? isPhotoSelected
-                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
-                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
-                : 'pointer-events-none z-10'
-            }`}
-            style={{
-              height: isCircleCrop
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
-                : photoCropRatio === '1:1'
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
-                : photoCropRatio === '16:9'
-                ? Math.round((cardWidth - 20) * 9 / 16)
-                : Math.round(cardHeight * 0.58),
-              width: isCircleCrop
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
-                : undefined,
-              margin: isCircleCrop ? '0 auto' : undefined,
-            }}
-            onPointerDown={handlePhotoPointerDown}
-            onWheel={handlePhotoWheel}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                if (!content.imageUrl && content.audio) {
-                  onSelectItem?.('audio');
-                } else {
+                }`}
+              onPointerDown={handlePhotoPointerDown}
+              onWheel={handlePhotoWheel}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
                   onSelectItem?.('photo');
                 }
-              }
-            }}
-          >
-            {content.imageUrl ? (
+              }}
+            >
               <img
                 src={content.imageUrl}
-                alt={content.headline || creatorName}
+                alt="Cutout Art"
                 loading={isGif ? 'eager' : 'lazy'}
                 decoding={isGif ? 'sync' : 'async'}
-                className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
-                  imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                className={`max-w-full max-h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                  }`}
+                style={{
+                  opacity: photoOpacity,
+                  filter: photoFilterCss ? `${photoFilterCss} drop-shadow(0 12px 24px rgba(0,0,0,0.6))` : 'drop-shadow(0 12px 24px rgba(0,0,0,0.6))',
+                  transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
+                }}
+                draggable={false}
+              />
+              {interactive && isPhotoSelected && (
+                <div className="absolute inset-2 pointer-events-none z-20 border border-dashed border-[#FF2E93]/70 rounded-lg flex items-end justify-center pb-1">
+                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded shadow-sm font-sans font-medium">
+                    Drag to pan • Pinch to zoom
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= 2. FULL-BLEED FRAMELESS PHOTO (EDGE-TO-EDGE) ================= */}
+          {(shape === 'frameless' || shape === 'poster' || photoCropRatio === 'full') && content.imageUrl && !isTransparent && (
+            <div
+              className={`absolute inset-0 overflow-hidden ${interactive
+                ? isPhotoSelected
+                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                : 'pointer-events-none z-10'
                 }`}
+              onPointerDown={handlePhotoPointerDown}
+              onWheel={handlePhotoWheel}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.('photo');
+                }
+              }}
+            >
+              <img
+                src={content.imageUrl}
+                alt="Full Bleed Artwork"
+                loading={isGif ? 'eager' : 'lazy'}
+                decoding={isGif ? 'sync' : 'async'}
+                className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                  }`}
                 style={{
                   opacity: photoOpacity,
                   filter: photoFilterCss,
@@ -1508,732 +1448,789 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 }}
                 draggable={false}
               />
-            ) : content.audio ? (
-              /* AUDIO POP ARTWORK: Soundstage visualizer with animated equalizer bars */
-              <div
-                className="w-full h-full flex flex-col items-center justify-center p-3 text-center relative overflow-hidden select-none"
-                style={{
-                  background: 'radial-gradient(circle at 50% 40%, #1e1b4b 0%, #090a15 100%)',
-                }}
-              >
-                {/* Ambient glow ripples */}
-                <div className="absolute w-28 h-28 rounded-full bg-pink-500/15 blur-xl animate-pulse" />
-                <div className="absolute w-16 h-16 rounded-full bg-cyan-500/10 blur-lg animate-pulse" style={{ animationDelay: '500ms' }} />
-
-                {/* Central Audio Play Icon */}
-                <button
-                  type="button"
-                  onClick={togglePlayAudio}
-                  className="relative z-20 w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                  title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                >
-                  {isAudioPlaying ? (
-                    <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
-                      <rect x="6" y="4" width="4" height="16" rx="1.5" />
-                      <rect x="14" y="4" width="4" height="16" rx="1.5" />
-                    </svg>
-                  ) : (
-                    <span className="text-xl leading-none">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
-                  )}
-                </button>
-
-                {/* Animated Waveform Equalizer Bars */}
-                <div className="relative z-10 flex items-center justify-center gap-1 h-5 mt-2.5">
-                  {[35, 75, 100, 60, 90, 45, 80, 50, 95, 40].map((h, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 rounded-full bg-gradient-to-t from-[#FF2E93] to-cyan-400 transition-all ${
-                        isAudioPlaying ? 'animate-pulse' : 'opacity-60'
-                      }`}
-                      style={{
-                        height: isAudioPlaying ? `${h}%` : `${Math.max(20, h * 0.45)}%`,
-                        animationDuration: `${0.6 + (i % 3) * 0.25}s`,
-                        animationDelay: `${i * 80}ms`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div
-                className="w-full h-full flex flex-col items-center justify-center p-3 text-center"
-                style={{ background: 'linear-gradient(135deg, #1E1B4B, #3B0764)' }}
-              >
-                <span className="text-2xl filter drop-shadow">✨</span>
-                <span className="text-[10px] text-white/80 font-bold mt-1 tracking-wide">No Photo Attached</span>
-                <span className="text-[8px] text-pink-300/80 mt-0.5">Audio & Text Pop</span>
-              </div>
-            )}
-            {interactive && isPhotoSelected && (
-              <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-xs'}`}>
-                {!isCircleCrop && (
-                  <div className="w-full h-full grid grid-cols-3 grid-rows-3">
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div />
-                  </div>
-                )}
-                <div className="absolute bottom-1 inset-x-0 flex justify-center">
-                  <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
-                    Drag to crop • Pinch to zoom
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ================= 4. FRAMED PHOTO CONTAINER FOR OTHER FRAMES (GLASS, GOLD, COMIC, STAMP, CYBER, STICKY) ================= */}
-        {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && photoCropRatio !== 'full' && !isTransparent && content.imageUrl && (
-          <div
-            className={`absolute top-2.5 inset-x-2.5 bg-black/40 overflow-hidden ${
-              isCircleCrop ? 'rounded-full' : 'rounded-lg'
-            } ${
-              interactive
-                ? isPhotoSelected
-                  ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
-                  : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
-                : 'pointer-events-none z-10'
-            }`}
-            style={{
-              height: isCircleCrop
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
-                : photoCropRatio === '1:1'
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
-                : photoCropRatio === '16:9'
-                ? Math.round((cardWidth - 20) * 9 / 16)
-                : Math.round(cardHeight * 0.50),
-              width: isCircleCrop
-                ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
-                : undefined,
-              margin: isCircleCrop ? '0 auto' : undefined,
-            }}
-            onPointerDown={handlePhotoPointerDown}
-            onWheel={handlePhotoWheel}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('photo');
-              }
-            }}
-          >
-            <img
-              src={content.imageUrl}
-              alt="Artwork"
-              loading={isGif ? 'eager' : 'lazy'}
-              decoding={isGif ? 'sync' : 'async'}
-              className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${
-                imageFit === 'contain' ? 'object-contain' : 'object-cover'
-              }`}
-              style={{
-                opacity: photoOpacity,
-                filter: photoFilterCss,
-                transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
-              }}
-              draggable={false}
-            />
-            {interactive && isPhotoSelected && (
-              <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-lg'}`}>
-                {!isCircleCrop && (
-                  <div className="w-full h-full grid grid-cols-3 grid-rows-3">
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div className="border-r border-b border-white/20" />
-                    <div />
-                  </div>
-                )}
-                <div className="absolute bottom-1 inset-x-0 flex justify-center pointer-events-none">
-                  <span className="text-[9px] bg-black/90 text-pink-300 px-2 py-0.5 rounded-full border border-[#FF2E93]/40 shadow-sm font-sans font-semibold tracking-wide">
-                    Drag to pan • Pinch to zoom • Double-tap reset
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ================= FREELY DRAGGABLE & SELECTABLE MAIN HEADLINE ================= */}
-        {content.headline && (
-          <div
-            onPointerDown={handleHeadlinePointerDown}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('headline');
-              }
-            }}
-            className={`touch-none select-none ${
-              interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-            } ${isCustomHeadline ? 'absolute' : 'absolute inset-x-3 text-center'} ${
-              isHeadlineSelected ? 'ring-2 ring-dashed ring-[#FF2E93] z-30 p-1 rounded-md bg-white/10' : 'z-20'
-            }`}
-            style={{
-              left: isCustomHeadline ? content.headlineX : undefined,
-              top: isCustomHeadline
-                ? content.headlineY
-                : shape === 'polaroid'
-                ? (content.audio
-                    ? (content.text ? Math.round(cardHeight * 0.57) : Math.round(cardHeight * 0.63))
-                    : (content.text ? Math.round(cardHeight * 0.59) : Math.round(cardHeight * 0.65)))
-                : shape === 'classic' && content.imageUrl
-                ? (content.text ? Math.round(cardHeight * 0.52) : Math.round(cardHeight * 0.58))
-                : Math.round(cardHeight * 0.3),
-              maxWidth: isCustomHeadline ? cardWidth - 30 : undefined,
-            }}
-          >
-            {content.isCurvedText ? (
-              <svg viewBox="0 0 220 70" className="w-full h-auto overflow-visible pointer-events-none select-none">
-                <path id={`curve-${cardWidth}`} d="M 10,50 Q 110,10 210,50" fill="none" />
-                <text
-                  fill={content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')}
-                  style={{
-                    fontFamily: getCleanFontFamily(content.fontFamily),
-                    fontSize: content.fontSize || 22,
-                    fontWeight: 'bold',
-                    opacity: textOpacity,
-                    letterSpacing: content.letterSpacing ? `${content.letterSpacing}px` : undefined,
-                  }}
-                >
-                  <textPath href={`#curve-${cardWidth}`} startOffset="50%" textAnchor="middle">
-                    {content.headline}
-                  </textPath>
-                </text>
-              </svg>
-            ) : (
-              <h3
-                className="font-bold leading-tight break-words select-none"
-                style={{
-                  fontFamily: getCleanFontFamily(content.fontFamily),
-                  fontSize: content.fontSize || 22,
-                  color: content.textGradient ? undefined : (content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')),
-                  background: content.textGradient || undefined,
-                  WebkitBackgroundClip: content.textGradient ? 'text' : undefined,
-                  WebkitTextFillColor: content.textGradient ? 'transparent' : undefined,
-                  opacity: textOpacity,
-                  textAlign: isCustomHeadline ? 'left' : content.alignment || 'center',
-                  textShadow: content.text3D
-                    ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.15), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3)'
-                    : content.textGlow
-                    ? `0 0 14px ${content.textGlow}`
-                    : isTransparent ? '0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.9)' : undefined,
-                  WebkitTextStroke: content.textStroke || undefined,
-                  letterSpacing: content.letterSpacing ? `${content.letterSpacing}px` : undefined,
-                  lineHeight: content.lineHeight || 1.15,
-                  backgroundColor: content.badgeColor || undefined,
-                  padding: content.badgeColor ? '4px 10px' : undefined,
-                  borderRadius: content.badgeColor ? '8px' : undefined,
-                }}
-              >
-                {content.headline}
-              </h3>
-            )}
-
-            {/* Selection Controls for Headline with 44px Touch Targets */}
-            {isHeadlineSelected && (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    triggerHaptic(10);
-                    onUpdateContent?.({ headline: '' });
-                    onSelectItem?.(null);
-                  }}
-                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
-                  title="Delete Headline"
-                >
-                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
-                    ✕
-                  </span>
-                </button>
-                {/* Corner Resize Handle */}
-                <div
-                  onPointerDown={handleHeadlineResizeDown}
-                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
-                  title="Drag to Resize Font Size"
-                >
-                  <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              {/* Scrim gradient so text is readable over full bleed artwork */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
+              {interactive && isPhotoSelected && (
+                <div className="absolute inset-0 pointer-events-none z-20 grid grid-cols-3 grid-rows-3 border-2 border-[#FF2E93]">
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div />
+                  <div className="absolute bottom-2 inset-x-0 flex justify-center">
+                    <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
+                      Drag to crop • Pinch to zoom
+                    </span>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* ================= FREELY DRAGGABLE & SELECTABLE SUBTEXT ================= */}
-        {content.text && (
-          <div
-            onPointerDown={handleSubtextPointerDown}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('subtext');
-              }
-            }}
-            className={`touch-none select-none ${
-              interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-            } ${isCustomSubtext ? 'absolute' : 'absolute inset-x-3 text-center'} ${
-              isSubtextSelected ? 'ring-2 ring-dashed ring-amber-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
-            }`}
-            style={{
-              left: isCustomSubtext ? content.subtextX : undefined,
-              top: isCustomSubtext
-                ? content.subtextY
-                : shape === 'polaroid'
-                ? (content.audio
-                    ? (content.headline ? Math.round(cardHeight * 0.67) : Math.round(cardHeight * 0.60))
-                    : (content.headline ? Math.round(cardHeight * 0.72) : Math.round(cardHeight * 0.64)))
-                : shape === 'classic' && content.imageUrl
-                ? (content.headline ? Math.round(cardHeight * 0.70) : Math.round(cardHeight * 0.62))
-                : Math.round(cardHeight * 0.58),
-              maxWidth: isCustomSubtext ? cardWidth - 30 : undefined,
-            }}
-          >
-            <p
-              className="leading-snug break-words select-none"
-              style={{
-                fontFamily: getCleanFontFamily(content.fontFamily),
-                fontSize: subtextSize,
-                color: content.textColor || (isTransparent ? '#F1F5F9' : shape === 'polaroid' ? '#475569' : '#334155'),
-                opacity: textOpacity * 0.9,
-                textAlign: isCustomSubtext ? 'left' : content.alignment || 'center',
-                textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
-              }}
-            >
-              {content.text}
-            </p>
-
-            {/* Selection Controls for Subtext with 44px Touch Targets */}
-            {isSubtextSelected && (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    triggerHaptic(10);
-                    onUpdateContent?.({ text: '' });
-                    onSelectItem?.(null);
-                  }}
-                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
-                  title="Delete Subtext"
-                >
-                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
-                    ✕
-                  </span>
-                </button>
-                <div
-                  onPointerDown={handleSubtextResizeDown}
-                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
-                  title="Drag to Resize Subtext"
-                >
-                  <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
-                    <div className="w-1.5 h-1.5 bg-black rounded-full" />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ================= FREELY DRAGGABLE & SELECTABLE CREATOR TAG ================= */}
-        {hasAuthor && (
-          <div
-            onPointerDown={handleAuthorPointerDown}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.('author');
-              }
-            }}
-            className={`touch-none select-none ${
-              interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
-              } ${isCustomAuthor ? 'absolute' : `absolute ${content.audio ? 'bottom-8.5' : 'bottom-2'} inset-x-3.5 flex items-center justify-between ${isTransparent || content.audio ? 'border-none pt-0' : 'border-t border-black/10 pt-1'}`} ${
-              isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
-            }`}
-            style={{
-              left: isCustomAuthor ? content.authorX : undefined,
-              top: isCustomAuthor ? content.authorY : undefined,
-            }}
-          >
-            <span
-              className="truncate font-semibold select-none flex items-center gap-1"
-              style={{
-                color: content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
-                fontSize: authorSize,
-                opacity: authorOpacity,
-                textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
-              }}
-            >
-              <span>{authorDisplay}</span>
-              <span>♡</span>
-            </span>
-
-            {/* Selection Controls for Creator Tag */}
-            {isAuthorSelected && (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    onUpdateContent?.({ author: '' });
-                    onSelectItem?.(null);
-                  }}
-                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform cursor-pointer z-40"
-                  title="Delete Author Tag"
-                >
-                  ✕
-                </button>
-                <div
-                  onPointerDown={handleAuthorResizeDown}
-                  className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
-                  title="Drag to Resize Tag"
-                >
-                  <div className="w-1 h-1 bg-black rounded-full" />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ================= MULTI-LAYER EDITING ENGINE (Unlimited Layers: Photo, Text, Shape, Sticker) ================= */}
-        {content.layers?.map((layer) => {
-          if (layer.visible === false) return null;
-          const isSelected = interactive && selectedItemId === layer.id;
-          const layerFilter = getPhotoFilterStyle(layer.photoAdjustments);
-
-          return (
+          {/* ================= 3. POLAROID PHOTO CONTAINER ================= */}
+          {shape === 'polaroid' && !isTransparent && photoCropRatio !== 'full' && (
             <div
-              key={layer.id}
-              onPointerDown={(e) => handleLayerPointerDown(e, layer)}
-              className={`absolute select-none touch-none ${
-                interactive && !layer.locked ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
-              } ${isSelected ? 'z-40' : 'z-20'}`}
+              className={`absolute top-2.5 inset-x-2.5 bg-slate-900 overflow-hidden flex items-center justify-center ${isCircleCrop ? 'rounded-full' : 'rounded-xs'
+                } ${interactive
+                  ? isPhotoSelected
+                    ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                    : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                  : 'pointer-events-none z-10'
+                }`}
               style={{
-                left: layer.x,
-                top: layer.y,
-                width: layer.width,
-                height: layer.height,
-                transform: `rotate(${layer.rotation || 0}deg)`,
-                transformOrigin: 'center center',
-                mixBlendMode: layer.blendMode || 'normal',
-                opacity: layer.opacity ?? 1,
-                boxShadow: layer.shadowColor && layer.shadowBlur ? `${layer.shadowOffsetX || 0}px ${layer.shadowOffsetY || 0}px ${layer.shadowBlur}px ${layer.shadowColor}` : undefined,
-                outline: layer.outlineColor && layer.outlineWidth ? `${layer.outlineWidth}px solid ${layer.outlineColor}` : undefined,
+                height: isCircleCrop
+                  ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                  : photoCropRatio === '1:1'
+                    ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                    : photoCropRatio === '16:9'
+                      ? Math.round((cardWidth - 20) * 9 / 16)
+                      : Math.round(cardHeight * 0.58),
+                width: isCircleCrop
+                  ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.58))
+                  : undefined,
+                margin: isCircleCrop ? '0 auto' : undefined,
+              }}
+              onPointerDown={handlePhotoPointerDown}
+              onWheel={handlePhotoWheel}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  if (!content.imageUrl && content.audio) {
+                    onSelectItem?.('audio');
+                  } else {
+                    onSelectItem?.('photo');
+                  }
+                }
               }}
             >
-              {/* Layer Content */}
-              {layer.type === 'image' && layer.content && (
+              {content.imageUrl ? (
                 <img
-                  src={layer.content}
-                  alt={layer.name || 'Layer Image'}
-                  loading="lazy"
-                  decoding="async"
-                  className={`w-full h-full object-cover select-none pointer-events-none rounded-xs shadow-xs ${
-                    layer.clippingMask ? 'rounded-full' : ''
-                  }`}
+                  src={content.imageUrl}
+                  alt={content.headline || creatorName}
+                  loading={isGif ? 'eager' : 'lazy'}
+                  decoding={isGif ? 'sync' : 'async'}
+                  className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                    }`}
                   style={{
-                    filter: layerFilter.filter !== 'none' ? layerFilter.filter : undefined,
-                    transform: layerFilter.transform !== 'none' ? layerFilter.transform : undefined,
+                    opacity: photoOpacity,
+                    filter: photoFilterCss,
+                    transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
                   }}
                   draggable={false}
                 />
-              )}
-
-              {layer.type === 'shape' && (
-                <div className="w-full h-full pointer-events-none">
-                  {renderShapeLayerSvg(layer)}
-                </div>
-              )}
-
-              {layer.type === 'text' && (
+              ) : content.audio ? (
+                /* AUDIO POP ARTWORK: Soundstage visualizer with animated equalizer bars */
                 <div
-                  className="w-full h-full flex items-center justify-center pointer-events-none font-bold select-none text-center"
+                  className="w-full h-full flex flex-col items-center justify-center p-3 text-center relative overflow-hidden select-none"
                   style={{
-                    fontFamily: getCleanFontFamily(layer.fontFamily),
-                    fontSize: layer.fontSize || 20,
-                    color: layer.textGradient ? undefined : (layer.textColor || '#FFFFFF'),
-                    background: layer.textGradient || undefined,
-                    WebkitBackgroundClip: layer.textGradient ? 'text' : undefined,
-                    WebkitTextFillColor: layer.textGradient ? 'transparent' : undefined,
-                    textShadow: layer.text3D
-                      ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #aaa, 0 5px 2px rgba(0,0,0,.3)'
-                      : layer.textGlow ? `0 0 12px ${layer.textGlow}` : '0 2px 8px rgba(0,0,0,0.7)',
-                    WebkitTextStroke: layer.textStroke || undefined,
-                    letterSpacing: layer.letterSpacing ? `${layer.letterSpacing}px` : undefined,
-                    lineHeight: layer.lineHeight || 1.1,
-                    backgroundColor: layer.bgBadgeColor || undefined,
-                    padding: layer.bgBadgeColor ? '2px 8px' : undefined,
-                    borderRadius: layer.bgBadgeColor ? '6px' : undefined,
+                    background: 'radial-gradient(circle at 50% 40%, #1e1b4b 0%, #090a15 100%)',
                   }}
                 >
-                  {layer.content}
+                  {/* Ambient glow ripples */}
+                  <div className="absolute w-28 h-28 rounded-full bg-pink-500/15 blur-xl animate-pulse" />
+                  <div className="absolute w-16 h-16 rounded-full bg-cyan-500/10 blur-lg animate-pulse" style={{ animationDelay: '500ms' }} />
+
+                  {/* Central Audio Play Icon */}
+                  <button
+                    type="button"
+                    onClick={togglePlayAudio}
+                    className="relative z-20 w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+                  >
+                    {isAudioPlaying ? (
+                      <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                        <rect x="6" y="4" width="4" height="16" rx="1.5" />
+                        <rect x="14" y="4" width="4" height="16" rx="1.5" />
+                      </svg>
+                    ) : (
+                      <span className="text-xl leading-none">{content.audio.type === 'voice' ? '🎙️' : '🎵'}</span>
+                    )}
+                  </button>
+
+                  {/* Animated Waveform Equalizer Bars */}
+                  <div className="relative z-10 flex items-center justify-center gap-1 h-5 mt-2.5">
+                    {[35, 75, 100, 60, 90, 45, 80, 50, 95, 40].map((h, i) => (
+                      <div
+                        key={i}
+                        className={`w-1 rounded-full bg-gradient-to-t from-[#FF2E93] to-cyan-400 transition-all ${isAudioPlaying ? 'animate-pulse' : 'opacity-60'
+                          }`}
+                        style={{
+                          height: isAudioPlaying ? `${h}%` : `${Math.max(20, h * 0.45)}%`,
+                          animationDuration: `${0.6 + (i % 3) * 0.25}s`,
+                          animationDelay: `${i * 80}ms`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="w-full h-full flex flex-col items-center justify-center p-3 text-center"
+                  style={{ background: 'linear-gradient(135deg, #1E1B4B, #3B0764)' }}
+                >
+                  <span className="text-2xl filter drop-shadow">✨</span>
+                  <span className="text-[10px] text-white/80 font-bold mt-1 tracking-wide">No Photo Attached</span>
+                  <span className="text-[8px] text-pink-300/80 mt-0.5">Audio & Text Pop</span>
                 </div>
               )}
+              {interactive && isPhotoSelected && (
+                <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-xs'}`}>
+                  {!isCircleCrop && (
+                    <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div />
+                    </div>
+                  )}
+                  <div className="absolute bottom-1 inset-x-0 flex justify-center">
+                    <span className="text-[9px] bg-black/85 text-pink-300 px-1.5 py-0.5 rounded border border-[#FF2E93]/40 shadow-sm font-sans font-medium">
+                      Drag to crop • Pinch to zoom
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= 4. FRAMED PHOTO CONTAINER FOR OTHER FRAMES (GLASS, GOLD, COMIC, STAMP, CYBER, STICKY) ================= */}
+          {shape !== 'polaroid' && shape !== 'frameless' && shape !== 'poster' && photoCropRatio !== 'full' && !isTransparent && content.imageUrl && (
+            <div
+              className={`absolute top-2.5 inset-x-2.5 bg-black/40 overflow-hidden ${isCircleCrop ? 'rounded-full' : 'rounded-lg'
+                } ${interactive
+                  ? isPhotoSelected
+                    ? 'ring-2 ring-[#FF2E93] cursor-grab active:cursor-grabbing z-25'
+                    : 'cursor-pointer hover:ring-1 hover:ring-pink-400/50 z-10'
+                  : 'pointer-events-none z-10'
+                }`}
+              style={{
+                height: isCircleCrop
+                  ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                  : photoCropRatio === '1:1'
+                    ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                    : photoCropRatio === '16:9'
+                      ? Math.round((cardWidth - 20) * 9 / 16)
+                      : Math.round(cardHeight * 0.50),
+                width: isCircleCrop
+                  ? Math.min(cardWidth - 20, Math.round(cardHeight * 0.50))
+                  : undefined,
+                margin: isCircleCrop ? '0 auto' : undefined,
+              }}
+              onPointerDown={handlePhotoPointerDown}
+              onWheel={handlePhotoWheel}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.('photo');
+                }
+              }}
+            >
+              <img
+                src={content.imageUrl}
+                alt="Artwork"
+                loading={isGif ? 'eager' : 'lazy'}
+                decoding={isGif ? 'sync' : 'async'}
+                className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                  }`}
+                style={{
+                  opacity: photoOpacity,
+                  filter: photoFilterCss,
+                  transform: `scale(${photoZoom}) translate(${photoOffsetX}px, ${photoOffsetY}px) ${photoFlipTransform}`,
+                }}
+                draggable={false}
+              />
+              {interactive && isPhotoSelected && (
+                <div className={`absolute inset-0 pointer-events-none z-20 border-2 border-[#FF2E93] ${isCircleCrop ? 'rounded-full' : 'rounded-lg'}`}>
+                  {!isCircleCrop && (
+                    <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div className="border-r border-b border-white/20" />
+                      <div />
+                    </div>
+                  )}
+                  <div className="absolute bottom-1 inset-x-0 flex justify-center pointer-events-none">
+                    <span className="text-[9px] bg-black/90 text-pink-300 px-2 py-0.5 rounded-full border border-[#FF2E93]/40 shadow-sm font-sans font-semibold tracking-wide">
+                      Drag to pan • Pinch to zoom • Double-tap reset
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= FREELY DRAGGABLE & SELECTABLE MAIN HEADLINE ================= */}
+          {content.headline && (
+            <div
+              onPointerDown={handleHeadlinePointerDown}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.('headline');
+                }
+              }}
+              className={`touch-none select-none ${interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
+                } ${isCustomHeadline ? 'absolute' : 'absolute inset-x-3 text-center'} ${isHeadlineSelected ? 'ring-2 ring-dashed ring-[#FF2E93] z-30 p-1 rounded-md bg-white/10' : 'z-20'
+                }`}
+              style={{
+                left: isCustomHeadline ? content.headlineX : undefined,
+                top: isCustomHeadline
+                  ? content.headlineY
+                  : shape === 'polaroid'
+                    ? (content.audio
+                      ? (content.text ? Math.round(cardHeight * 0.57) : Math.round(cardHeight * 0.63))
+                      : (content.text ? Math.round(cardHeight * 0.59) : Math.round(cardHeight * 0.65)))
+                    : shape === 'classic' && content.imageUrl
+                      ? (content.text ? Math.round(cardHeight * 0.52) : Math.round(cardHeight * 0.58))
+                      : Math.round(cardHeight * 0.3),
+                maxWidth: isCustomHeadline ? cardWidth - 30 : undefined,
+              }}
+            >
+              {content.isCurvedText ? (
+                <svg viewBox="0 0 220 70" className="w-full h-auto overflow-visible pointer-events-none select-none">
+                  <path id={`curve-${cardWidth}`} d="M 10,50 Q 110,10 210,50" fill="none" />
+                  <text
+                    fill={content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')}
+                    style={{
+                      fontFamily: getCleanFontFamily(content.fontFamily),
+                      fontSize: content.fontSize || 22,
+                      fontWeight: 'bold',
+                      opacity: textOpacity,
+                      letterSpacing: content.letterSpacing ? `${content.letterSpacing}px` : undefined,
+                    }}
+                  >
+                    <textPath href={`#curve-${cardWidth}`} startOffset="50%" textAnchor="middle">
+                      {content.headline}
+                    </textPath>
+                  </text>
+                </svg>
+              ) : (
+                <h3
+                  className="font-bold leading-tight break-words select-none"
+                  style={{
+                    fontFamily: getCleanFontFamily(content.fontFamily),
+                    fontSize: content.fontSize || 22,
+                    color: content.textGradient ? undefined : (content.textColor || (isTransparent ? '#FFFFFF' : shape === 'polaroid' ? '#0F172A' : '#1E293B')),
+                    background: content.textGradient || undefined,
+                    WebkitBackgroundClip: content.textGradient ? 'text' : undefined,
+                    WebkitTextFillColor: content.textGradient ? 'transparent' : undefined,
+                    opacity: textOpacity,
+                    textAlign: isCustomHeadline ? 'left' : content.alignment || 'center',
+                    textShadow: content.text3D
+                      ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.15), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3)'
+                      : content.textGlow
+                        ? `0 0 14px ${content.textGlow}`
+                        : isTransparent ? '0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.9)' : undefined,
+                    WebkitTextStroke: content.textStroke || undefined,
+                    letterSpacing: content.letterSpacing ? `${content.letterSpacing}px` : undefined,
+                    lineHeight: content.lineHeight || 1.15,
+                    backgroundColor: content.badgeColor || undefined,
+                    padding: content.badgeColor ? '4px 10px' : undefined,
+                    borderRadius: content.badgeColor ? '8px' : undefined,
+                  }}
+                >
+                  {content.headline}
+                </h3>
+              )}
+
+              {/* Selection Controls for Headline with 44px Touch Targets */}
+              {isHeadlineSelected && (
+                <>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic(10);
+                      onUpdateContent?.({ headline: '' });
+                      onSelectItem?.(null);
+                    }}
+                    className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
+                    title="Delete Headline"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                      ✕
+                    </span>
+                  </button>
+                  {/* Corner Resize Handle */}
+                  <div
+                    onPointerDown={handleHeadlineResizeDown}
+                    className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
+                    title="Drag to Resize Font Size"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ================= FREELY DRAGGABLE & SELECTABLE SUBTEXT ================= */}
+          {content.text && (
+            <div
+              onPointerDown={handleSubtextPointerDown}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.('subtext');
+                }
+              }}
+              className={`touch-none select-none ${interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
+                } ${isCustomSubtext ? 'absolute' : 'absolute inset-x-3 text-center'} ${isSubtextSelected ? 'ring-2 ring-dashed ring-amber-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
+                }`}
+              style={{
+                left: isCustomSubtext ? content.subtextX : undefined,
+                top: isCustomSubtext
+                  ? content.subtextY
+                  : shape === 'polaroid'
+                    ? (content.audio
+                      ? (content.headline ? Math.round(cardHeight * 0.67) : Math.round(cardHeight * 0.60))
+                      : (content.headline ? Math.round(cardHeight * 0.72) : Math.round(cardHeight * 0.64)))
+                    : shape === 'classic' && content.imageUrl
+                      ? (content.headline ? Math.round(cardHeight * 0.70) : Math.round(cardHeight * 0.62))
+                      : Math.round(cardHeight * 0.58),
+                maxWidth: isCustomSubtext ? cardWidth - 30 : undefined,
+              }}
+            >
+              <p
+                className="leading-snug break-words select-none"
+                style={{
+                  fontFamily: getCleanFontFamily(content.fontFamily),
+                  fontSize: subtextSize,
+                  color: content.textColor || (isTransparent ? '#F1F5F9' : shape === 'polaroid' ? '#475569' : '#334155'),
+                  opacity: textOpacity * 0.9,
+                  textAlign: isCustomSubtext ? 'left' : content.alignment || 'center',
+                  textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                }}
+              >
+                {content.text}
+              </p>
+
+              {/* Selection Controls for Subtext with 44px Touch Targets */}
+              {isSubtextSelected && (
+                <>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic(10);
+                      onUpdateContent?.({ text: '' });
+                      onSelectItem?.(null);
+                    }}
+                    className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
+                    title="Delete Subtext"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                      ✕
+                    </span>
+                  </button>
+                  <div
+                    onPointerDown={handleSubtextResizeDown}
+                    className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
+                    title="Drag to Resize Subtext"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ================= FREELY DRAGGABLE & SELECTABLE CREATOR TAG ================= */}
+          {hasAuthor && (
+            <div
+              onPointerDown={handleAuthorPointerDown}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.('author');
+                }
+              }}
+              className={`touch-none select-none ${interactive ? 'cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-black/20' : 'pointer-events-none'
+                } ${isCustomAuthor ? 'absolute' : `absolute ${content.audio ? 'bottom-8.5' : 'bottom-2'} inset-x-3.5 flex items-center justify-between ${isTransparent || content.audio ? 'border-none pt-0' : 'border-t border-black/10 pt-1'}`} ${isAuthorSelected ? 'ring-2 ring-dashed ring-cyan-400 z-30 p-1 rounded-md bg-white/10' : 'z-20'
+                }`}
+              style={{
+                left: isCustomAuthor ? content.authorX : undefined,
+                top: isCustomAuthor ? content.authorY : undefined,
+              }}
+            >
+              <span
+                className="truncate font-semibold select-none flex items-center gap-1"
+                style={{
+                  color: content.textColor || (isTransparent ? '#F8FAFC' : shape === 'polaroid' ? '#0F172A' : '#1E293B'),
+                  fontSize: authorSize,
+                  opacity: authorOpacity,
+                  textShadow: isTransparent ? '0 2px 6px rgba(0,0,0,0.85)' : undefined,
+                }}
+              >
+                <span>{authorDisplay}</span>
+                <span>♡</span>
+              </span>
+
+              {/* Selection Controls for Creator Tag */}
+              {isAuthorSelected && (
+                <>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      onUpdateContent?.({ author: '' });
+                      onSelectItem?.(null);
+                    }}
+                    className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 transition-transform cursor-pointer z-40"
+                    title="Delete Author Tag"
+                  >
+                    ✕
+                  </button>
+                  <div
+                    onPointerDown={handleAuthorResizeDown}
+                    className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                    title="Drag to Resize Tag"
+                  >
+                    <div className="w-1 h-1 bg-black rounded-full" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ================= MULTI-LAYER EDITING ENGINE (Unlimited Layers: Photo, Text, Shape, Sticker) ================= */}
+          {content.layers?.map((layer) => {
+            if (layer.visible === false) return null;
+            const isSelected = interactive && selectedItemId === layer.id;
+            const layerFilter = getPhotoFilterStyle(layer.photoAdjustments);
+
+            return (
+              <div
+                key={layer.id}
+                onPointerDown={(e) => handleLayerPointerDown(e, layer)}
+                className={`absolute select-none touch-none ${interactive && !layer.locked ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                  } ${isSelected ? 'z-40' : 'z-20'}`}
+                style={{
+                  left: layer.x,
+                  top: layer.y,
+                  width: layer.width,
+                  height: layer.height,
+                  transform: `rotate(${layer.rotation || 0}deg)`,
+                  transformOrigin: 'center center',
+                  mixBlendMode: layer.blendMode || 'normal',
+                  opacity: layer.opacity ?? 1,
+                  boxShadow: layer.shadowColor && layer.shadowBlur ? `${layer.shadowOffsetX || 0}px ${layer.shadowOffsetY || 0}px ${layer.shadowBlur}px ${layer.shadowColor}` : undefined,
+                  outline: layer.outlineColor && layer.outlineWidth ? `${layer.outlineWidth}px solid ${layer.outlineColor}` : undefined,
+                }}
+              >
+                {/* Layer Content */}
+                {layer.type === 'image' && layer.content && (
+                  <img
+                    src={layer.content}
+                    alt={layer.name || 'Layer Image'}
+                    loading="lazy"
+                    decoding="async"
+                    className={`w-full h-full object-cover select-none pointer-events-none rounded-xs shadow-xs ${layer.clippingMask ? 'rounded-full' : ''
+                      }`}
+                    style={{
+                      filter: layerFilter.filter !== 'none' ? layerFilter.filter : undefined,
+                      transform: layerFilter.transform !== 'none' ? layerFilter.transform : undefined,
+                    }}
+                    draggable={false}
+                  />
+                )}
+
+                {layer.type === 'shape' && (
+                  <div className="w-full h-full pointer-events-none">
+                    {renderShapeLayerSvg(layer)}
+                  </div>
+                )}
+
+                {layer.type === 'text' && (
+                  <div
+                    className="w-full h-full flex items-center justify-center pointer-events-none font-bold select-none text-center"
+                    style={{
+                      fontFamily: getCleanFontFamily(layer.fontFamily),
+                      fontSize: layer.fontSize || 20,
+                      color: layer.textGradient ? undefined : (layer.textColor || '#FFFFFF'),
+                      background: layer.textGradient || undefined,
+                      WebkitBackgroundClip: layer.textGradient ? 'text' : undefined,
+                      WebkitTextFillColor: layer.textGradient ? 'transparent' : undefined,
+                      textShadow: layer.text3D
+                        ? '0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #aaa, 0 5px 2px rgba(0,0,0,.3)'
+                        : layer.textGlow ? `0 0 12px ${layer.textGlow}` : '0 2px 8px rgba(0,0,0,0.7)',
+                      WebkitTextStroke: layer.textStroke || undefined,
+                      letterSpacing: layer.letterSpacing ? `${layer.letterSpacing}px` : undefined,
+                      lineHeight: layer.lineHeight || 1.1,
+                      backgroundColor: layer.bgBadgeColor || undefined,
+                      padding: layer.bgBadgeColor ? '2px 8px' : undefined,
+                      borderRadius: layer.bgBadgeColor ? '6px' : undefined,
+                    }}
+                  >
+                    {layer.content}
+                  </div>
+                )}
+
+                {/* SELECTION BOUNDING BOX & CONTROLS */}
+                {isSelected && (
+                  <div className="absolute -inset-2 border-2 border-dashed border-[#00F0FF] rounded-md pointer-events-auto">
+                    {!layer.locked && (
+                      <>
+                        {/* Delete Button (✕) on Top-Right Corner */}
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            onDeleteLayer?.(layer.id);
+                          }}
+                          className="absolute -top-3.5 -right-3.5 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-lg hover:bg-rose-700 hover:scale-110 active:scale-95 transition-transform"
+                          title="Delete Layer"
+                        >
+                          ✕
+                        </button>
+
+                        {/* Resize Corner Handle on Bottom-Right */}
+                        <div
+                          onPointerDown={(e) => handleLayerResizeDown(e, layer)}
+                          className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-[#00F0FF] border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                          title="Drag to Resize Layer"
+                        >
+                          <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                        </div>
+
+                        {/* Rotate Handle on Top-Left */}
+                        <div
+                          onPointerDown={(e) => handleLayerRotateDown(e, layer)}
+                          className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center cursor-ew-resize shadow-md hover:scale-125 transition-transform"
+                          title="Drag to Rotate Layer"
+                        >
+                          <span className="text-[9px] font-bold text-black">↻</span>
+                        </div>
+                      </>
+                    )}
+
+                    {layer.locked && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-1.5 py-0.5 rounded text-[9px] font-bold shadow whitespace-nowrap">
+                        🔒 Locked
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* ================= SLIM THEME-MATCHED BOTTOM AUDIO PLAYER ================= */}
+          {content.audio && !hideAudioBar && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlayAudio(e);
+              }}
+              className={`absolute bottom-0 inset-x-0 z-35 h-7.5 px-3 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none rounded-b-[inherit] ${isTransparent
+                ? 'bg-black/60 backdrop-blur-md border-t border-white/20 text-white'
+                : isLightCard
+                  ? 'bg-slate-50/95 hover:bg-slate-100/95 border-t border-slate-200 text-slate-800'
+                  : 'bg-black/40 hover:bg-black/50 backdrop-blur-xs border-t border-white/15 text-white'
+                }`}
+              title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+              role="button"
+              aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+            >
+              {/* Circular Spotify Green Play / Pause Button */}
+              <div
+                className={`w-5 h-5 shrink-0 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-xs transition-transform ${isAudioPlaying ? 'ring-2 ring-[#1DB954]/50 scale-105' : 'hover:scale-105 active:scale-90'
+                  }`}
+              >
+                {isAudioPlaying ? (
+                  <svg className="w-2.5 h-2.5 fill-black" viewBox="0 0 24 24">
+                    <rect x="6" y="5" width="4" height="14" rx="1" />
+                    <rect x="14" y="5" width="4" height="14" rx="1" />
+                  </svg>
+                ) : (
+                  <svg className="w-2.5 h-2.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
+                    <polygon points="6 4 20 12 6 20 6 4" />
+                  </svg>
+                )}
+              </div>
+
+              {/* Real-time Progress Bar & Mini Equalizer Wave */}
+              <div className="flex-1 flex items-center gap-1.5 h-full">
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!audioPlayerRef.current || !content.audio) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const seekPct = Math.max(0, Math.min(1, clickX / rect.width));
+                    const newTime = seekPct * totalAudioDuration;
+                    audioPlayerRef.current.currentTime = newTime;
+                    setAudioCurrentTime(newTime);
+                    setAudioProgress(seekPct * 100);
+                  }}
+                  className={`flex-1 h-1.5 rounded-full overflow-hidden relative cursor-pointer ${isLightCard ? 'bg-slate-200' : 'bg-white/20'
+                    }`}
+                  title="Tap to scrub audio"
+                >
+                  <div
+                    className="h-full bg-[#1DB954] transition-[width] duration-100 ease-linear rounded-full"
+                    style={{ width: `${Math.min(100, Math.max(0, effectiveProgress))}%` }}
+                  />
+                </div>
+                {isAudioPlaying && (
+                  <div className="flex items-center gap-0.5 h-2.5 shrink-0">
+                    <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
+                    <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Duration / Timer Label: "15 sec" in crisp modern typography */}
+              <span
+                className={`text-[10px] font-sans font-bold tracking-tight shrink-0 select-none ${isLightCard ? 'text-slate-500' : 'text-slate-300'
+                  }`}
+              >
+                {isAudioPlaying && audioCurrentTime > 0
+                  ? `${Math.floor(audioCurrentTime)}s`
+                  : `${Math.round(content.audio.duration || 15)} sec`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ================= DRAWING LAYER (Full Space Canvas Overlay) ================= */}
+        {content.drawingData && (
+          <img
+            src={content.drawingData}
+            alt="Spot Drawing"
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none z-25 select-none"
+            style={{ opacity: drawingOpacity }}
+            draggable={false}
+          />
+        )}
+
+        {/* ACTIVE DRAWING CANVAS OVERLAY IN STUDIO (BIG POP ONLY) */}
+        {drawingCanvasOverlay && (
+          <div className="absolute inset-0 w-full h-full z-30">{drawingCanvasOverlay}</div>
+        )}
+
+        {/* ================= FREELY DRAGGABLE & RESIZABLE STICKERS LAYER ================= */}
+        {content.stickers?.map((stk) => {
+          const isSelected = interactive && selectedItemId === stk.id;
+          const stkOpacity = stk.opacity ?? 1;
+          const stkSize = stk.size || 28;
+          const maxPeek = Math.min(stkSize * 0.35, 12);
+          // Ensure element always stays anchored and touching the frame
+          const clampedX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - stkSize + maxPeek, stk.x)));
+          const clampedY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - stkSize + maxPeek, stk.y)));
+
+          return (
+            <div
+              key={stk.id}
+              onPointerDown={(e) => handleStickerPointerDown(e, stk)}
+              onClick={(e) => {
+                if (interactive) {
+                  e.stopPropagation();
+                  onSelectItem?.(stk.id);
+                }
+              }}
+              className={`absolute select-none group touch-none ${interactive ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                } ${isSelected ? 'z-40' : 'z-25'}`}
+              style={{
+                left: clampedX,
+                top: clampedY,
+                transform: `rotate(${stk.rotation}deg)`,
+                transformOrigin: 'center center',
+              }}
+            >
+              {/* The Sticker Emoji/Icon */}
+              <span
+                className="block leading-none drop-shadow-md select-none transition-transform"
+                style={{
+                  fontSize: stk.size,
+                  opacity: stkOpacity,
+                }}
+              >
+                {stk.emojiOrIcon}
+              </span>
 
               {/* SELECTION BOUNDING BOX & CONTROLS */}
               {isSelected && (
-                <div className="absolute -inset-2 border-2 border-dashed border-[#00F0FF] rounded-md pointer-events-auto">
-                  {!layer.locked && (
-                    <>
-                      {/* Delete Button (✕) on Top-Right Corner */}
-                      <button
-                        type="button"
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                          onDeleteLayer?.(layer.id);
-                        }}
-                        className="absolute -top-3.5 -right-3.5 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-lg hover:bg-rose-700 hover:scale-110 active:scale-95 transition-transform"
-                        title="Delete Layer"
-                      >
-                        ✕
-                      </button>
+                <div className="absolute -inset-2 border-2 border-dashed border-[#FF2E93] rounded-md pointer-events-auto">
+                  {/* Delete Button (✕) on Top-Left Corner with 44px Touch Target */}
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic(10);
+                      onDeleteSticker?.(stk.id);
+                    }}
+                    className="absolute -top-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
+                    title="Delete Sticker"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                      ✕
+                    </span>
+                  </button>
 
-                      {/* Resize Corner Handle on Bottom-Right */}
-                      <div
-                        onPointerDown={(e) => handleLayerResizeDown(e, layer)}
-                        className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-[#00F0FF] border-2 border-white flex items-center justify-center cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
-                        title="Drag to Resize Layer"
-                      >
-                        <div className="w-1.5 h-1.5 bg-black rounded-full" />
-                      </div>
+                  {/* Duplicate Button (⧉) on Bottom-Left Corner with 44px Touch Target */}
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic(10);
+                      onDuplicateSticker?.(stk);
+                    }}
+                    className="absolute -bottom-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
+                    title="Duplicate Sticker"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-[9px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
+                      ⧉
+                    </span>
+                  </button>
 
-                      {/* Rotate Handle on Top-Left */}
-                      <div
-                        onPointerDown={(e) => handleLayerRotateDown(e, layer)}
-                        className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center cursor-ew-resize shadow-md hover:scale-125 transition-transform"
-                        title="Drag to Rotate Layer"
-                      >
-                        <span className="text-[9px] font-bold text-black">↻</span>
-                      </div>
-                    </>
-                  )}
-
-                  {layer.locked && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-1.5 py-0.5 rounded text-[9px] font-bold shadow whitespace-nowrap">
-                      🔒 Locked
+                  {/* Rotate Handle on Top-Right Corner with 44px Touch Target */}
+                  <div
+                    onPointerDown={(e) => handleStickerRotateDown(e, stk)}
+                    className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-ew-resize z-50"
+                    title="Drag to Rotate"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                      <span className="text-[9px] font-bold text-black">↻</span>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Resize Corner Handle on Bottom-Right Corner with 44px Touch Target */}
+                  <div
+                    onPointerDown={(e) => handleStickerResizeDown(e, stk)}
+                    className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
+                    title="Drag to Resize"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
-
-        {/* ================= SLIM THEME-MATCHED BOTTOM AUDIO PLAYER ================= */}
-        {content.audio && !hideAudioBar && (
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayAudio(e);
-            }}
-            className={`absolute bottom-0 inset-x-0 z-35 h-7.5 px-3 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none rounded-b-[inherit] ${
-              isTransparent
-                ? 'bg-black/60 backdrop-blur-md border-t border-white/20 text-white'
-                : isLightCard
-                ? 'bg-slate-50/95 hover:bg-slate-100/95 border-t border-slate-200 text-slate-800'
-                : 'bg-black/40 hover:bg-black/50 backdrop-blur-xs border-t border-white/15 text-white'
-            }`}
-            title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-            role="button"
-            aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-          >
-            {/* Circular Spotify Green Play / Pause Button */}
-            <div
-              className={`w-5 h-5 shrink-0 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-xs transition-transform ${
-                isAudioPlaying ? 'ring-2 ring-[#1DB954]/50 scale-105' : 'hover:scale-105 active:scale-90'
-              }`}
-            >
-              {isAudioPlaying ? (
-                <svg className="w-2.5 h-2.5 fill-black" viewBox="0 0 24 24">
-                  <rect x="6" y="5" width="4" height="14" rx="1" />
-                  <rect x="14" y="5" width="4" height="14" rx="1" />
-                </svg>
-              ) : (
-                <svg className="w-2.5 h-2.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
-                  <polygon points="6 4 20 12 6 20 6 4" />
-                </svg>
-              )}
-            </div>
-
-            {/* Real-time Progress Bar & Mini Equalizer Wave */}
-            <div className="flex-1 flex items-center gap-1.5 h-full">
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!audioPlayerRef.current || !content.audio) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const clickX = e.clientX - rect.left;
-                  const seekPct = Math.max(0, Math.min(1, clickX / rect.width));
-                  const newTime = seekPct * totalAudioDuration;
-                  audioPlayerRef.current.currentTime = newTime;
-                  setAudioCurrentTime(newTime);
-                  setAudioProgress(seekPct * 100);
-                }}
-                className={`flex-1 h-1.5 rounded-full overflow-hidden relative cursor-pointer ${
-                  isLightCard ? 'bg-slate-200' : 'bg-white/20'
-                }`}
-                title="Tap to scrub audio"
-              >
-                <div
-                  className="h-full bg-[#1DB954] transition-[width] duration-100 ease-linear rounded-full"
-                  style={{ width: `${Math.min(100, Math.max(0, effectiveProgress))}%` }}
-                />
-              </div>
-              {isAudioPlaying && (
-                <div className="flex items-center gap-0.5 h-2.5 shrink-0">
-                  <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
-                  <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                  <span className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                </div>
-              )}
-            </div>
-
-            {/* Duration / Timer Label: "15 sec" in crisp modern typography */}
-            <span
-              className={`text-[10px] font-sans font-bold tracking-tight shrink-0 select-none ${
-                isLightCard ? 'text-slate-500' : 'text-slate-300'
-              }`}
-            >
-              {isAudioPlaying && audioCurrentTime > 0
-                ? `${Math.floor(audioCurrentTime)}s`
-                : `${Math.round(content.audio.duration || 15)} sec`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ================= DRAWING LAYER (Full Space Canvas Overlay) ================= */}
-      {content.drawingData && (
-        <img
-          src={content.drawingData}
-          alt="Spot Drawing"
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-25 select-none"
-          style={{ opacity: drawingOpacity }}
-          draggable={false}
-        />
-      )}
-
-      {/* ACTIVE DRAWING CANVAS OVERLAY IN STUDIO (BIG POP ONLY) */}
-      {drawingCanvasOverlay && (
-        <div className="absolute inset-0 w-full h-full z-30">{drawingCanvasOverlay}</div>
-      )}
-
-      {/* ================= FREELY DRAGGABLE & RESIZABLE STICKERS LAYER ================= */}
-      {content.stickers?.map((stk) => {
-        const isSelected = interactive && selectedItemId === stk.id;
-        const stkOpacity = stk.opacity ?? 1;
-        const stkSize = stk.size || 28;
-        const maxPeek = Math.min(stkSize * 0.35, 12);
-        // Ensure element always stays anchored and touching the frame
-        const clampedX = Math.round(Math.max(-maxPeek, Math.min(cardWidth - stkSize + maxPeek, stk.x)));
-        const clampedY = Math.round(Math.max(-maxPeek, Math.min(cardHeight - stkSize + maxPeek, stk.y)));
-
-        return (
-          <div
-            key={stk.id}
-            onPointerDown={(e) => handleStickerPointerDown(e, stk)}
-            onClick={(e) => {
-              if (interactive) {
-                e.stopPropagation();
-                onSelectItem?.(stk.id);
-              }
-            }}
-            className={`absolute select-none group touch-none ${
-              interactive ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
-            } ${isSelected ? 'z-40' : 'z-25'}`}
-            style={{
-              left: clampedX,
-              top: clampedY,
-              transform: `rotate(${stk.rotation}deg)`,
-              transformOrigin: 'center center',
-            }}
-          >
-            {/* The Sticker Emoji/Icon */}
-            <span
-              className="block leading-none drop-shadow-md select-none transition-transform"
-              style={{
-                fontSize: stk.size,
-                opacity: stkOpacity,
-              }}
-            >
-              {stk.emojiOrIcon}
-            </span>
-
-            {/* SELECTION BOUNDING BOX & CONTROLS */}
-            {isSelected && (
-              <div className="absolute -inset-2 border-2 border-dashed border-[#FF2E93] rounded-md pointer-events-auto">
-                {/* Delete Button (✕) on Top-Left Corner with 44px Touch Target */}
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    triggerHaptic(10);
-                    onDeleteSticker?.(stk.id);
-                  }}
-                  className="absolute -top-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
-                  title="Delete Sticker"
-                >
-                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
-                    ✕
-                  </span>
-                </button>
-
-                {/* Duplicate Button (⧉) on Bottom-Left Corner with 44px Touch Target */}
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    triggerHaptic(10);
-                    onDuplicateSticker?.(stk);
-                  }}
-                  className="absolute -bottom-5 -left-5 w-11 h-11 flex items-center justify-center cursor-pointer z-50"
-                  title="Duplicate Sticker"
-                >
-                  <span className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-[9px] font-bold shadow-md hover:scale-110 active:scale-95 transition-transform">
-                    ⧉
-                  </span>
-                </button>
-
-                {/* Rotate Handle on Top-Right Corner with 44px Touch Target */}
-                <div
-                  onPointerDown={(e) => handleStickerRotateDown(e, stk)}
-                  className="absolute -top-5 -right-5 w-11 h-11 flex items-center justify-center cursor-ew-resize z-50"
-                  title="Drag to Rotate"
-                >
-                  <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
-                    <span className="text-[9px] font-bold text-black">↻</span>
-                  </div>
-                </div>
-
-                {/* Resize Corner Handle on Bottom-Right Corner with 44px Touch Target */}
-                <div
-                  onPointerDown={(e) => handleStickerResizeDown(e, stk)}
-                  className="absolute -bottom-5 -right-5 w-11 h-11 flex items-center justify-center cursor-nwse-resize z-50"
-                  title="Drag to Resize"
-                >
-                  <div className="w-5 h-5 rounded-full bg-[#FF2E93] border-2 border-white flex items-center justify-center shadow-md hover:scale-125 transition-transform">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
       </div>
     </div>
   );

@@ -422,9 +422,9 @@ export const DEFAULT_ADJUSTMENTS: PhotoAdjustments = {
 };
 
 const DEFAULT_MINI_DRAFT: PlanDraft = {
-  headline: 'Good Vibes Only ♡',
-  secondaryText: 'Living life in full color.',
-  creatorName: 'Spot Pioneer',
+  headline: '',
+  secondaryText: '',
+  creatorName: '',
   fontFamily: 'Caveat',
   fontSize: 22,
   textColor: '#1E293B',
@@ -443,9 +443,9 @@ const DEFAULT_MINI_DRAFT: PlanDraft = {
 };
 
 const DEFAULT_BIG_DRAFT: PlanDraft = {
-  headline: 'My Memory ♡',
-  secondaryText: 'Living life in full color.',
-  creatorName: 'Spot Pioneer',
+  headline: '',
+  secondaryText: '',
+  creatorName: '',
   fontFamily: 'Caveat',
   fontSize: 22,
   textColor: '#0F172A',
@@ -500,7 +500,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         subtextX: editSpot.content?.subtextX,
         subtextY: editSpot.content?.subtextY,
         subtextSize: editSpot.content?.subtextSize,
-        creatorName: editSpot.creatorName || '',
+        creatorName: editSpot.content?.author !== undefined ? editSpot.content.author : (editSpot.creatorName || ''),
         authorX: editSpot.content?.authorX,
         authorY: editSpot.content?.authorY,
         authorSize: editSpot.content?.authorSize,
@@ -1371,7 +1371,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setStep('processing');
 
     try {
-      const resolvedCreator = currentDraft.creatorName?.trim() || 'Spot Pioneer';
+      const resolvedCreator = currentDraft.creatorName?.trim() || 'Spotter';
       const resolvedHeadline = currentDraft.headline ? currentDraft.headline.trim() : '';
       const resolvedAuthor = currentDraft.creatorName ? currentDraft.creatorName.trim() : '';
       // Ensure image is converted to optimized object storage asset before submitting
