@@ -341,9 +341,9 @@ describe('Audio Player Interactions & State Machine', () => {
     assert.equal(GlobalAudioController.activeInstance, null);
   });
 
-  test('SpotCard audio badge click stops event propagation to prevent triggering card click', () => {
+  test('SpotCard audio player click stops event propagation to prevent triggering card click', () => {
     let cardClickTriggered = false;
-    let audioBadgeClickTriggered = false;
+    let audioPlayerClickTriggered = false;
 
     const mockEvent = {
       propagationStopped: false,
@@ -352,10 +352,10 @@ describe('Audio Player Interactions & State Machine', () => {
       },
     };
 
-    // Handler simulating SpotCard.tsx line 82 & line 1204
-    const onAudioBadgeClick = (e: typeof mockEvent) => {
+    // Handler simulating audio player click propagation barrier
+    const onAudioPlayerClick = (e: typeof mockEvent) => {
       e.stopPropagation();
-      audioBadgeClickTriggered = true;
+      audioPlayerClickTriggered = true;
     };
 
     const onCardClick = () => {
@@ -364,10 +364,10 @@ describe('Audio Player Interactions & State Machine', () => {
       }
     };
 
-    onAudioBadgeClick(mockEvent);
+    onAudioPlayerClick(mockEvent);
     onCardClick();
 
-    assert.equal(audioBadgeClickTriggered, true);
+    assert.equal(audioPlayerClickTriggered, true);
     assert.equal(mockEvent.propagationStopped, true);
     assert.equal(cardClickTriggered, false); // Card modal did not open accidentally!
   });

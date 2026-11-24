@@ -1268,28 +1268,6 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
       {/* Frame Accents (top pins/tape) */}
       {!isTransparent && renderFrameAccents(content.frameStyle)}
 
-      {/* Audio Memory Indicator Badge (Big Pop Only) */}
-      {content.audio && !hideAudioBar && (
-        <button
-          type="button"
-          onClick={(e) => {
-            if (interactive) {
-              e.stopPropagation();
-              togglePlayAudio(e);
-            }
-          }}
-          className={`absolute top-2 right-2 z-35 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-md select-none transition-all ${
-            interactive ? 'cursor-pointer hover:border-[#FF2E93] hover:scale-105 active:scale-95' : 'pointer-events-none'
-          } ${isAudioPlaying ? 'border-[#1DB954] bg-[#1DB954]/25 text-[#1DB954] ring-1 ring-[#1DB954]/40' : ''}`}
-          title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-        >
-          <span className="text-[10px] leading-none">
-            {isAudioPlaying ? '⏸' : content.audio.type === 'voice' ? '🎙️' : '🎵'}
-          </span>
-          <span className="text-[8px] font-mono font-bold opacity-90">{Math.round(content.audio.duration || 0)}s</span>
-        </button>
-      )}
-
       {/* Spot Visual Contents Wrapper (Applies filters on Mini Pop / spots without uploaded photo) */}
       <div
         className="w-full h-full relative"
