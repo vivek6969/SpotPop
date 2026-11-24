@@ -224,3 +224,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, production build completed in 900ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-026]: Pop Reels Interaction Flicker Elimination & Audio Scrubber State Decoupling
+- **Priority**: P0 (User Experience & Visual Stability)
+- **Assigned Agent**: senior-engineer & performance-engineer
+- **Description**: Resolved "lights turn on and off quick" visual flickering during interactions in Pop Reels. Diagnosed double-nested blur GPU compositor texture invalidation caused by combining `backdrop-blur-xl` on the outer modal with `filter: blur(36px)` on the fullscreen ambient backdrop, which re-rendered on every state update. Decoupled audio playback and the timeline scrubber into an isolated memoized `<ReelsAudioPlayer>` component so `ontimeupdate` ticks (4-10Hz) update only the 30px scrubber progress bar without re-rendering the modal or its backdrop. Memoized `<AmbientReelsBackdrop>` to re-render strictly when switching slides. Removed screen-flashing `animate-ping` and excessive drop-shadows from `heartBurst`, replacing it with a smooth Instagram-style bounce scoped strictly to card double-taps. Removed accidental slide wrapper click triggers. Sanitized author watermark checks in `SpotCard.tsx` and `CreateSpotModal.tsx` so "Spot Pioneer" text never appears on cards.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing across all 11 suites, clean production build in 1.08s.
+- **Review Result**: Approved by CTO.
