@@ -353,6 +353,36 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                 BIG POP
               </span>
             )}
+            {!isOwner && isFollowing && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (isFollowingLoading) return;
+                  setIsFollowingLoading(true);
+                  try {
+                    await api.unfollowUser(spot.creatorName, authToken || undefined);
+                    setIsFollowing(false);
+                    setUnlockedLocally(false);
+                    try {
+                      const saved = localStorage.getItem('spotpop_followed_creators');
+                      const set = saved ? new Set(JSON.parse(saved)) : new Set();
+                      set.delete(spot.creatorName);
+                      localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+                    } catch {}
+                    onFollowChange?.(spot.creatorName, false);
+                  } catch (e) {
+                    console.warn('Unfollow error:', e);
+                  } finally {
+                    setIsFollowingLoading(false);
+                  }
+                }}
+                className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 transition-all cursor-pointer group flex items-center gap-1 shrink-0"
+                title="Click to unfollow this creator"
+              >
+                <span className="group-hover:hidden">Following ⌵</span>
+                <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}

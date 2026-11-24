@@ -1254,6 +1254,65 @@ class Database {
     };
   }
 
+  unfollowUser(followerInput: string, targetInput: string): {
+    success: boolean;
+    followStatus: FollowStatus;
+    isFollowing: boolean;
+    isRequested: boolean;
+    followersCount: number;
+    followingCount: number;
+  } {
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const targetId = this.normalizeUserKey(targetInput);
+
+    if (!followerId || !targetId) {
+      const counts = this.getFollowCounts(targetInput);
+      return {
+        success: false,
+        followStatus: 'not_following',
+        isFollowing: false,
+        isRequested: false,
+        followersCount: counts.followersCount,
+        followingCount: counts.followingCount,
+      };
+    }
+
+    const initialLen = this.data.follows.length;
+    this.data.follows = this.data.follows.filter(
+      f => !(
+        (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+      )
+    );
+
+    if (this.data.follows.length !== initialLen) {
+      // Sync counts back to User records
+      const counts = this.getFollowCounts(targetInput);
+      const tUser = this.data.users.find(u => u.id.toLowerCase() === targetId.toLowerCase() || u.username.toLowerCase() === targetInput.toLowerCase());
+      if (tUser) tUser.followersCount = counts.followersCount;
+
+      const fUser = this.data.users.find(u => u.id.toLowerCase() === followerId.toLowerCase() || u.username.toLowerCase() === followerInput.toLowerCase());
+      if (fUser) {
+        fUser.followingCount = this.data.follows.filter(
+          f => (f.status === 'accepted' || !f.status) &&
+               (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+        ).length;
+      }
+      this.save();
+    }
+
+    const counts = this.getFollowCounts(targetInput);
+    return {
+      success: true,
+      followStatus: 'not_following',
+      isFollowing: false,
+      isRequested: false,
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount,
+    };
+  }
+
   getFollowStatus(followerInput?: string, targetInput?: string): FollowStatus {
     if (!followerInput || !targetInput) return 'not_following';
     this.data.follows = this.data.follows || [];

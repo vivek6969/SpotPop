@@ -46,6 +46,8 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [networkUsers, setNetworkUsers] = useState<Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>>([]);
   const [networkSearch, setNetworkSearch] = useState('');
   const [networkLoading, setNetworkLoading] = useState(false);
+  const [unfollowedUsernames, setUnfollowedUsernames] = useState<Set<string>>(new Set());
+  const [unfollowConfirmUser, setUnfollowConfirmUser] = useState<{ username: string; displayName?: string; avatarUrl?: string } | null>(null);
 
   // Pending Follow Requests (when viewing self on Instagram)
   const [pendingRequests, setPendingRequests] = useState<FollowRequestItem[]>([]);
@@ -157,7 +159,76 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     }
   }, [isSelf, profileData?.user?.username]);
 
-  // Toggle Follow / Requested / Unfollow
+  // Execute explicit unfollow
+  const executeUnfollow = async (targetUsername: string) => {
+    setFollowLoading(true);
+    setFollowStatus('not_following');
+    setFollowersCount(prev => Math.max(0, prev - 1));
+
+    try {
+      const res = await api.unfollowUser(targetUsername, authToken || undefined);
+      setFollowStatus(res.followStatus);
+      setFollowersCount(res.followersCount);
+      setFollowingCount(res.followingCount);
+      try {
+        const saved = localStorage.getItem('spotpop_followed_creators');
+        const set = saved ? new Set(JSON.parse(saved)) : new Set();
+        set.delete(targetUsername);
+        localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+      } catch {}
+      // Refresh profile to reflect locked state if target account is private
+      fetchProfile();
+    } catch {
+      setFollowStatus('accepted');
+      setFollowersCount(prev => prev + 1);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  // Unfollow user directly from Network Modal list
+  const handleUnfollowInNetwork = async (targetUsername: string) => {
+    try {
+      await api.unfollowUser(targetUsername, authToken || undefined);
+      setUnfollowedUsernames(prev => new Set(prev).add(targetUsername.toLowerCase()));
+      if (isSelf) {
+        setFollowingCount(prev => Math.max(0, prev - 1));
+      }
+      try {
+        const saved = localStorage.getItem('spotpop_followed_creators');
+        const set = saved ? new Set(JSON.parse(saved)) : new Set();
+        set.delete(targetUsername);
+        localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+      } catch {}
+    } catch (e: any) {
+      alert(e.message || 'Failed to unfollow user');
+    }
+  };
+
+  // Re-follow user directly from Network Modal list
+  const handleRefollowInNetwork = async (targetUsername: string) => {
+    try {
+      const res = await api.followUser(targetUsername, authToken || undefined);
+      setUnfollowedUsernames(prev => {
+        const next = new Set(prev);
+        next.delete(targetUsername.toLowerCase());
+        return next;
+      });
+      if (isSelf && res.followStatus === 'accepted') {
+        setFollowingCount(prev => prev + 1);
+      }
+      if (res.followStatus === 'accepted') {
+        try {
+          const saved = localStorage.getItem('spotpop_followed_creators');
+          const set = saved ? new Set(JSON.parse(saved)) : new Set();
+          set.add(targetUsername);
+          localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+        } catch {}
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to follow user');
+    }
+  };
   const handleToggleFollow = async () => {
     if (!profileData?.user?.username || followLoading) return;
     setFollowLoading(true);
@@ -547,20 +618,34 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                   <>
                     {/* Instagram Follow / Requested / Following Button */}
                     <button
-                      onClick={handleToggleFollow}
+                      onClick={() => {
+                        if (followStatus === 'accepted') {
+                          setUnfollowConfirmUser({
+                            username: profileData.user.username,
+                            displayName: profileData.user.displayName,
+                            avatarUrl: profileData.user.avatarUrl,
+                          });
+                        } else {
+                          handleToggleFollow();
+                        }
+                      }}
                       disabled={followLoading}
                       className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all text-center cursor-pointer shadow-sm flex items-center justify-center gap-1.5 ${
                         followStatus === 'accepted'
-                          ? 'bg-white/10 hover:bg-rose-500/20 text-white border border-white/20 hover:border-rose-500/40'
+                          ? 'bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-400 border border-white/20 hover:border-rose-500/40 group'
                           : followStatus === 'pending'
                           ? 'bg-white/15 hover:bg-white/25 text-amber-300 border border-amber-400/40'
                           : 'bg-[#0095F6] hover:bg-[#1877F2] text-white active:scale-98'
                       }`}
+                      title={followStatus === 'accepted' ? 'Click to unfollow' : undefined}
                     >
                       {followLoading ? (
                         <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       ) : followStatus === 'accepted' ? (
-                        <span>Following ⌵</span>
+                        <>
+                          <span className="group-hover:hidden">Following ⌵</span>
+                          <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                        </>
                       ) : followStatus === 'pending' ? (
                         <span>Requested ⏳</span>
                       ) : (
@@ -1017,9 +1102,83 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                             Remove
                           </button>
                         )}
+
+                        {/* If viewing Following list: Unfollow Button */}
+                        {networkModalType === 'following' && (
+                          unfollowedUsernames.has((u.username || u.id).toLowerCase()) ? (
+                            <button
+                              type="button"
+                              onClick={() => handleRefollowInNetwork(u.username || u.id)}
+                              className="px-3 py-1 rounded-lg bg-[#0095F6] hover:bg-[#1877F2] text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm"
+                            >
+                              + Follow
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleUnfollowInNetwork(u.username || u.id)}
+                              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 text-[11px] font-semibold transition-all cursor-pointer group flex items-center gap-1"
+                              title="Click to unfollow this creator"
+                            >
+                              <span className="group-hover:hidden">Following ⌵</span>
+                              <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                            </button>
+                          )
+                        )}
                       </div>
                     ))
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Instagram Unfollow Confirmation Modal Sheet */}
+        {unfollowConfirmUser && (
+          <div
+            className="fixed inset-0 z-70 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+            onClick={() => setUnfollowConfirmUser(null)}
+          >
+            <div
+              className="bg-[#181B2A] border border-white/15 rounded-3xl p-6 w-full max-w-xs text-center space-y-4 shadow-2xl animate-scale-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 rounded-full mx-auto p-0.5 bg-gradient-to-tr from-[#FF2E93] to-purple-600 overflow-hidden shadow-lg">
+                {unfollowConfirmUser.avatarUrl ? (
+                  <img src={unfollowConfirmUser.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <div className="w-full h-full bg-[#12141F] rounded-full flex items-center justify-center text-xl font-bold text-white">
+                    {unfollowConfirmUser.displayName?.charAt(0).toUpperCase() || '@'}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-white">Unfollow @{unfollowConfirmUser.username}?</h4>
+                <p className="text-xs text-slate-400 mt-1">
+                  They won&apos;t be notified that you unfollowed them.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const target = unfollowConfirmUser.username;
+                    setUnfollowConfirmUser(null);
+                    await executeUnfollow(target);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Unfollow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUnfollowConfirmUser(null)}
+                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

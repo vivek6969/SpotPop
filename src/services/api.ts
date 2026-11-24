@@ -433,6 +433,22 @@ export const api = {
     return res.json();
   },
 
+  async unfollowUser(username: string, token?: string): Promise<FollowResponse> {
+    const cleanUsername = username.replace(/^@/, '');
+    const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(cleanUsername)}/unfollow`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to unfollow user');
+    }
+    return res.json();
+  },
+
   async getFollowRequests(username: string, token?: string): Promise<{ requests: FollowRequestItem[]; count: number }> {
     const headers: Record<string, string> = { ...getClientHeaders() };
     if (token) headers['Authorization'] = `Bearer ${token}`;

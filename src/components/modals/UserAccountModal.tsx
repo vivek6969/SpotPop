@@ -902,6 +902,35 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                         Remove
                       </button>
                     )}
+
+                    {networkModalType === 'following' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const target = u.username || u.id;
+                            await api.unfollowUser(target);
+                            setNetworkUsers(prev => prev.filter(x => x.id !== u.id && x.username !== u.username));
+                            setNetworkCounts(prev => ({ ...prev, following: Math.max(0, prev.following - 1) }));
+                            try {
+                              const saved = localStorage.getItem('spotpop_followed_creators');
+                              const set = saved ? new Set(JSON.parse(saved)) : new Set();
+                              set.delete(target);
+                              if (u.username) set.delete(u.username);
+                              if (u.id) set.delete(u.id);
+                              localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+                            } catch {}
+                          } catch (e: any) {
+                            alert(e.message || 'Failed to unfollow user');
+                          }
+                        }}
+                        className="px-3 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 text-[10px] font-semibold transition-all cursor-pointer group flex items-center gap-1"
+                        title="Click to unfollow this creator"
+                      >
+                        <span className="group-hover:hidden">Following ⌵</span>
+                        <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                      </button>
+                    )}
                   </div>
                 ))
               )}

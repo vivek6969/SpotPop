@@ -767,6 +767,44 @@ apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
   }
 });
 
+// POST / DELETE explicit unfollow user (idempotent unfollow)
+const handleUnfollow = (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const authUser = getAuthenticatedUser(req);
+    const viewerId =
+      authUser?.id ||
+      authUser?.username ||
+      (req.headers['x-viewer-id'] as string) ||
+      (req.body.viewerId as string) ||
+      'v_guest_visitor';
+
+    const result = db.unfollowUser(viewerId, targetUsername);
+
+    // Broadcast SSE update
+    broadcastSpotEvent('user_follow_updated', {
+      targetUsername,
+      followerId: viewerId,
+      followStatus: 'not_following',
+      isFollowing: false,
+      isRequested: false,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+apiRouter.post('/users/:username/unfollow', handleUnfollow);
+apiRouter.delete('/users/:username/follow', handleUnfollow);
+
 // GET pending follow requests for a user
 apiRouter.get('/users/:username/follow-requests', (req: Request, res: Response) => {
   try {

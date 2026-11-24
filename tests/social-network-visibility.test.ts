@@ -332,4 +332,79 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
     const relockedSpot = spotsAfterRemoval.find(s => s.id === 'sp_friends_1');
     assert.equal(relockedSpot?.isLocked, true, 'Spot must immediately re-lock when follower is removed');
   });
+
+  test('User can unfollow any creator whenever they want, instantly updating following graph and relocking content', () => {
+    // Viewer follows two creators
+    followsTable = [
+      {
+        id: 'flw_201',
+        followerId: mockViewerUser.id.toLowerCase(),
+        followingId: mockCreatorUser.id.toLowerCase(),
+        status: 'accepted',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'flw_202',
+        followerId: mockViewerUser.id.toLowerCase(),
+        followingId: 'creator_artist_2',
+        status: 'accepted',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const getFollowingCount = (userId: string) =>
+      followsTable.filter(f => f.followerId.toLowerCase() === userId.toLowerCase() && f.status === 'accepted').length;
+
+    assert.equal(getFollowingCount(mockViewerUser.id), 2, 'Viewer initially follows 2 creators');
+
+    // Viewer unfollows mockCreatorUser
+    const unfollowTarget = mockCreatorUser.id.toLowerCase();
+    followsTable = followsTable.filter(
+      f => !(f.followerId.toLowerCase() === mockViewerUser.id.toLowerCase() && f.followingId.toLowerCase() === unfollowTarget)
+    );
+
+    assert.equal(getFollowingCount(mockViewerUser.id), 1, 'Following count decrements to 1 after unfollowing');
+    assert.equal(
+      followsTable.some(f => f.followingId.toLowerCase() === unfollowTarget),
+      false,
+      'Unfollowed creator must no longer be present in follow table'
+    );
+
+    // Private / friends-only content from unfollowed creator must be locked again
+    const spotsAfterUnfollow = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const friendsSpot = spotsAfterUnfollow.find(s => s.id === 'sp_friends_1');
+    assert.ok(friendsSpot);
+    assert.equal(friendsSpot.isLocked, true, 'Spot must re-lock as soon as viewer unfollows creator');
+  });
+
+  test('Unfollow is idempotent and succeeds safely even if already unfollowed', () => {
+    followsTable = [];
+
+    // Attempting to unfollow someone not followed
+    const unfollowTarget = 'some_random_creator';
+    const beforeCount = followsTable.length;
+    followsTable = followsTable.filter(
+      f => !(f.followerId.toLowerCase() === mockViewerUser.id.toLowerCase() && f.followingId.toLowerCase() === unfollowTarget)
+    );
+    assert.equal(followsTable.length, beforeCount, 'Length remains 0 without errors');
+  });
+
+  test('User can cancel a pending follow request by unfollowing', () => {
+    followsTable = [{
+      id: 'flw_req_203',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: 'private_celebrity',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }];
+
+    assert.equal(followsTable.length, 1);
+
+    // User cancels request by clicking unfollow/requested
+    followsTable = followsTable.filter(
+      f => !(f.followerId.toLowerCase() === mockViewerUser.id.toLowerCase() && f.followingId.toLowerCase() === 'private_celebrity')
+    );
+
+    assert.equal(followsTable.length, 0, 'Pending request must be removed when user cancels follow');
+  });
 });

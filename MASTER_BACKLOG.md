@@ -274,3 +274,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 77/77 tests passing across 12 test suites (`tests/instagram-profile-username.test.ts`), 0 TypeScript compiler errors, clean Vite production build in 830ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-031]: Universal Unfollow Capabilities across Following Lists, Profile Sheet, and Spot Modal
+- **Priority**: P0 (User Freedom & Social Graph Autonomy)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Enabled users to unfollow any creator whenever they want across the application. Added dedicated idempotent `db.unfollowUser()` in `server/database.ts` and explicit endpoints `POST /api/users/:username/unfollow` and `DELETE /api/users/:username/follow` with real-time SSE event broadcasts. Added `api.unfollowUser()` in frontend client. In `CreatorProfileModal.tsx`, added interactive `Following ⌵` buttons next to each creator in the Following network list (hovering turns red `Unfollow`, one tap immediately unfollows and decrements following count with ability to re-follow). Added Instagram-style Unfollow Confirmation Modal Sheet (`Unfollow @username?`) when clicking `Following ⌵` on creator profiles. In `UserAccountModal.tsx`, added `Following ⌵` / `Unfollow` buttons in the user's Following list. In `SpotDetailModal.tsx`, added a `Following ⌵` / `Unfollow` pill next to the creator name in the modal header allowing immediate unfollow. Unfollowing instantly re-locks private/friends-only spots.
+- **Status**: Completed
+- **Test Evidence**: 80/80 passing tests across 12 test suites (`tests/social-network-visibility.test.ts`), 0 TypeScript compiler errors, clean production build in 940ms.
+- **Review Result**: Approved by CTO.
