@@ -1418,6 +1418,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         shape: currentDraft.shape,
         background: currentDraft.backgroundColor,
         creatorName: resolvedCreator,
+        allowComments: currentDraft.allowComments ?? true,
         content: {
           headline: resolvedHeadline,
           headlineX: currentDraft.headlineX,
@@ -1453,6 +1454,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           textStroke: currentDraft.textStroke,
           textGlow: currentDraft.textGlow,
           letterSpacing: currentDraft.letterSpacing,
+          tags: currentDraft.tags,
           audio: finalAudio,
         },
       };
@@ -1465,6 +1467,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             shape: currentDraft.shape,
             background: currentDraft.backgroundColor,
             creatorName: resolvedCreator,
+            allowComments: currentDraft.allowComments ?? true,
             content: draftSpot.content,
           },
           authToken || undefined

@@ -269,6 +269,21 @@ apiRouter.post('/spots/claim-preview', (req: Request, res: Response) => {
   }
 });
 
+// POST record view event
+apiRouter.post('/spots/:id/view', (req: Request, res: Response) => {
+  try {
+    const updated = db.incrementSpotViews(req.params.id);
+    if (updated) {
+      broadcastSpotEvent('spot_updated', { spot: updated });
+      res.json({ success: true, viewsCount: updated.viewsCount });
+    } else {
+      res.status(404).json({ error: 'Spot not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST record share event
 apiRouter.post('/spots/:id/share', (req: Request, res: Response) => {
   try {
@@ -288,6 +303,84 @@ apiRouter.post('/spots/:id/like', (req: Request, res: Response) => {
     if (updatedSpot) {
       broadcastSpotEvent('spot_updated', { spot: updatedSpot });
       res.json({ success: true, likesCount: updatedSpot.likesCount || 0, spot: updatedSpot });
+    } else {
+      res.status(404).json({ error: 'Spot not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET comments for a spot
+apiRouter.get('/spots/:id/comments', (req: Request, res: Response) => {
+  try {
+    const comments = db.getCommentsBySpotId(req.params.id);
+    res.json({ comments });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST add comment or reply
+apiRouter.post('/spots/:id/comments', (req: Request, res: Response) => {
+  try {
+    const { authorName, text, replyToId, authorAvatar } = req.body || {};
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'Comment text cannot be empty' });
+    }
+
+    const spot = db.getSpotById(req.params.id);
+    if (!spot) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+
+    if (spot.allowComments === false) {
+      return res.status(403).json({ error: 'Comments are turned off for this Pop' });
+    }
+
+    const comment = db.addComment(req.params.id, {
+      authorName: authorName || 'Spotter',
+      text,
+      replyToId,
+      authorAvatar,
+    });
+
+    const updatedSpot = db.getSpotById(req.params.id);
+    if (updatedSpot) {
+      broadcastSpotEvent('spot_updated', { spot: updatedSpot });
+    }
+
+    res.json({ success: true, comment });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST like a comment
+apiRouter.post('/comments/:id/like', (req: Request, res: Response) => {
+  try {
+    const updated = db.likeComment(req.params.id);
+    if (updated) {
+      res.json({ success: true, likesCount: updated.likesCount });
+    } else {
+      res.status(404).json({ error: 'Comment not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST react with emoji to a spot
+apiRouter.post('/spots/:id/react', (req: Request, res: Response) => {
+  try {
+    const { emoji } = req.body || {};
+    if (!emoji || typeof emoji !== 'string') {
+      return res.status(400).json({ error: 'Valid emoji required' });
+    }
+    const result = db.addReaction(req.params.id, emoji.trim());
+    if (result) {
+      broadcastSpotEvent('spot_updated', { spot: result.spot });
+      res.json({ success: true, reactions: result.reactions });
     } else {
       res.status(404).json({ error: 'Spot not found' });
     }

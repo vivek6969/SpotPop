@@ -282,6 +282,7 @@ export interface SpotContent {
   frameStyle: FrameStyle;
   badge?: string;
   tags?: string[];
+  description?: string;
   audio?: SpotAudio; // Optional voice note or sound clip (Big Pop only)
 }
 
@@ -306,7 +307,22 @@ export interface Spot {
   viewsCount: number;
   sharesCount: number;
   likesCount?: number;
+  allowComments?: boolean;
+  commentsCount?: number;
+  reactions?: Record<string, number>;
   orderId?: string;
+}
+
+export interface Comment {
+  id: string;
+  spotId: string;
+  authorName: string;
+  authorAvatar?: string;
+  text: string;
+  createdAt: string;
+  likesCount?: number;
+  replyToId?: string;
+  replies?: Comment[];
 }
 
 export interface User {

@@ -74,6 +74,8 @@ export interface PlanDraft {
   letterSpacing?: number;
   lineHeight?: number;
   customFontUrl?: string;
+  allowComments?: boolean;
+  tags?: string[];
   audioDraft?: AudioDraft | null;
   audio?: SpotAudio | null;
 }

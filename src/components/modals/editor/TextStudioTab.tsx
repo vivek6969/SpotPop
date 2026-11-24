@@ -150,6 +150,58 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             className="w-full bg-transparent text-white text-xs font-medium focus:outline-none placeholder:text-slate-500"
           />
         </div>
+
+        {/* Tags & Community Hashtags */}
+        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 focus-within:border-purple-400 transition-colors">
+          <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>🏷️</span>
+              <span>Tags & Hashtags (Optional)</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">e.g. #art #vibes</span>
+          </label>
+          <input
+            type="text"
+            value={(currentDraft.tags || []).join(' ')}
+            onChange={(e) => {
+              const tagsArray = e.target.value
+                .split(/[\s,]+/)
+                .filter(t => t.length > 0)
+                .map(t => (t.startsWith('#') ? t : `#${t}`));
+              updateDraft({ tags: tagsArray });
+            }}
+            placeholder="#sunset #photo #vibes #music"
+            className="w-full bg-transparent text-purple-300 text-xs font-mono font-medium focus:outline-none placeholder:text-slate-500"
+          />
+        </div>
+
+        {/* Allow Comments / Hide Comments Toggle */}
+        <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between transition-colors">
+          <div className="space-y-0.5">
+            <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
+              <span>💬</span>
+              <span>Allow Comments on Pop</span>
+            </div>
+            <p className="text-[10px] text-slate-400">
+              {currentDraft.allowComments ?? true
+                ? 'Anyone can view and post comments & replies'
+                : 'Comments are turned off and hidden on this Pop'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateDraft({ allowComments: !(currentDraft.allowComments ?? true) })}
+            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+              (currentDraft.allowComments ?? true) ? 'bg-[#FF2E93]' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                (currentDraft.allowComments ?? true) ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Sub-Tool Strip: Modern Picsart horizontal scrolling row */}

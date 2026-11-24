@@ -143,8 +143,74 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
   });
 
   test('Reels stage layout maintains dead-center alignment classes', () => {
-    const centerStageClasses = 'absolute inset-0 flex items-center justify-center pointer-events-none z-10 px-4';
+    const centerStageClasses = 'absolute inset-0 flex items-center justify-center pointer-events-none z-10';
     assert.ok(centerStageClasses.includes('absolute inset-0'));
     assert.ok(centerStageClasses.includes('flex items-center justify-center'));
+  });
+
+  test('Comments & replies nesting engine structures threads accurately', () => {
+    interface TestComment {
+      id: string;
+      spotId: string;
+      text: string;
+      replyToId?: string;
+      replies?: TestComment[];
+    }
+
+    const comments: TestComment[] = [
+      { id: 'c1', spotId: 's1', text: 'Love this pop! @doraemon #cute' },
+      { id: 'c2', spotId: 's1', text: 'Thank you so much!', replyToId: 'c1' },
+      { id: 'c3', spotId: 's1', text: 'Another cool thought' },
+    ];
+
+    const rootComments = comments.filter(c => !c.replyToId);
+    const structured = rootComments.map(r => ({
+      ...r,
+      replies: comments.filter(c => c.replyToId === r.id),
+    }));
+
+    assert.equal(structured.length, 2);
+    assert.equal(structured[0].id, 'c1');
+    assert.equal(structured[0].replies?.length, 1);
+    assert.equal(structured[0].replies?.[0].id, 'c2');
+    assert.equal(structured[1].id, 'c3');
+    assert.equal(structured[1].replies?.length, 0);
+  });
+
+  test('AllowComments flag turns off comment submission when false', () => {
+    const spotWithComments = { id: 's1', allowComments: true };
+    const spotDisabledComments = { id: 's2', allowComments: false };
+
+    const canComment = (spot: { allowComments?: boolean }) => {
+      return spot.allowComments !== false;
+    };
+
+    assert.equal(canComment(spotWithComments), true);
+    assert.equal(canComment(spotDisabledComments), false);
+  });
+
+  test('Pop React emoji engine increments count per emoji', () => {
+    const reactions: Record<string, number> = {};
+
+    const addReaction = (emoji: string) => {
+      reactions[emoji] = (reactions[emoji] || 0) + 1;
+      return reactions[emoji];
+    };
+
+    assert.equal(addReaction('🔥'), 1);
+    assert.equal(addReaction('🔥'), 2);
+    assert.equal(addReaction('❤️'), 1);
+    assert.deepEqual(reactions, { '🔥': 2, '❤️': 1 });
+  });
+
+  test('Mention and hashtag tokenizer identifies tags accurately', () => {
+    const text = 'Hey @doraemon checkout this #dusk vibe on #spotpop';
+    const tokens = text.split(/(\s+)/);
+
+    const mentions = tokens.filter(t => t.startsWith('@'));
+    const hashtags = tokens.filter(t => t.startsWith('#'));
+
+    assert.deepEqual(mentions, ['@doraemon']);
+    assert.deepEqual(hashtags, ['#dusk', '#spotpop']);
   });
 });

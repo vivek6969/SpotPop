@@ -1,4 +1,4 @@
-import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationReport } from '../types';
+import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationReport, Comment } from '../types';
 
 const API_BASE = '/api';
 
@@ -142,6 +142,76 @@ export const api = {
       }
     } catch (e) {
       console.warn('Could not record like event', e);
+    }
+    return null;
+  },
+
+  async recordView(spotId: string): Promise<{ success: boolean; viewsCount: number } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/spots/${spotId}/view`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Could not record view event', e);
+    }
+    return null;
+  },
+
+  async getComments(spotId: string): Promise<Comment[]> {
+    try {
+      const res = await fetch(`${API_BASE}/spots/${spotId}/comments`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.comments || [];
+      }
+    } catch (e) {
+      console.warn('Could not fetch comments', e);
+    }
+    return [];
+  },
+
+  async addComment(spotId: string, text: string, replyToId?: string, authorName?: string, authorAvatar?: string): Promise<Comment | null> {
+    try {
+      const res = await fetch(`${API_BASE}/spots/${spotId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, replyToId, authorName, authorAvatar }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.comment || null;
+      }
+    } catch (e) {
+      console.warn('Could not post comment', e);
+    }
+    return null;
+  },
+
+  async likeComment(commentId: string): Promise<number | null> {
+    try {
+      const res = await fetch(`${API_BASE}/comments/${commentId}/like`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.likesCount;
+      }
+    } catch (e) {
+      console.warn('Could not like comment', e);
+    }
+    return null;
+  },
+
+  async sendReaction(spotId: string, emoji: string): Promise<Record<string, number> | null> {
+    try {
+      const res = await fetch(`${API_BASE}/spots/${spotId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.reactions || null;
+      }
+    } catch (e) {
+      console.warn('Could not send reaction', e);
     }
     return null;
   },

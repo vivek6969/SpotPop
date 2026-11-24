@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier } from '../src/types/index.ts';
+import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier, Comment } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
 import { SpatialIndex } from './spatialIndex.ts';
 import { imageService } from './imageService.ts';
@@ -12,6 +12,7 @@ interface DatabaseSchema {
   orders: Order[];
   reports: ModerationReport[];
   activity: ActivityEvent[];
+  comments?: Comment[];
   systemSettings: {
     maintenanceMode: boolean;
     allowNewClaims: boolean;
@@ -705,7 +706,9 @@ class Database {
     try {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        parsed.comments = parsed.comments || [];
+        return parsed;
       }
     } catch (e) {
       console.warn('Error reading db file, using fresh seeds', e);
@@ -716,6 +719,7 @@ class Database {
       orders: [],
       reports: [],
       activity: INITIAL_ACTIVITY,
+      comments: [],
       systemSettings: {
         maintenanceMode: false,
         allowNewClaims: true,
@@ -747,6 +751,10 @@ class Database {
 
   getSpotByIdOrSlug(idOrSlug: string): Spot | undefined {
     return this.data.spots.find(s => s.id === idOrSlug || s.slug === idOrSlug);
+  }
+
+  getSpotById(id: string): Spot | undefined {
+    return this.data.spots.find(s => s.id === id);
   }
 
   addSpot(spot: Spot): Spot {
@@ -888,12 +896,14 @@ class Database {
     this.spatialIndex.releaseReservation(id);
   }
 
-  incrementSpotViews(id: string) {
+  incrementSpotViews(id: string): Spot | null {
     const spot = this.data.spots.find(s => s.id === id);
     if (spot) {
       spot.viewsCount = (spot.viewsCount || 0) + 1;
       this.save();
+      return spot;
     }
+    return null;
   }
 
   incrementSpotShares(id: string) {
@@ -932,6 +942,60 @@ class Database {
       }
       this.save();
       return spot;
+    }
+    return null;
+  }
+
+  getCommentsBySpotId(spotId: string): Comment[] {
+    const all = this.data.comments || [];
+    const spotComments = all.filter(c => c.spotId === spotId);
+    const rootComments = spotComments.filter(c => !c.replyToId);
+    return rootComments.map(root => ({
+      ...root,
+      replies: spotComments.filter(c => c.replyToId === root.id),
+    }));
+  }
+
+  addComment(spotId: string, data: { authorName: string; text: string; replyToId?: string; authorAvatar?: string }): Comment {
+    this.data.comments = this.data.comments || [];
+    const comment: Comment = {
+      id: `cmt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      spotId,
+      authorName: data.authorName || 'Spotter',
+      authorAvatar: data.authorAvatar,
+      text: data.text.trim(),
+      createdAt: new Date().toISOString(),
+      likesCount: 0,
+      replyToId: data.replyToId,
+    };
+    this.data.comments.push(comment);
+
+    const spot = this.data.spots.find(s => s.id === spotId);
+    if (spot) {
+      spot.commentsCount = (spot.commentsCount || 0) + 1;
+    }
+    this.save();
+    return comment;
+  }
+
+  likeComment(commentId: string): Comment | null {
+    this.data.comments = this.data.comments || [];
+    const comment = this.data.comments.find(c => c.id === commentId);
+    if (comment) {
+      comment.likesCount = (comment.likesCount || 0) + 1;
+      this.save();
+      return comment;
+    }
+    return null;
+  }
+
+  addReaction(spotId: string, emoji: string): { spot: Spot; reactions: Record<string, number> } | null {
+    const spot = this.data.spots.find(s => s.id === spotId);
+    if (spot) {
+      spot.reactions = spot.reactions || {};
+      spot.reactions[emoji] = (spot.reactions[emoji] || 0) + 1;
+      this.save();
+      return { spot, reactions: spot.reactions };
     }
     return null;
   }
