@@ -529,6 +529,9 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         textStroke: editSpot.content?.textStroke,
         textGlow: editSpot.content?.textGlow,
         letterSpacing: editSpot.content?.letterSpacing || 0,
+        allowComments: editSpot.allowComments ?? true,
+        visibility: editSpot.visibility || 'public',
+        tags: editSpot.content?.tags || [],
         audioDraft: editSpot.content?.audio
           ? {
               previewUrl: editSpot.content.audio.url,
@@ -1419,6 +1422,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         background: currentDraft.backgroundColor,
         creatorName: resolvedCreator,
         allowComments: currentDraft.allowComments ?? true,
+        visibility: currentDraft.visibility || 'public',
         content: {
           headline: resolvedHeadline,
           headlineX: currentDraft.headlineX,
@@ -1468,6 +1472,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             background: currentDraft.backgroundColor,
             creatorName: resolvedCreator,
             allowComments: currentDraft.allowComments ?? true,
+            visibility: currentDraft.visibility || 'public',
             content: draftSpot.content,
           },
           authToken || undefined

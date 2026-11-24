@@ -303,6 +303,8 @@ export interface Spot {
   content: SpotContent;
   createdAt: string;
   status: 'published' | 'hidden' | 'unlisted';
+  visibility?: 'public' | 'friends_only' | 'private';
+  isLocked?: boolean;
   moderationStatus: 'approved' | 'flagged' | 'under_review' | 'removed';
   viewsCount: number;
   sharesCount: number;
@@ -325,6 +327,13 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export interface FollowRelation {
+  id: string;
+  followerId: string;
+  followingId: string;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -335,6 +344,8 @@ export interface User {
   role: 'user' | 'admin';
   createdAt: string;
   ownedSpotIds: string[];
+  followersCount?: number;
+  followingCount?: number;
 }
 
 export interface Order {

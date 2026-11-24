@@ -16,6 +16,7 @@ export interface SpotCardProps {
   // Interactive Editor Props
   interactive?: boolean;
   hideAudioBar?: boolean;
+  isLocked?: boolean;
   selectedItemId?: string | null;
   onSelectItem?: (id: string | null) => void;
   onUpdateSticker?: (id: string, updates: Partial<StickerItem>) => void;
@@ -50,6 +51,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   scale = 1,
   interactive = false,
   hideAudioBar = false,
+  isLocked = false,
   selectedItemId = null,
   onSelectItem,
   onUpdateSticker,
@@ -1267,6 +1269,17 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
     >
       {/* Frame Accents (top pins/tape) */}
       {!isTransparent && renderFrameAccents(content.frameStyle)}
+
+      {/* Friends-Only Locked State Overlay */}
+      {isLocked && (
+        <div className="absolute inset-0 z-35 rounded-[inherit] bg-black/65 backdrop-blur-sm flex flex-col items-center justify-center p-3 text-center pointer-events-auto">
+          <div className="w-9 h-9 rounded-full bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-lg mb-1 shadow-md">
+            🔒
+          </div>
+          <span className="text-[11px] font-bold text-white drop-shadow">Friends Only</span>
+          <span className="text-[9px] text-white/70 mt-0.5">Follow @{creatorName} to unlock</span>
+        </div>
+      )}
 
       {/* Spot Visual Contents Wrapper (Applies filters on Mini Pop / spots without uploaded photo) */}
       <div

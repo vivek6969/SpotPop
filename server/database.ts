@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier, Comment } from '../src/types/index.ts';
+import type { Spot, User, Order, ModerationReport, ActivityEvent, CanvasStats, ProductTier, Comment, FollowRelation } from '../src/types/index.ts';
 import { PRODUCTS } from '../src/types/index.ts';
 import { SpatialIndex } from './spatialIndex.ts';
 import { imageService } from './imageService.ts';
@@ -13,6 +13,7 @@ interface DatabaseSchema {
   reports: ModerationReport[];
   activity: ActivityEvent[];
   comments?: Comment[];
+  follows?: FollowRelation[];
   systemSettings: {
     maintenanceMode: boolean;
     allowNewClaims: boolean;
@@ -708,6 +709,7 @@ class Database {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         parsed.comments = parsed.comments || [];
+        parsed.follows = parsed.follows || [];
         return parsed;
       }
     } catch (e) {
@@ -720,6 +722,7 @@ class Database {
       reports: [],
       activity: INITIAL_ACTIVITY,
       comments: [],
+      follows: [],
       systemSettings: {
         maintenanceMode: false,
         allowNewClaims: true,
@@ -741,8 +744,38 @@ class Database {
   }
 
   // Spots
-  getSpots(): Spot[] {
-    return this.data.spots.filter(s => s.status !== 'hidden');
+  getSpots(viewerIdOrName?: string): Spot[] {
+    const rawViewer = (viewerIdOrName || '').trim().toLowerCase();
+    return this.data.spots
+      .filter(s => s.status !== 'hidden')
+      .filter(s => {
+        // If private, only owner or creator can view
+        if (s.visibility === 'private') {
+          if (!rawViewer) return false;
+          const isOwner =
+            s.ownerId?.toLowerCase() === rawViewer ||
+            s.creatorName.toLowerCase() === rawViewer;
+          return isOwner;
+        }
+        return true;
+      })
+      .map(s => {
+        // If friends only, check if viewer follows creator or is owner
+        if (s.visibility === 'friends_only') {
+          if (!rawViewer) {
+            return { ...s, isLocked: true };
+          }
+          const isOwner =
+            s.ownerId?.toLowerCase() === rawViewer ||
+            s.creatorName.toLowerCase() === rawViewer;
+          if (isOwner) return { ...s, isLocked: false };
+          const isFollowing =
+            this.isUserFollowing(rawViewer, s.creatorName) ||
+            (s.ownerId ? this.isUserFollowing(rawViewer, s.ownerId) : false);
+          return { ...s, isLocked: !isFollowing };
+        }
+        return s;
+      });
   }
 
   getAllSpotsForAdmin(): Spot[] {
@@ -884,8 +917,28 @@ class Database {
     };
   }
 
-  queryViewport(minX: number, minY: number, maxX: number, maxY: number, limit: number = 2000): Spot[] {
-    return this.spatialIndex.queryBBox(minX, minY, maxX, maxY, limit);
+  queryViewport(minX: number, minY: number, maxX: number, maxY: number, limit: number = 2000, viewerIdOrName?: string): Spot[] {
+    const rawSpots = this.spatialIndex.queryBBox(minX, minY, maxX, maxY, limit);
+    const rawViewer = (viewerIdOrName || '').trim().toLowerCase();
+    return rawSpots
+      .filter(s => s.status !== 'hidden')
+      .filter(s => {
+        if (s.visibility === 'private') {
+          if (!rawViewer) return false;
+          return s.ownerId?.toLowerCase() === rawViewer || s.creatorName.toLowerCase() === rawViewer;
+        }
+        return true;
+      })
+      .map(s => {
+        if (s.visibility === 'friends_only') {
+          if (!rawViewer) return { ...s, isLocked: true };
+          const isOwner = s.ownerId?.toLowerCase() === rawViewer || s.creatorName.toLowerCase() === rawViewer;
+          if (isOwner) return { ...s, isLocked: false };
+          const isFollowing = this.isUserFollowing(rawViewer, s.creatorName) || (s.ownerId ? this.isUserFollowing(rawViewer, s.ownerId) : false);
+          return { ...s, isLocked: !isFollowing };
+        }
+        return s;
+      });
   }
 
   reserveCoordinate(x: number, y: number, width: number, height: number, ttlMs: number = 300000): string {
@@ -1029,6 +1082,144 @@ class Database {
     this.data.users[idx] = { ...this.data.users[idx], ...updates };
     this.save();
     return this.data.users[idx];
+  }
+
+  // Follows & Social Graph
+  normalizeUserKey(identifier: string): string {
+    const raw = (identifier || '').trim().toLowerCase().replace(/^@/, '');
+    const user = this.data.users.find(
+      u => u.id.toLowerCase() === raw || u.username.toLowerCase() === raw || u.displayName.toLowerCase() === raw
+    );
+    if (user) return user.id;
+    return `usr_${raw.replace(/[^a-z0-9_]/g, '_')}`;
+  }
+
+  followUser(followerInput: string, targetInput: string): { isFollowing: boolean; followersCount: number; followingCount: number } {
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const targetId = this.normalizeUserKey(targetInput);
+
+    if (!followerId || !targetId || followerId === targetId) {
+      const counts = this.getFollowCounts(targetInput);
+      return { isFollowing: false, ...counts };
+    }
+
+    const existingIdx = this.data.follows.findIndex(
+      f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+
+    let isFollowing = false;
+    if (existingIdx !== -1) {
+      // Unfollow
+      this.data.follows.splice(existingIdx, 1);
+      isFollowing = false;
+    } else {
+      // Follow
+      this.data.follows.push({
+        id: `flw_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        followerId,
+        followingId: targetId,
+        createdAt: new Date().toISOString(),
+      });
+      isFollowing = true;
+
+      const followerUser = this.getUserById(followerId) || this.getUserByUsername(followerInput);
+      const targetUser = this.getUserById(targetId) || this.getUserByUsername(targetInput);
+      const followerName = followerUser?.displayName || followerInput;
+      const targetName = targetUser?.displayName || targetInput;
+
+      this.addActivity({
+        id: `act_${Date.now()}`,
+        type: 'shared',
+        spotId: 'network',
+        creatorName: followerName,
+        tier: 'mini_pop',
+        message: `${followerName} started following @${targetName}! ✨`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const counts = this.getFollowCounts(targetInput);
+
+    // Sync counts back to User objects if present
+    const tUser = this.data.users.find(u => u.id.toLowerCase() === targetId.toLowerCase() || u.username.toLowerCase() === targetInput.toLowerCase());
+    if (tUser) tUser.followersCount = counts.followersCount;
+
+    const fUser = this.data.users.find(u => u.id.toLowerCase() === followerId.toLowerCase() || u.username.toLowerCase() === followerInput.toLowerCase());
+    if (fUser) {
+      fUser.followingCount = this.data.follows.filter(
+        f => f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()
+      ).length;
+    }
+
+    this.save();
+    return { isFollowing, followersCount: counts.followersCount, followingCount: counts.followingCount };
+  }
+
+  isUserFollowing(followerInput?: string, targetInput?: string): boolean {
+    if (!followerInput || !targetInput) return false;
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const targetId = this.normalizeUserKey(targetInput);
+    return this.data.follows.some(
+      f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+    );
+  }
+
+  getUserFollowers(targetInput: string): Array<{ id: string; username: string; displayName: string; avatarUrl?: string }> {
+    this.data.follows = this.data.follows || [];
+    const targetId = this.normalizeUserKey(targetInput);
+    const relations = this.data.follows.filter(
+      f => f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase()
+    );
+
+    return relations.map(r => {
+      const u = this.getUserById(r.followerId);
+      if (u) {
+        return { id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl };
+      }
+      const rawName = r.followerId.replace(/^usr_/, '');
+      return {
+        id: r.followerId,
+        username: rawName,
+        displayName: rawName.startsWith('v_') ? 'Spot Explorer' : rawName,
+      };
+    });
+  }
+
+  getUserFollowing(followerInput: string): Array<{ id: string; username: string; displayName: string; avatarUrl?: string }> {
+    this.data.follows = this.data.follows || [];
+    const followerId = this.normalizeUserKey(followerInput);
+    const relations = this.data.follows.filter(
+      f => f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()
+    );
+
+    return relations.map(r => {
+      const u = this.getUserById(r.followingId);
+      if (u) {
+        return { id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl };
+      }
+      const rawName = r.followingId.replace(/^usr_/, '');
+      return {
+        id: r.followingId,
+        username: rawName,
+        displayName: rawName.startsWith('v_') ? 'Spot Explorer' : rawName,
+      };
+    });
+  }
+
+  getFollowCounts(userInput: string): { followersCount: number; followingCount: number } {
+    this.data.follows = this.data.follows || [];
+    const userKey = this.normalizeUserKey(userInput);
+    const followersCount = this.data.follows.filter(
+      f => f.followingId.toLowerCase() === userKey.toLowerCase() || f.followingId.toLowerCase() === userInput.toLowerCase()
+    ).length;
+    const followingCount = this.data.follows.filter(
+      f => f.followerId.toLowerCase() === userKey.toLowerCase() || f.followerId.toLowerCase() === userInput.toLowerCase()
+    ).length;
+    return { followersCount, followingCount };
   }
 
   // Orders

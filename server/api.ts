@@ -20,10 +20,23 @@ function getAuthenticatedUser(req: Request): User | null {
   return db.getUserById(userId) || null;
 }
 
+function getViewerIdentifier(req: Request): string | undefined {
+  const user = getAuthenticatedUser(req);
+  if (user) return user.id;
+  const headerViewer = req.headers['x-viewer-id'] as string;
+  if (headerViewer) return headerViewer;
+  const queryViewer = (req.query.viewerId || req.query.viewer) as string;
+  if (queryViewer) return queryViewer;
+  return undefined;
+}
+
 // =================== REAL-TIME LIVE STREAM (SSE) ===================
 const liveClients = new Set<Response>();
 
-export function broadcastSpotEvent(event: 'spot_created' | 'spot_updated' | 'spot_deleted', data: unknown) {
+export function broadcastSpotEvent(
+  event: 'spot_created' | 'spot_updated' | 'spot_deleted' | 'user_follow_updated',
+  data: unknown
+) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of liveClients) {
     try {
@@ -71,10 +84,11 @@ apiRouter.get('/spots', (req: Request, res: Response) => {
     const maxY = req.query.maxY !== undefined ? parseFloat(req.query.maxY as string) : undefined;
     const zoom = req.query.zoom !== undefined ? parseFloat(req.query.zoom as string) : 1;
     const limit = req.query.limit !== undefined ? parseInt(req.query.limit as string, 10) : 2000;
+    const viewer = getViewerIdentifier(req);
 
     // Viewport-based query if bounding coordinates are provided
     if (minX !== undefined && minY !== undefined && maxX !== undefined && maxY !== undefined) {
-      let spots = db.queryViewport(minX, minY, maxX, maxY, limit);
+      let spots = db.queryViewport(minX, minY, maxX, maxY, limit, viewer);
 
       // Level of Detail (LOD) optimization: when zoomed far out, strip heavy asset payloads
       if (zoom < 0.4) {
@@ -98,7 +112,7 @@ apiRouter.get('/spots', (req: Request, res: Response) => {
     }
 
     // Default backward-compatible fallback: returns full spots and stats exactly as before
-    const spots = db.getSpots();
+    const spots = db.getSpots(viewer);
     const stats = db.getStats();
     res.json({ spots, stats });
   } catch (err: any) {
@@ -115,8 +129,9 @@ apiRouter.get('/spots/viewport', (req: Request, res: Response) => {
     const maxY = parseFloat((req.query.maxY as string) || '1000');
     const zoom = req.query.zoom ? parseFloat(req.query.zoom as string) : 1;
     const limit = req.query.limit ? Math.min(2000, parseInt(req.query.limit as string, 10)) : 1000;
+    const viewer = getViewerIdentifier(req);
 
-    let spots = db.queryViewport(minX, minY, maxX, maxY, limit);
+    let spots = db.queryViewport(minX, minY, maxX, maxY, limit, viewer);
 
     // Level of Detail (LOD) filtering
     if (zoom < 0.4) {
@@ -538,6 +553,9 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
 
     const totalViews = creatorSpots.reduce((sum, s) => sum + (s.viewsCount || 0), 0);
     const totalShares = creatorSpots.reduce((sum, s) => sum + (s.sharesCount || 0), 0);
+    const followCounts = db.getFollowCounts(username);
+    const viewer = getViewerIdentifier(req);
+    const isFollowing = viewer ? db.isUserFollowing(viewer, username) : false;
 
     res.json({
       user: {
@@ -548,12 +566,17 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
         bio,
         createdAt,
         role: user?.role || 'user',
+        followersCount: followCounts.followersCount,
+        followingCount: followCounts.followingCount,
       },
       stats: {
         totalSpots: creatorSpots.length,
         totalViews,
         totalShares,
+        followersCount: followCounts.followersCount,
+        followingCount: followCounts.followingCount,
       },
+      isFollowing,
       spots: creatorSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     });
   } catch (err: any) {
@@ -576,6 +599,78 @@ apiRouter.put('/creators/me', (req: Request, res: Response) => {
 
     const updated = db.updateUser(user.id, updates);
     res.json({ user: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================== FOLLOWERS & SOCIAL GRAPH ===================
+
+// POST toggle follow/unfollow user
+apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const authUser = getAuthenticatedUser(req);
+    const viewerId =
+      authUser?.id ||
+      authUser?.username ||
+      (req.headers['x-viewer-id'] as string) ||
+      (req.body.viewerId as string) ||
+      'v_guest_visitor';
+
+    const result = db.followUser(viewerId, targetUsername);
+
+    // Broadcast SSE event
+    broadcastSpotEvent('user_follow_updated', {
+      targetUsername,
+      followerId: viewerId,
+      isFollowing: result.isFollowing,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+
+    res.json({
+      success: true,
+      isFollowing: result.isFollowing,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET user followers and following network
+apiRouter.get('/users/:username/network', (req: Request, res: Response) => {
+  try {
+    const targetUsername = (req.params.username || '').trim().replace(/^@/, '');
+    if (!targetUsername) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const authUser = getAuthenticatedUser(req);
+    const viewerId =
+      authUser?.id ||
+      authUser?.username ||
+      (req.headers['x-viewer-id'] as string) ||
+      (req.query.viewerId as string);
+
+    const followers = db.getUserFollowers(targetUsername);
+    const following = db.getUserFollowing(targetUsername);
+    const counts = db.getFollowCounts(targetUsername);
+    const isFollowing = viewerId ? db.isUserFollowing(viewerId, targetUsername) : false;
+
+    res.json({
+      followers,
+      following,
+      followersCount: counts.followersCount,
+      followingCount: counts.followingCount,
+      isFollowing,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -766,13 +861,15 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
       return res.status(403).json({ error: 'You do not have permission to edit this Pop' });
     }
 
-    const { content, background, borderColor, shape, creatorName } = req.body;
+    const { content, background, borderColor, shape, creatorName, allowComments, visibility } = req.body;
     const updates: Partial<Spot> = {};
 
     if (background) updates.background = background;
     if (borderColor !== undefined) updates.borderColor = borderColor;
     if (shape) updates.shape = shape;
     if (creatorName) updates.creatorName = creatorName.trim();
+    if (allowComments !== undefined) updates.allowComments = allowComments;
+    if (visibility !== undefined) updates.visibility = visibility;
     if (content) {
       updates.content = {
         ...spot.content,
@@ -980,6 +1077,8 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       },
       createdAt: new Date().toISOString(),
       status: 'published',
+      visibility: draft.visibility || 'public',
+      allowComments: draft.allowComments ?? true,
       moderationStatus: 'approved',
       viewsCount: 1,
       sharesCount: 0,

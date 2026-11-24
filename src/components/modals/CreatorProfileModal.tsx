@@ -30,6 +30,15 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<'all' | 'big_pop' | 'mini_pop'>('all');
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Social & Follow state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [networkModalType, setNetworkModalType] = useState<'followers' | 'following' | null>(null);
+  const [networkUsers, setNetworkUsers] = useState<Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>>([]);
+  const [networkLoading, setNetworkLoading] = useState(false);
+
   // Edit Mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
@@ -45,9 +54,12 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     setError(null);
 
     api.getCreatorProfile(username)
-      .then((data) => {
+      .then((data: any) => {
         if (!cancelled) {
           setProfileData(data);
+          setIsFollowing(Boolean(data.isFollowing));
+          setFollowersCount(data.user?.followersCount ?? data.stats?.followersCount ?? 0);
+          setFollowingCount(data.user?.followingCount ?? data.stats?.followingCount ?? 0);
           setEditDisplayName(data.user.displayName || '');
           setEditBio(data.user.bio || '');
           setEditAvatarUrl(data.user.avatarUrl || '');
@@ -66,6 +78,40 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       cancelled = true;
     };
   }, [username]);
+
+  const handleToggleFollow = async () => {
+    if (!profileData?.user?.username || followLoading) return;
+    setFollowLoading(true);
+    const nextFollowing = !isFollowing;
+    setIsFollowing(nextFollowing);
+    setFollowersCount(prev => Math.max(0, prev + (nextFollowing ? 1 : -1)));
+
+    try {
+      const res = await api.followUser(profileData.user.username, authToken || undefined);
+      setIsFollowing(res.isFollowing);
+      setFollowersCount(res.followersCount);
+      setFollowingCount(res.followingCount);
+    } catch (e) {
+      setIsFollowing(!nextFollowing);
+      setFollowersCount(prev => Math.max(0, prev + (!nextFollowing ? 1 : -1)));
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handleOpenNetwork = async (type: 'followers' | 'following') => {
+    if (!profileData?.user?.username) return;
+    setNetworkModalType(type);
+    setNetworkLoading(true);
+    try {
+      const net = await api.getUserNetwork(profileData.user.username, authToken || undefined);
+      setNetworkUsers(type === 'followers' ? net.followers : net.following);
+    } catch (e) {
+      console.warn('Network fetch error:', e);
+    } finally {
+      setNetworkLoading(false);
+    }
+  };
 
   if (!username) return null;
 
@@ -218,13 +264,25 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         <p className="text-xs font-mono text-slate-400 mt-0.5">@{profileData.user.username}</p>
                       </div>
 
-                      {/* Edit Button if viewing own profile */}
-                      {isSelf && (
+                      {/* Action Button: Edit Profile (if viewing self) or Follow / Following (if viewing other) */}
+                      {isSelf ? (
                         <button
                           onClick={() => setIsEditing(!isEditing)}
-                          className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-all self-center sm:self-start"
+                          className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-all self-center sm:self-start cursor-pointer"
                         >
                           {isEditing ? 'Cancel Edit' : '✎ Edit Profile'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleToggleFollow}
+                          disabled={followLoading}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md self-center sm:self-start ${
+                            isFollowing
+                              ? 'bg-white/10 hover:bg-rose-500/20 text-white/90 hover:text-rose-300 border border-white/20 hover:border-rose-500/40'
+                              : 'bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:from-[#FF4EAA] hover:to-purple-500 text-white shadow-pink-500/30 active:scale-95'
+                          }`}
+                        >
+                          <span>{isFollowing ? '✓ Following' : '+ Follow'}</span>
                         </button>
                       )}
                     </div>
@@ -294,29 +352,47 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 </div>
 
                 {/* Verified Genuine Metrics Row */}
-                <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-white/10 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5 pt-4 border-t border-white/10 text-center">
                   <div className="p-2 rounded-2xl bg-black/30 border border-white/5">
                     <div className="text-base sm:text-lg font-bold font-outfit text-white">
                       {profileData.stats.totalSpots}
                     </div>
                     <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                      Spots Claimed
+                      Spots
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNetwork('followers')}
+                    className="p-2 rounded-2xl bg-black/30 border border-white/5 hover:border-pink-500/40 hover:bg-white/5 transition-all cursor-pointer group"
+                  >
+                    <div className="text-base sm:text-lg font-bold font-outfit text-white group-hover:text-[#FF2E93] transition-colors">
+                      {followersCount.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center justify-center gap-1">
+                      <span>Followers</span>
+                      <span className="text-[8px] opacity-75">↗</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNetwork('following')}
+                    className="p-2 rounded-2xl bg-black/30 border border-white/5 hover:border-purple-500/40 hover:bg-white/5 transition-all cursor-pointer group"
+                  >
+                    <div className="text-base sm:text-lg font-bold font-outfit text-white group-hover:text-purple-400 transition-colors">
+                      {followingCount.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center justify-center gap-1">
+                      <span>Following</span>
+                      <span className="text-[8px] opacity-75">↗</span>
+                    </div>
+                  </button>
                   <div className="p-2 rounded-2xl bg-black/30 border border-white/5">
                     <div className="text-base sm:text-lg font-bold font-outfit text-white">
                       {profileData.stats.totalViews.toLocaleString()}
                     </div>
                     <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                      Total Views
-                    </div>
-                  </div>
-                  <div className="p-2 rounded-2xl bg-black/30 border border-white/5">
-                    <div className="text-base sm:text-lg font-bold font-outfit text-white">
-                      {profileData.stats.totalShares.toLocaleString()}
-                    </div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                      Viral Shares
+                      Views
                     </div>
                   </div>
                 </div>
@@ -421,6 +497,65 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             </>
           )}
         </div>
+        {/* Network Users (Followers / Following) Modal Sheet */}
+        {networkModalType && (
+          <div
+            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col justify-end sm:justify-center p-3 sm:p-6 animate-fade-in"
+            onClick={() => setNetworkModalType(null)}
+          >
+            <div
+              className="bg-[#1A1D2D] border border-white/15 rounded-3xl p-5 w-full max-w-sm mx-auto shadow-2xl flex flex-col max-h-[70vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <h4 className="text-sm font-bold text-white capitalize font-outfit flex items-center gap-2">
+                  <span>{networkModalType === 'followers' ? '👥 Followers' : '✨ Following'}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
+                    {networkUsers.length}
+                  </span>
+                </h4>
+                <button
+                  onClick={() => setNetworkModalType(null)}
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-3 space-y-2 no-scrollbar">
+                {networkLoading ? (
+                  <div className="py-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin" />
+                    <span>Loading network...</span>
+                  </div>
+                ) : networkUsers.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500">
+                    No {networkModalType} yet.
+                  </div>
+                ) : (
+                  networkUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl} alt={u.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          u.displayName?.charAt(0).toUpperCase() || 'U'
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-white truncate">{u.displayName}</div>
+                        <div className="text-[10px] text-slate-400 truncate font-mono">@{u.username}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,12 +2,27 @@ import { Spot, CanvasStats, ActivityEvent, ProductTier, Order, User, ModerationR
 
 const API_BASE = '/api';
 
+function getClientHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  try {
+    const token = localStorage.getItem('spotpop_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    let viewerId = localStorage.getItem('spotpop_viewer_id');
+    if (!viewerId) {
+      viewerId = `v_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      localStorage.setItem('spotpop_viewer_id', viewerId);
+    }
+    headers['x-viewer-id'] = viewerId;
+  } catch (_) {}
+  return headers;
+}
+
 export const api = {
   async getSpots(bbox?: { minX: number; minY: number; maxX: number; maxY: number; zoom?: number }): Promise<{ spots: Spot[]; stats: CanvasStats }> {
     const url = bbox
       ? `${API_BASE}/spots?minX=${bbox.minX}&minY=${bbox.minY}&maxX=${bbox.maxX}&maxY=${bbox.maxY}&zoom=${bbox.zoom || 1}`
       : `${API_BASE}/spots`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to fetch spots');
     return res.json();
   },
@@ -27,7 +42,10 @@ export const api = {
       maxY: Math.round(maxY).toString(),
       zoom: zoom.toFixed(2),
     });
-    const res = await fetch(`${API_BASE}/spots/viewport?${params}`, { signal });
+    const res = await fetch(`${API_BASE}/spots/viewport?${params}`, {
+      headers: getClientHeaders(),
+      signal,
+    });
     if (!res.ok) throw new Error('Failed to fetch viewport spots');
     return res.json();
   },
@@ -373,6 +391,47 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete Pop');
+    }
+    return res.json();
+  },
+
+  // Social & Follows
+  async followUser(username: string, token?: string): Promise<{
+    success: boolean;
+    isFollowing: boolean;
+    followersCount: number;
+    followingCount: number;
+  }> {
+    const headers: Record<string, string> = { ...getClientHeaders(), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/follow`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to follow user');
+    }
+    return res.json();
+  },
+
+  async getUserNetwork(username: string, token?: string): Promise<{
+    followers: Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>;
+    following: Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>;
+    followersCount: number;
+    followingCount: number;
+    isFollowing: boolean;
+  }> {
+    const headers: Record<string, string> = { ...getClientHeaders() };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}/network`, {
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to load user network');
     }
     return res.json();
   },

@@ -75,6 +75,7 @@ export interface PlanDraft {
   lineHeight?: number;
   customFontUrl?: string;
   allowComments?: boolean;
+  visibility?: 'public' | 'friends_only' | 'private';
   tags?: string[];
   audioDraft?: AudioDraft | null;
   audio?: SpotAudio | null;

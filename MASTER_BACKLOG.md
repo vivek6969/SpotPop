@@ -154,3 +154,23 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: Removed badge from `SpotCard.tsx`, updated event propagation regression test, 53/53 passing tests, and verified build in 973ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-019]: Audience Visibility Engine (Public, Friends Only, Private)
+- **Priority**: P0 (Privacy & Social Access Control)
+- **Assigned Agent**: senior-engineer
+- **Description**: Provide 3 audience levels on Pop creation/editing (`public`, `friends_only`, `private`). Enforce strict server-side filtering and gating: `private` spots are hidden from anyone other than the creator; `friends_only` spots are gated so non-followers see a frosted locked state with a 1-click `Follow to Unlock` button that immediately unlocks the Pop upon following.
+- **Status**: Completed
+- **Test Evidence**: `tests/social-network-visibility.test.ts` passing (7 new test assertions covering public accessibility, private filtering, friends-only locking, and instant unlock on follow), clean build in 1.25s.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-020]: 100% Real Social Following & Followers System
+- **Priority**: P0 (Core Social Graph Infrastructure)
+- **Assigned Agent**: senior-engineer
+- **Description**: Implement 100% real backend social graph persistence (`FollowRelation[]` in `server-db.json`), `POST /api/users/:username/follow` toggle endpoint, `GET /api/users/:username/network` network listing endpoint, frontend API methods, real Follow/Following counters on Creator Profile and User Account modals, and interactive Followers/Following dialog sheets.
+- **Status**: Completed
+- **Test Evidence**: 60/60 passing tests across 11 suites, verified follow/unfollow counting and state toggles, clean build in 1.25s.
+- **Review Result**: Approved by CTO.

@@ -175,6 +175,45 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
           />
         </div>
 
+        {/* Audience / Visibility Selector: Public, Friends Only, Private */}
+        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+              <span>👥</span>
+              <span>Audience & Visibility</span>
+            </span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 capitalize">
+              {(currentDraft.visibility || 'public').replace('_', ' ')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { id: 'public', label: 'Public', icon: '🌍', desc: 'Anyone can view' },
+              { id: 'friends_only', label: 'Friends', icon: '👥', desc: 'Followers only' },
+              { id: 'private', label: 'Private', icon: '🔒', desc: 'Only you' },
+            ].map(opt => {
+              const isSelected = (currentDraft.visibility || 'public') === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => updateDraft({ visibility: opt.id as any })}
+                  className={`p-2 rounded-lg border text-left flex flex-col items-center text-center gap-1 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-[#FF2E93]/25 to-purple-600/25 border-[#FF2E93] text-white shadow-sm ring-1 ring-[#FF2E93]/50'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-base">{opt.icon}</span>
+                  <span className="text-[11px] font-bold leading-tight">{opt.label}</span>
+                  <span className="text-[9px] opacity-75 leading-tight">{opt.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Allow Comments / Hide Comments Toggle */}
         <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between transition-colors">
           <div className="space-y-0.5">

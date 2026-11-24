@@ -55,6 +55,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; x: number; y: number }[]>([]);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [unlockedSpotIds, setUnlockedSpotIds] = useState<Set<string>>(new Set());
 
   // Audio Playback & Timeline Scrubber State
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -159,7 +160,13 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     setAudioDuration(initialDur);
     setAudioCurrentTime(0);
 
-    if (audioUrl && !isAudioMuted) {
+    const isCurrentSpotLocked = Boolean(
+      currentSpot?.isLocked &&
+      !unlockedSpotIds.has(currentSpot.id) &&
+      !followedCreators.has(currentSpot.creatorName)
+    );
+
+    if (audioUrl && !isAudioMuted && !isCurrentSpotLocked) {
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -204,8 +211,12 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   // Audio Play / Pause Toggle
   const toggleAudioPlay = (e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
+    const currentSpot = displaySpots[activeIndex];
+    if (currentSpot?.isLocked) {
+      showToast(`Follow @${currentSpot.creatorName} to unlock audio! 👥`);
+      return;
+    }
     if (!audioRef.current) {
-      const currentSpot = displaySpots[activeIndex];
       if (currentSpot?.content?.audio?.url) {
         const audio = new Audio(currentSpot.content.audio.url);
         audio.loop = true;
@@ -418,24 +429,62 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     }
   };
 
-  // Toggle Creator Follow
-  const handleToggleFollow = (creatorName: string) => {
+  // Toggle Creator Follow (100% Real Backend Persistence)
+  const handleToggleFollow = async (creatorName: string) => {
     if (!creatorName) return;
+    const isCurrentlyFollowing = followedCreators.has(creatorName);
+
+    // Optimistic toggle
     setFollowedCreators(prev => {
       const next = new Set(prev);
-      const isFollowing = next.has(creatorName);
-      if (isFollowing) {
+      if (isCurrentlyFollowing) {
         next.delete(creatorName);
         showToast(`Unfollowed @${creatorName}`);
       } else {
         next.add(creatorName);
         showToast(`Following @${creatorName}! ✨`);
       }
-      try {
-        localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(next)));
-      } catch (_) {}
       return next;
     });
+
+    try {
+      const res = await api.followUser(creatorName);
+      if (res.isFollowing) {
+        setFollowedCreators(prev => new Set(prev).add(creatorName));
+        // Unlock any locked spots by this creator
+        setUnlockedSpotIds(prev => {
+          const next = new Set(prev);
+          displaySpots.forEach(s => {
+            if (s.creatorName.toLowerCase() === creatorName.toLowerCase()) {
+              next.add(s.id);
+            }
+          });
+          return next;
+        });
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.6, x: 0.5 },
+          colors: ['#FF2E93', '#7928CA', '#00F0FF'],
+        });
+      } else {
+        setFollowedCreators(prev => {
+          const next = new Set(prev);
+          next.delete(creatorName);
+          return next;
+        });
+      }
+    } catch (err: any) {
+      console.warn('Follow request error:', err);
+      // Revert optimistic update
+      setFollowedCreators(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) next.add(creatorName);
+        else next.delete(creatorName);
+        return next;
+      });
+      showToast(err.message || 'Follow request failed');
+    }
   };
 
   // Real Share Handler
@@ -639,6 +688,11 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
             const isCurrentActive = idx === activeIndex;
             const isFollowing = spot.creatorName ? followedCreators.has(spot.creatorName) : false;
             const commentsDisabled = spot.allowComments === false;
+            const isSpotLocked = Boolean(
+              spot.isLocked &&
+              !unlockedSpotIds.has(spot.id) &&
+              !followedCreators.has(spot.creatorName)
+            );
 
             return (
               <div
@@ -667,6 +721,27 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                       interactive={false}
                       hideAudioBar={true}
                     />
+
+                    {/* Friends Only Locked Reel Card Overlay */}
+                    {isSpotLocked && (
+                      <div className="absolute inset-0 rounded-[inherit] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-40 border border-white/20 shadow-2xl">
+                        <span className="text-3xl mb-1.5 animate-bounce">🔒</span>
+                        <h4 className="text-sm font-bold text-white font-outfit">Friends Only Pop</h4>
+                        <p className="text-[10px] text-white/70 max-w-[180px] mt-1 leading-snug">
+                          Only followers of @{spot.creatorName} can view and listen to this Pop
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFollow(spot.creatorName);
+                          }}
+                          className="mt-3 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:from-[#FF4EAA] hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>+ Follow to Unlock</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
@@ -42,6 +42,21 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Social & Follow stats
+  const [networkModalType, setNetworkModalType] = useState<'followers' | 'following' | null>(null);
+  const [networkUsers, setNetworkUsers] = useState<Array<{ id: string; username: string; displayName: string; avatarUrl?: string }>>([]);
+  const [networkLoading, setNetworkLoading] = useState(false);
+  const [networkCounts, setNetworkCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 });
+
+  useEffect(() => {
+    if (!currentUser?.username) return;
+    api.getUserNetwork(currentUser.username)
+      .then(res => {
+        setNetworkCounts({ followers: res.followersCount || 0, following: res.followingCount || 0 });
+      })
+      .catch(() => {});
+  }, [currentUser?.username]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +237,45 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1">
                     Member since {new Date(currentUser.createdAt).toLocaleDateString()}
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!currentUser?.username) return;
+                        setNetworkModalType('followers');
+                        setNetworkLoading(true);
+                        try {
+                          const net = await api.getUserNetwork(currentUser.username);
+                          setNetworkUsers(net.followers);
+                        } finally {
+                          setNetworkLoading(false);
+                        }
+                      }}
+                      className="text-xs font-semibold text-slate-300 hover:text-[#FF2E93] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="font-bold text-white">{networkCounts.followers}</span> Followers
+                      <span className="text-[8px] opacity-60">↗</span>
+                    </button>
+                    <span className="text-slate-600">·</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!currentUser?.username) return;
+                        setNetworkModalType('following');
+                        setNetworkLoading(true);
+                        try {
+                          const net = await api.getUserNetwork(currentUser.username);
+                          setNetworkUsers(net.following);
+                        } finally {
+                          setNetworkLoading(false);
+                        }
+                      }}
+                      className="text-xs font-semibold text-slate-300 hover:text-purple-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="font-bold text-white">{networkCounts.following}</span> Following
+                      <span className="text-[8px] opacity-60">↗</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -664,6 +718,65 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   <span>Yes, Delete Pop</span>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Network Modal Sheet (Followers / Following) */}
+      {networkModalType && (
+        <div
+          className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setNetworkModalType(null)}
+        >
+          <div
+            className="bg-[#1A1D2D] border border-white/15 rounded-3xl p-5 w-full max-w-sm shadow-2xl flex flex-col max-h-[70vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h4 className="text-sm font-bold text-white capitalize font-outfit flex items-center gap-2">
+                <span>{networkModalType === 'followers' ? '👥 Followers' : '✨ Following'}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
+                  {networkUsers.length}
+                </span>
+              </h4>
+              <button
+                onClick={() => setNetworkModalType(null)}
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-3 space-y-2 no-scrollbar">
+              {networkLoading ? (
+                <div className="py-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                  <span className="w-4 h-4 rounded-full border-2 border-[#FF2E93] border-t-transparent animate-spin" />
+                  <span>Loading network...</span>
+                </div>
+              ) : networkUsers.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500">
+                  No {networkModalType} yet.
+                </div>
+              ) : (
+                networkUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                      {u.avatarUrl ? (
+                        <img src={u.avatarUrl} alt={u.displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        u.displayName?.charAt(0).toUpperCase() || 'U'
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white truncate">{u.displayName}</div>
+                      <div className="text-[10px] text-slate-400 truncate font-mono">@{u.username}</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

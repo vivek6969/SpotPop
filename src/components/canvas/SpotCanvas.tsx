@@ -988,6 +988,7 @@ export const SpotCanvas: React.FC<SpotCanvasProps> = ({
                   rotation={spot.rotation}
                   width={spotW}
                   height={spotH}
+                  isLocked={spot.isLocked}
                 />
               )}
             </div>
