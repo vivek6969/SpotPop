@@ -174,3 +174,23 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 60/60 passing tests across 11 suites, verified follow/unfollow counting and state toggles, clean build in 1.25s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-021]: Fix Text Deletion Fallback Bug & Add Full Header Brand Logo
+- **Priority**: P0 (User Creation Integrity & Brand Consistency)
+- **Assigned Agent**: senior-engineer
+- **Description**: Resolve text resurrection bug where deleting creator signature or text reverted to `'Spot Pioneer ♡'`. Cleaned default drafts, set `hasAuthor` to strictly check `content.author`, preserved empty strings on server update. Updated header with full SpotPop brand logo (icon + typography).
+- **Status**: Completed
+- **Test Evidence**: Verified empty string preservation, 0 TypeScript errors, 60/60 passing tests, clean build in 939ms.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-022]: Pop Reels Performance Hardening & Pure Random Feed
+- **Priority**: P0 (Feed Performance & User Experience)
+- **Assigned Agent**: performance-engineer
+- **Description**: Eliminate scroll jitter and glitching in Reels by removing conflicting `scroll-smooth` on snap container, RAF-throttling scroll listener, debouncing audio playback (140ms), virtualizing slide rendering (only mounting active ± 1 heavy cards), removing unneeded top reel index counter badge (`9/11`), and guaranteeing a 100% unique Fisher-Yates randomized feed on every open.
+- **Status**: Completed
+- **Test Evidence**: 62/62 passing tests across 11 suites (`tests/reels-navigation.test.ts`), verified unique ID set and initial spot pinning tests, clean production build in 856ms.
+- **Review Result**: Approved by CTO.
