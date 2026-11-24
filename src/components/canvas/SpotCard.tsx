@@ -15,6 +15,7 @@ export interface SpotCardProps {
   scale?: number;
   // Interactive Editor Props
   interactive?: boolean;
+  hideAudioBar?: boolean;
   selectedItemId?: string | null;
   onSelectItem?: (id: string | null) => void;
   onUpdateSticker?: (id: string, updates: Partial<StickerItem>) => void;
@@ -48,6 +49,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
   height,
   scale = 1,
   interactive = false,
+  hideAudioBar = false,
   selectedItemId = null,
   onSelectItem,
   onUpdateSticker,
@@ -1267,7 +1269,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
       {!isTransparent && renderFrameAccents(content.frameStyle)}
 
       {/* Audio Memory Indicator Badge (Big Pop Only) */}
-      {content.audio && (
+      {content.audio && !hideAudioBar && (
         <button
           type="button"
           onClick={(e) => {
@@ -2039,7 +2041,7 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
         })}
 
         {/* ================= SLIM THEME-MATCHED BOTTOM AUDIO PLAYER ================= */}
-        {content.audio && (
+        {content.audio && !hideAudioBar && (
           <div
             onClick={(e) => {
               e.stopPropagation();

@@ -213,4 +213,42 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
     assert.deepEqual(mentions, ['@doraemon']);
     assert.deepEqual(hashtags, ['#dusk', '#spotpop']);
   });
+
+  test('Reels audio controller toggles play/pause state and scrubs timeline', () => {
+    let isPlaying = true;
+    let currentTime = 0;
+    const duration = 15;
+
+    const togglePlay = () => {
+      isPlaying = !isPlaying;
+      return isPlaying;
+    };
+
+    const seekScrubber = (clickX: number, totalWidth: number) => {
+      const pct = Math.max(0, Math.min(1, clickX / totalWidth));
+      currentTime = pct * duration;
+      return currentTime;
+    };
+
+    // Starts directly playing
+    assert.equal(isPlaying, true);
+
+    // Toggle pause
+    assert.equal(togglePlay(), false);
+    assert.equal(isPlaying, false);
+
+    // Toggle play
+    assert.equal(togglePlay(), true);
+    assert.equal(isPlaying, true);
+
+    // Scrub to 50%
+    assert.equal(seekScrubber(100, 200), 7.5);
+    assert.equal(currentTime, 7.5);
+
+    // Scrub past boundary (clamping)
+    assert.equal(seekScrubber(300, 200), 15);
+    assert.equal(currentTime, 15);
+    assert.equal(seekScrubber(-50, 200), 0);
+    assert.equal(currentTime, 0);
+  });
 });

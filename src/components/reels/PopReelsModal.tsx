@@ -56,6 +56,13 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Audio Playback & Timeline Scrubber State
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(15);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+
   // Comments Drawer State
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [commentsSpotId, setCommentsSpotId] = useState<string | null>(null);
@@ -68,23 +75,19 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   const [showReactionsBar, setShowReactionsBar] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const viewedSpotsRef = useRef<Set<string>>(new Set());
 
-  // Discovery / Perspective Algorithm:
-  // Show random perspective or user perspective just like Instagram Reels
+  // Discovery / Random Perspective Feed
   const displaySpots = useMemo(() => {
     const published = spots.filter(s => s.status !== 'hidden');
     if (shuffleKey === 0) {
-      // First open: keep initialSpotId at index 0 if specified, otherwise shuffle
       if (initialSpotId) {
         const found = published.find(s => s.id === initialSpotId || s.slug === initialSpotId);
         const rest = published.filter(s => s.id !== initialSpotId && s.slug !== initialSpotId);
         return found ? [found, ...rest] : published;
       }
-      // Algorithmic discovery mix: shuffle array so user sees fresh perspective on reels
       const copy = [...published];
       for (let i = copy.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -92,7 +95,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       }
       return copy;
     }
-    // Re-shuffle on user demand
     const copy = [...published];
     for (let i = copy.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -124,7 +126,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     setReactionCounts(prev => ({ ...reacts, ...prev }));
   }, [spots, displaySpots]);
 
-  // Record 100% Real View Event when spot becomes active
+  // Record Real View Event when spot becomes active
   useEffect(() => {
     if (!isOpen || displaySpots.length === 0) return;
     const currentSpot = displaySpots[activeIndex];
@@ -139,32 +141,56 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     }
   }, [activeIndex, isOpen, displaySpots]);
 
-  // Audio manager for active reel
+  // Audio Manager with Real-time Time & Timeline Progress Synchronization
   useEffect(() => {
     if (!isOpen) {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
+      setIsAudioPlaying(false);
+      setAudioCurrentTime(0);
       return;
     }
 
     const currentSpot = displaySpots[activeIndex];
-    if (currentSpot?.content?.audio?.url && !isAudioMuted) {
+    const audioUrl = currentSpot?.content?.audio?.url;
+    const initialDur = currentSpot?.content?.audio?.duration || 15;
+    setAudioDuration(initialDur);
+    setAudioCurrentTime(0);
+
+    if (audioUrl && !isAudioMuted) {
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      const audio = new Audio(currentSpot.content.audio.url);
+      const audio = new Audio(audioUrl);
       audio.loop = true;
-      audio.play().catch(err => {
-        console.warn('[ReelsAudio] Autoplay blocked, tap to play:', err);
-      });
+      audio.ontimeupdate = () => {
+        if (audio) {
+          const cur = audio.currentTime || 0;
+          const rawDur = audio.duration;
+          const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0)
+            ? rawDur
+            : initialDur;
+          setAudioCurrentTime(cur);
+          setAudioDuration(dur);
+        }
+      };
+      audio.onplay = () => setIsAudioPlaying(true);
+      audio.onpause = () => setIsAudioPlaying(false);
+      audio.play()
+        .then(() => setIsAudioPlaying(true))
+        .catch(err => {
+          console.warn('[ReelsAudio] Autoplay blocked, tap to play:', err);
+          setIsAudioPlaying(false);
+        });
       audioRef.current = audio;
     } else {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
+      setIsAudioPlaying(false);
     }
 
     return () => {
@@ -174,6 +200,49 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       }
     };
   }, [activeIndex, isOpen, isAudioMuted, displaySpots]);
+
+  // Audio Play / Pause Toggle
+  const toggleAudioPlay = (e?: React.MouseEvent | React.TouchEvent) => {
+    e?.stopPropagation();
+    if (!audioRef.current) {
+      const currentSpot = displaySpots[activeIndex];
+      if (currentSpot?.content?.audio?.url) {
+        const audio = new Audio(currentSpot.content.audio.url);
+        audio.loop = true;
+        audio.ontimeupdate = () => {
+          if (audio) {
+            setAudioCurrentTime(audio.currentTime || 0);
+          }
+        };
+        audio.play()
+          .then(() => setIsAudioPlaying(true))
+          .catch(() => setIsAudioPlaying(false));
+        audioRef.current = audio;
+      }
+      return;
+    }
+
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audioRef.current.play()
+        .then(() => setIsAudioPlaying(true))
+        .catch(() => {});
+    }
+  };
+
+  // Timeline Scrubber Click & Drag Seeking
+  const handleScrub = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (!audioRef.current || !timelineRef.current) return;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
+    const clickRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const targetTime = clickRatio * (audioDuration || 15);
+    audioRef.current.currentTime = targetTime;
+    setAudioCurrentTime(targetTime);
+  };
 
   // Scroll listener using client height for smooth snap detection
   const handleScroll = useCallback(() => {
@@ -212,13 +281,13 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
         document.getElementById(`reel-slide-${prevIdx}`)?.scrollIntoView({ behavior: 'smooth' });
       } else if (e.key === ' ') {
         e.preventDefault();
-        setIsAudioMuted(prev => !prev);
+        toggleAudioPlay();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, activeIndex, displaySpots.length, isCommentsOpen, onClose]);
+  }, [isOpen, activeIndex, displaySpots.length, isCommentsOpen, isAudioPlaying, onClose]);
 
   // Instant Double-Click / Double-Tap Like Action
   const handleToggleLike = async (spot: Spot, clientX?: number, clientY?: number) => {
@@ -226,13 +295,11 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     const currentlyLiked = likedSpotIds.has(spotId);
     const newLiked = !currentlyLiked;
 
-    // Heart burst animation
     if (clientX && clientY) {
       setHeartBurst({ id: spotId, x: clientX, y: clientY });
       setTimeout(() => setHeartBurst(null), 850);
     }
 
-    // Optimistic UI updates
     setLikedSpotIds(prev => {
       const next = new Set(prev);
       if (newLiked) {
@@ -260,7 +327,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       });
     }
 
-    // Real backend persistence
     try {
       const res = await api.toggleSpotLike(spotId, newLiked ? 'like' : 'unlike');
       if (res && res.likesCount !== undefined) {
@@ -274,7 +340,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   // Pop React: Emoji reaction trigger
   const handleEmojiReaction = async (spot: Spot, emoji: string) => {
     const spotId = spot.id;
-    // Add floating emoji animation
     const id = `${Date.now()}_${Math.random()}`;
     const x = window.innerWidth / 2 + (Math.random() * 80 - 40);
     const y = window.innerHeight * 0.7;
@@ -283,7 +348,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       setFloatingEmojis(prev => prev.filter(e => e.id !== id));
     }, 1200);
 
-    // Optimistic reaction count update
     setReactionCounts(prev => {
       const curSpotReacts = prev[spotId] || {};
       return {
@@ -297,7 +361,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
     showToast(`Reacted with ${emoji}!`);
 
-    // Backend sync
     try {
       const res = await api.sendReaction(spotId, emoji);
       if (res) {
@@ -409,7 +472,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
 
     if (now - lastTapRef.current.time < 350) {
-      // Instant Double-Click / Double-Tap Like
       handleToggleLike(spot, clientX, clientY);
       lastTapRef.current = { time: 0, x: 0, y: 0 };
     } else {
@@ -587,8 +649,8 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
               >
                 {/* 
                   STAGE CONTAINER:
-                  Notice: We add `pr-16 pl-3` so the Pop card is framed cleanly in the left-and-center!
-                  The right action rail has its own dedicated column and NEVER covers the Pop!
+                  Framed cleanly with `pr-16 pl-3` so the Pop card never touches the action rail!
+                  hideAudioBar={true} strips the duplicate static card dock so only the real interactive reel scrubber controls audio!
                 */}
                 <div className="absolute inset-0 flex items-center justify-center pr-16 pl-4 pointer-events-none z-10">
                   <div
@@ -603,11 +665,12 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                       content={spot.content}
                       creatorName={spot.creatorName}
                       interactive={false}
+                      hideAudioBar={true}
                     />
                   </div>
                 </div>
 
-                {/* Right Side: Instagram Vertical Floating Action Rail (In dedicated gutter) */}
+                {/* Right Side: Instagram Vertical Floating Action Rail */}
                 <div className="absolute right-2.5 sm:right-3 bottom-20 z-30 flex flex-col items-center gap-3.5 select-none pointer-events-auto">
                   {/* Like Button */}
                   <button
@@ -721,18 +784,15 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                     <span className="text-[9px] font-black text-pink-300 drop-shadow uppercase tracking-wider">Wall</span>
                   </button>
 
-                  {/* Rotating Vinyl Disc for Audio */}
+                  {/* Rotating Vinyl Disc for Audio: Synchronized with isAudioPlaying */}
                   {hasAudio && (
                     <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsAudioMuted(prev => !prev);
-                      }}
+                      onClick={toggleAudioPlay}
                       className={`w-10 h-10 rounded-full border-2 border-white/40 bg-black flex items-center justify-center shadow-lg overflow-hidden cursor-pointer ${
-                        isCurrentActive && !isAudioMuted ? 'animate-spin' : ''
+                        isCurrentActive && isAudioPlaying ? 'animate-spin' : ''
                       }`}
                       style={{ animationDuration: '4s' }}
-                      title={isAudioMuted ? 'Unmute Audio' : 'Mute Audio'}
+                      title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
                     >
                       <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center">
                         <div className="w-1 h-1 rounded-full bg-black" />
@@ -760,8 +820,8 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                   </div>
                 )}
 
-                {/* Bottom Info Bar: Creator, Caption, Description, Tags, Audio, Views */}
-                <div className="absolute left-3.5 right-18 bottom-5 z-30 flex flex-col items-start gap-1 select-none pointer-events-auto text-left">
+                {/* Bottom Info Bar: Creator, Caption, Description, Tags, Scrubber Controller */}
+                <div className="absolute left-3.5 right-18 bottom-4 z-30 flex flex-col items-start gap-1 select-none pointer-events-auto text-left">
                   {/* Creator Pill with Interactive Follow & View Count */}
                   <div className="flex items-center gap-2 mb-0.5">
                     <div
@@ -833,14 +893,73 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                     </div>
                   )}
 
-                  {/* Audio Ticker if Present */}
+                  {/* 
+                    FULL INTERACTIVE AUDIO CONTROLLER & TIMELINE SCRUBBER
+                    Directly starts audio, shows PAUSE button when playing and PLAY button when paused!
+                    User can click and drag the timeline line to scrub/seek through the audio track!
+                  */}
                   {hasAudio && (
-                    <div className="flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-pink-300 text-[10px] font-mono font-medium">
-                      <span className="animate-spin text-xs">🎵</span>
-                      <span className="truncate max-w-[150px]">
-                        Original Audio • {spot.creatorName || 'creator'}
-                      </span>
-                      <span className="text-white/50">({Math.round(spot.content.audio?.duration || 15)}s)</span>
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full mt-1.5 p-2 rounded-2xl bg-black/75 backdrop-blur-xl border border-white/20 flex flex-col gap-1.5 shadow-2xl select-none"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Play / Pause Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={toggleAudioPlay}
+                          className="w-8 h-8 rounded-full bg-[#1DB954] hover:bg-[#1ed760] active:scale-90 text-black flex items-center justify-center shadow-lg transition-transform cursor-pointer shrink-0"
+                          title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+                          aria-label={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
+                        >
+                          {isAudioPlaying ? (
+                            <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
+                              <rect x="6" y="5" width="4" height="14" rx="1" />
+                              <rect x="14" y="5" width="4" height="14" rx="1" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 fill-black translate-x-0.5" viewBox="0 0 24 24">
+                              <polygon points="6 4 20 12 6 20 6 4" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Audio Track Title & Waveform Indicator */}
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                          <span className="text-xs">🎵</span>
+                          <span className="truncate text-[11px] font-bold text-white tracking-wide">
+                            {spot.content?.headline || `Original Sound • @${spot.creatorName || 'creator'}`}
+                          </span>
+                          {isAudioPlaying && (
+                            <div className="flex items-center gap-0.5 h-3 shrink-0">
+                              <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-pulse" />
+                              <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                              <span className="w-0.5 h-1.5 bg-[#1DB954] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Real-time Timestamp (e.g. 5s / 15s) */}
+                        <span className="text-[10px] font-mono font-bold text-white/90 shrink-0">
+                          {Math.floor(audioCurrentTime)}s / {Math.round(audioDuration || 15)}s
+                        </span>
+                      </div>
+
+                      {/* Interactive Scrubber Line: Drag or click anywhere to control audio timeline */}
+                      <div
+                        ref={timelineRef}
+                        onClick={handleScrub}
+                        onTouchMove={handleScrub}
+                        className="relative w-full h-2 rounded-full bg-white/25 hover:h-2.5 transition-all cursor-pointer flex items-center group"
+                        title="Click or drag to seek audio timeline"
+                      >
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#1DB954] to-emerald-400 transition-[width] duration-75 ease-linear relative"
+                          style={{ width: `${Math.min(100, Math.max(0, (audioCurrentTime / (audioDuration || 15)) * 100))}%` }}
+                        >
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md scale-0 group-hover:scale-100 transition-transform" />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -851,7 +970,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
         {/* 
           COMMENTS & REPLIES BOTTOM SHEET DRAWER
-          Interactive native drawer sliding up from the bottom!
         */}
         {isCommentsOpen && (
           <div
