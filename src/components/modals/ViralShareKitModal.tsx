@@ -529,6 +529,7 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
                 width={spot.width}
                 height={spot.height}
                 scale={spot.tier === 'big_pop' ? 0.68 : 0.82}
+                isLocked={spot.isLocked}
               />
             </div>
 

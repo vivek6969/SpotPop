@@ -432,6 +432,12 @@ export function App() {
         }}
         onEditSpot={handleEditSpot}
         onDeleteSpot={handleDeleteSpot}
+        onFollowChange={(creatorName) => {
+          setSpots(prev => prev.map(s => s.creatorName.toLowerCase() === creatorName.toLowerCase() ? { ...s, isLocked: false } : s));
+          if (selectedSpot && selectedSpot.creatorName.toLowerCase() === creatorName.toLowerCase()) {
+            setSelectedSpot(prev => prev ? { ...prev, isLocked: false } : null);
+          }
+        }}
       />
 
       {/* Viral Share Kit Modal */}

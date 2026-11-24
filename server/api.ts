@@ -261,11 +261,48 @@ apiRouter.get('/spots/explore', (req: Request, res: Response) => {
 // GET single spot by ID or Slug
 apiRouter.get('/spots/:idOrSlug', (req: Request, res: Response) => {
   try {
-    const spot = db.getSpotByIdOrSlug(req.params.idOrSlug);
-    if (!spot) {
+    const rawSpot = db.getSpotByIdOrSlug(req.params.idOrSlug);
+    if (!rawSpot) {
       return res.status(404).json({ error: 'Spot not found' });
     }
-    db.incrementSpotViews(spot.id);
+
+    const viewer = getViewerIdentifier(req);
+    const rawViewer = viewer?.toLowerCase();
+    const isOwner = Boolean(
+      rawViewer &&
+      (rawSpot.ownerId?.toLowerCase() === rawViewer ||
+       rawSpot.creatorName.toLowerCase() === rawViewer)
+    );
+
+    // Private spot: only owner or creator can view
+    if (rawSpot.visibility === 'private' && !isOwner) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+
+    // Friends-only: calculate lock state
+    let isLocked = false;
+    if (rawSpot.visibility === 'friends_only') {
+      if (!isOwner) {
+        const isFollowing = rawViewer
+          ? (db.isUserFollowing(rawViewer, rawSpot.creatorName) || (rawSpot.ownerId ? db.isUserFollowing(rawViewer, rawSpot.ownerId) : false))
+          : false;
+        isLocked = !isFollowing;
+      }
+    }
+
+    db.incrementSpotViews(rawSpot.id);
+
+    const spot = {
+      ...rawSpot,
+      isLocked,
+      content: isLocked
+        ? {
+            ...rawSpot.content,
+            audio: undefined,
+          }
+        : rawSpot.content,
+    };
+
     res.json({ spot });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

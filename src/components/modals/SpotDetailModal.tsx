@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { Spot, User } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
@@ -14,6 +15,7 @@ interface SpotDetailModalProps {
   onOpenCreatorProfile?: (username: string) => void;
   onEditSpot?: (spot: Spot) => void;
   onDeleteSpot?: (spot: Spot) => void;
+  onFollowChange?: (creatorName: string, isFollowing: boolean) => void;
 }
 
 export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
@@ -26,6 +28,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   onOpenCreatorProfile,
   onEditSpot,
   onDeleteSpot,
+  onFollowChange,
 }) => {
   if (!spot) return null;
 
@@ -53,6 +56,57 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       currentUser.ownedSpotIds?.includes(spot.id)
     )
   );
+
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('spotpop_followed_creators');
+      const set = saved ? new Set(JSON.parse(saved)) : new Set();
+      return set.has(spot.creatorName);
+    } catch {
+      return false;
+    }
+  });
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [unlockedLocally, setUnlockedLocally] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('spotpop_followed_creators');
+      const set = saved ? new Set(JSON.parse(saved)) : new Set();
+      setIsFollowing(set.has(spot.creatorName));
+    } catch {}
+  }, [spot.creatorName]);
+
+  const isSpotLocked = Boolean(spot.isLocked && !isOwner && !isFollowing && !unlockedLocally);
+
+  const handleFollowToUnlock = async () => {
+    if (!spot.creatorName || isFollowingLoading) return;
+    setIsFollowingLoading(true);
+    try {
+      const res = await api.followUser(spot.creatorName, authToken || undefined);
+      if (res.isFollowing) {
+        setIsFollowing(true);
+        setUnlockedLocally(true);
+        try {
+          const saved = localStorage.getItem('spotpop_followed_creators');
+          const set = saved ? new Set(JSON.parse(saved)) : new Set();
+          set.add(spot.creatorName);
+          localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
+        } catch {}
+        onFollowChange?.(spot.creatorName, true);
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.6, x: 0.5 },
+          colors: ['#FF2E93', '#7928CA', '#00F0FF'],
+        });
+      }
+    } catch (e) {
+      console.warn('Follow error in modal:', e);
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!onDeleteSpot) return;
@@ -137,12 +191,36 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
               rotation={spot.rotation || 0}
               width={spot.width}
               height={spot.height}
+              isLocked={isSpotLocked}
             />
           </div>
         </div>
 
         {/* Details & Metadata */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+          {/* FRIENDS ONLY UNLOCK PROMPT */}
+          {isSpotLocked && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900/40 border border-pink-500/40 flex flex-col items-center text-center gap-2.5 shadow-xl animate-fade-in">
+              <div className="w-11 h-11 rounded-full bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-2xl animate-bounce shadow-lg shadow-pink-500/30">
+                🔒
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-outfit">Friends Only Pop</h4>
+                <p className="text-xs text-white/70 max-w-xs mt-0.5 leading-snug">
+                  Only followers of @{spot.creatorName} can see this photo, drawing, and voice memory.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isFollowingLoading}
+                onClick={handleFollowToUnlock}
+                className="mt-1 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:from-[#FF4EAA] hover:to-purple-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-pink-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>{isFollowingLoading ? 'Unlocking...' : `+ Follow @${spot.creatorName} to Unlock`}</span>
+              </button>
+            </div>
+          )}
+
           {/* OWNER ACTION TOOLBAR */}
           {isOwner && (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-900/30 via-[#FF2E93]/20 to-pink-900/30 border border-[#FF2E93]/40 shadow-lg space-y-2.5">
@@ -182,7 +260,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
           )}
 
           {/* Optional Voice Message / Sound Clip (Big Pop Exclusive) */}
-          {spot.content?.audio && (
+          {spot.content?.audio && !isSpotLocked && (
             <SpotAudioPlayer
               audio={spot.content.audio}
               creatorName={spot.creatorName}

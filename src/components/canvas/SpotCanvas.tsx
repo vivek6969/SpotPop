@@ -76,6 +76,14 @@ const FastSpotCard: React.FC<FastSpotCardProps> = React.memo(({ spot }) => {
           @{spot.creatorName}
         </p>
       </div>
+
+      {/* Friends-Only Locked State Overlay */}
+      {spot.isLocked && (
+        <div className="absolute inset-0 z-30 rounded-[inherit] bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center pointer-events-none select-none">
+          <span className="text-base mb-0.5">🔒</span>
+          <span className="text-[9px] font-bold text-white tracking-wide">Friends Only</span>
+        </div>
+      )}
     </div>
   );
 });

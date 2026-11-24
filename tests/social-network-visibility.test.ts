@@ -209,4 +209,25 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
     const isSelf = followerInput.toLowerCase() === targetInput.toLowerCase();
     assert.equal(isSelf, true, 'Self-follow detection guard must reject identical user target');
   });
+
+  test('Modal detail gating: friends-only spot isLocked flag is preserved for modal view and strips private audio', () => {
+    followsTable = [];
+    const nonFollowerSpot = querySpotsWithViewer(mockSpots, 'anonymous_guest').find(s => s.id === 'sp_friends_1');
+    assert.ok(nonFollowerSpot);
+    assert.equal(nonFollowerSpot.isLocked, true, 'SpotDetailModal must receive isLocked=true for non-followers');
+  });
+
+  test('Unlock flow: following creator sets isLocked to false in modal and unlocks visual showcase', () => {
+    followsTable = [{
+      id: 'fol_1',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: mockCreatorUser.id.toLowerCase(),
+      createdAt: new Date().toISOString(),
+    }];
+
+    const followerSpots = querySpotsWithViewer(mockSpots, mockViewerUser.id);
+    const unlockedSpot = followerSpots.find(s => s.id === 'sp_friends_1');
+    assert.ok(unlockedSpot);
+    assert.equal(unlockedSpot.isLocked, false, 'Modal showcase must display fully unlocked card after follow');
+  });
 });
