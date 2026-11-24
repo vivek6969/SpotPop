@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PlanDraft } from './types';
 import { STICKER_CATEGORIES } from '../CreateSpotModal';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
+import { matchesStickerSearch } from '../../../utils/stickerKeywords';
 
 interface StickersStockTabProps {
   currentDraft: PlanDraft;
@@ -16,7 +17,6 @@ interface StickersStockTabProps {
 export const StickersStockTab: React.FC<StickersStockTabProps> = ({
   currentDraft,
   handleAddSticker,
-  onCustomStickerUpload,
   selectedItemId,
   onUpdateSticker,
   onDeleteSticker,
@@ -27,13 +27,27 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
   // Currently selected sticker on the canvas
   const selectedSticker = (currentDraft.stickers || []).find((s) => s.id === selectedItemId);
 
-  // Filter stickers by search query
-  const filteredCategories = STICKER_CATEGORIES.map((cat) => ({
-    ...cat,
-    emojis: cat.emojis.filter((e) =>
-      e.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-  })).filter((c) => c.emojis.length > 0);
+  // Filter stickers by search query using semantic keyword matching
+  const filteredCategories = searchQuery.trim()
+    ? STICKER_CATEGORIES.map((cat) => ({
+        ...cat,
+        emojis: cat.emojis.filter((e) =>
+          matchesStickerSearch(e, cat.name, cat.id, searchQuery)
+        ),
+      })).filter((c) => c.emojis.length > 0)
+    : [];
+
+  const totalMatches = filteredCategories.reduce((sum, c) => sum + c.emojis.length, 0);
+
+  const POPULAR_SEARCH_PRESETS = [
+    { label: '💖 Hearts', query: 'heart' },
+    { label: '🔥 Fire', query: 'fire' },
+    { label: '⭐ Stars', query: 'star' },
+    { label: '🎮 Gaming', query: 'gaming' },
+    { label: '🎃 Spooky', query: 'halloween' },
+    { label: '☕ Coffee', query: 'coffee' },
+    { label: '🏷️ Badges', query: 'badge' },
+  ];
 
   return (
     <div className="p-4 rounded-2xl bg-gradient-to-b from-[#141724] to-[#0E101A] border border-white/10 space-y-4 shadow-xl">
@@ -63,7 +77,7 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
             <button
               type="button"
               onClick={() => onDeleteSticker(selectedSticker.id)}
-              className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold transition-colors"
+              className="px-2 py-0.5 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-bold transition-colors cursor-pointer"
             >
               ✕ Delete
             </button>
@@ -126,13 +140,36 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search 500+ stickers, emojis & badges..."
-            className="w-full pl-8 pr-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-pink-400 placeholder:text-slate-500"
+            placeholder="Search stickers, heart, star, fire, gaming, food..."
+            className="w-full pl-8 pr-8 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-pink-400 placeholder:text-slate-500"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-2.5 w-4 h-4 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-[10px] cursor-pointer"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Category Pills Strip */}
-        {!searchQuery && (
+        {/* Search Results Summary or Category Pills Strip */}
+        {searchQuery.trim() ? (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] text-slate-300 font-medium">
+              Found <strong className="text-pink-400 font-bold">{totalMatches}</strong> sticker{totalMatches === 1 ? '' : 's'} for &ldquo;<span className="text-white">{searchQuery.trim()}</span>&rdquo;
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-[10px] text-slate-400 hover:text-white font-semibold cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        ) : (
           <HorizontalScroll className="gap-1.5 py-1">
             {STICKER_CATEGORIES.map((cat) => (
               <button
@@ -152,31 +189,60 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
         )}
       </div>
 
-
-      {/* 5. Stickers Grid */}
-      <div className="p-3 rounded-xl bg-black/40 border border-white/10 max-h-60 overflow-y-auto no-scrollbar">
-        {searchQuery ? (
-          <div className="space-y-3">
-            {filteredCategories.map((cat) => (
-              <div key={cat.id} className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
-                  {cat.name}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {cat.emojis.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleAddSticker(emoji)}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-[#FF2E93]/20 hover:scale-115 hover:border-[#FF2E93] border border-white/10 text-white text-base transition-all cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+      {/* 4. Stickers Grid */}
+      <div className="p-3 rounded-xl bg-black/40 border border-white/10 max-h-64 overflow-y-auto no-scrollbar">
+        {searchQuery.trim() ? (
+          totalMatches > 0 ? (
+            <div className="space-y-3.5">
+              {filteredCategories.map((cat) => (
+                <div key={cat.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                      {cat.name}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {cat.emojis.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.emojis.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleAddSticker(emoji)}
+                        className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-[#FF2E93]/20 hover:scale-115 hover:border-[#FF2E93] border border-white/10 text-white text-lg transition-all cursor-pointer flex items-center justify-center min-w-[36px] min-h-[36px]"
+                        title={emoji}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-7 px-3 text-center space-y-3">
+              <span className="text-3xl block">🔍</span>
+              <div className="text-xs font-bold text-white">
+                No stickers found for &ldquo;{searchQuery.trim()}&rdquo;
               </div>
-            ))}
-          </div>
+              <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                Try searching for keywords like heart, love, star, fire, gaming, or cat.
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1.5">
+                {POPULAR_SEARCH_PRESETS.map((preset) => (
+                  <button
+                    key={preset.query}
+                    type="button"
+                    onClick={() => setSearchQuery(preset.query)}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-semibold transition-colors cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-wrap gap-2">
             {STICKER_CATEGORIES.find((c) => c.id === activeCategory)?.emojis.map((emoji) => (
@@ -184,7 +250,8 @@ export const StickersStockTab: React.FC<StickersStockTabProps> = ({
                 key={emoji}
                 type="button"
                 onClick={() => handleAddSticker(emoji)}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[#FF2E93]/20 hover:scale-115 hover:border-[#FF2E93] border border-white/10 text-white text-lg transition-all cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-[#FF2E93]/20 hover:scale-115 hover:border-[#FF2E93] border border-white/10 text-white text-lg transition-all cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px]"
+                title={emoji}
               >
                 {emoji}
               </button>
