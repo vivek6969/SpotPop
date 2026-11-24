@@ -124,3 +124,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: Verified `toggleSpotLike` in database, SSE broadcast `spot_updated`, `localStorage` persistence, and 48/48 passing tests in `tests/reels-navigation.test.ts`.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-016]: Reels Native-App Polish, Comments & Replies, Pop React & Views Engine
+- **Priority**: P0 (User Experience & Engagement Integrity)
+- **Assigned Agent**: senior-engineer
+- **Description**: Fix button overlap on Pop cards by introducing a dedicated action rail gutter, implement algorithmic discovery shuffle, build real Comments & Replies sheet with @mentions and #hashtags, allow creators to toggle/hide comments during Pop creation, integrate Pop React emoji floating animations, and enable real backend view tracking via `POST /api/spots/:id/view`.
+- **Status**: Completed
+- **Test Evidence**: 52/52 tests passing across 10 suites (`tests/reels-navigation.test.ts`), zero TypeScript errors, and <1s bundle build.
+- **Review Result**: Approved by CTO.
