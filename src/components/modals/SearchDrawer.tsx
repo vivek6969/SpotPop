@@ -396,15 +396,6 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
                           <span className="font-bold text-white text-sm truncate">
                             {spot.content.headline || spot.creatorName}
                           </span>
-                          {spot.tier === 'big_pop' ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30">
-                              BIG POP
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
-                              MINI POP
-                            </span>
-                          )}
                         </div>
 
                         <div className="text-xs text-slate-400 truncate mt-0.5">

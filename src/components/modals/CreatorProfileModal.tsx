@@ -691,8 +691,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               {isEditing && (
                 <form onSubmit={handleSaveProfile} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3.5 animate-fade-in text-left">
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Edit Profile & Username</h3>
-                    <span className="text-[10px] text-slate-400">Instagram Format Compliant</span>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Edit Profile</h3>
                   </div>
 
                   {/* Profile Photo Uploader */}

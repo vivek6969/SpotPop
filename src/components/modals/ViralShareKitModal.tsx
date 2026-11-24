@@ -423,10 +423,10 @@ export const ViralShareKitModal: React.FC<ViralShareKitModalProps> = ({
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🚀</span>
+            <span className="text-xl">✨</span>
             <div>
-              <h3 className="font-outfit font-bold text-lg text-white">Viral Share Kit</h3>
-              <p className="text-[11px] text-slate-400">Share your creation to Instagram, WhatsApp & social media</p>
+              <h3 className="font-outfit font-bold text-lg text-white">Share Spot</h3>
+              <p className="text-[11px] text-slate-400">Share your card to Instagram stories, WhatsApp & social media</p>
             </div>
           </div>
           <button

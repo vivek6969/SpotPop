@@ -46,7 +46,7 @@ export const LayersStudioTab: React.FC<LayersStudioTabProps> = ({
       {/* 1. Add Elements Bar */}
       <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
         <label className="text-xs font-bold text-white block">
-          Add Elements & Multi-Photo Layers
+          Add Elements
         </label>
         <div className="grid grid-cols-3 gap-2">
           <label className="py-2 px-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-colors text-center">
@@ -72,7 +72,7 @@ export const LayersStudioTab: React.FC<LayersStudioTabProps> = ({
         {/* Vector Shapes Quick Palette (10 Shapes) */}
         <div className="pt-2 border-t border-white/10">
           <label className="text-[11px] font-bold text-slate-400 block mb-1.5">
-            Insert Vector Shape Layer:
+            Add Shapes:
           </label>
           <HorizontalScroll className="gap-1.5 py-0.5">
             {[

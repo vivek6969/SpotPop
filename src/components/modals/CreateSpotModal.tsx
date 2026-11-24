@@ -1887,12 +1887,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 mobileActiveSheet !== null ? 'p-2 border-b border-white/10' : 'p-4'
               }`}
             >
-              {/* Parity Live Status Badge */}
-              <div className="absolute top-2 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20 pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>LIVE PREVIEW</span>
-              </div>
-
               {/* Card centered and scaled for mobile viewport to ensure prominent, crystal-clear readability */}
               <div
                 className={`relative transition-transform duration-300 origin-center my-auto ${
@@ -2040,11 +2034,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
             {/* Desktop Preview */}
             <div className="lg:col-span-5 shrink-0 flex flex-col items-center justify-center bg-[#07080D] border-r border-white/10 relative overflow-hidden select-none p-4 h-full">
-              <div className="absolute top-2 left-3 text-[10px] tracking-wider uppercase text-slate-400 font-bold flex items-center gap-1.5 z-20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE</span>
-              </div>
-
               <div className="absolute top-2 right-3 flex items-center gap-1.5 z-20">
                 <button
                   type="button"

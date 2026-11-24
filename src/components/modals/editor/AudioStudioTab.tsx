@@ -284,7 +284,7 @@ export const AudioStudioTab: React.FC<AudioStudioTabProps> = ({
         <div>
           <h4 className="font-outfit font-bold text-sm text-white flex items-center gap-1.5">
             <span>🎙️</span>
-            <span>Audio Memory (Big Pop Exclusive)</span>
+            <span>Voice Note</span>
           </h4>
           <p className="text-[11px] text-slate-400 mt-0.5">
             Voice messages and sound clips work standalone — photos are completely optional! (Max 15s, 500 KB).

@@ -492,7 +492,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">💧</span>
-                    <span className="text-sm font-bold text-white">Blur Studio</span>
+                    <span className="text-sm font-bold text-white">Blur</span>
                   </div>
                   <span className="font-mono text-sm font-bold text-cyan-400">
                     {adj.blur || 0}px
@@ -533,7 +533,7 @@ export const AdjustTab: React.FC<AdjustTabProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">🔘</span>
-                    <span className="text-sm font-bold text-white">Vignette Edge Falloff</span>
+                    <span className="text-sm font-bold text-white">Vignette</span>
                   </div>
                   <span className="font-mono text-sm font-bold text-amber-400">
                     {adj.vignette || 0}%

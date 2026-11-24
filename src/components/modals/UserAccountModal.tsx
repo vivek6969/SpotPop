@@ -274,13 +274,9 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     <span className="font-bold text-white text-base truncate">
                       {currentUser.displayName}
                     </span>
-                    {currentUser.role === 'admin' ? (
+                    {currentUser.role === 'admin' && (
                       <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase shrink-0">
-                        👑 Admin
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 text-[10px] font-bold uppercase shrink-0">
-                        Pop Creator
+                        Admin
                       </span>
                     )}
                   </div>

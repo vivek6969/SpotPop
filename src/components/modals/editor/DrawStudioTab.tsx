@@ -174,7 +174,7 @@ export const DrawStudioTab: React.FC<DrawStudioTabProps> = ({
       {/* 5. Vector Shapes Stamps */}
       <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">
         <label className="text-xs font-bold text-slate-300 block">
-          🔷 Or Stamp Vector Shape Layers
+          🔷 Add Shapes
         </label>
         <div className="grid grid-cols-6 gap-1.5">
           {[

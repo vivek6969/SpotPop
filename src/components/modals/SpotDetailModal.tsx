@@ -348,11 +348,6 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
               <span>{spot.creatorName}&apos;s Spot</span>
               <span className="text-xs text-slate-500 group-hover:text-white transition-colors">↗</span>
             </button>
-            {spot.tier === 'big_pop' && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 shrink-0">
-                BIG POP
-              </span>
-            )}
             {!isOwner && isFollowing && (
               <button
                 type="button"
@@ -457,9 +452,8 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-pink-200">
                   <span>✨</span>
-                  <span>You own this Pop</span>
+                  <span>Your Pop</span>
                 </div>
-                <span className="text-[10px] text-slate-400">Owner Controls</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -785,7 +779,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
             onClick={() => onOpenShareKit(spot)}
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white font-outfit font-bold text-sm shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>🚀 Open Viral Share Kit</span>
+            <span>Share Spot</span>
           </button>
         </div>
       </div>

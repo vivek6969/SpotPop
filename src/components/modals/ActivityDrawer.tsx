@@ -267,15 +267,6 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
                       <span className="text-xs font-bold text-white group-hover:text-[#FF5EAA] transition-colors">
                         {act.creatorName}
                       </span>
-                      {act.tier && (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-xs ${
-                          act.tier === 'big_pop'
-                            ? 'bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30'
-                            : 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/30'
-                        }`}>
-                          {act.tier === 'big_pop' ? 'BIG POP' : 'MINI POP'}
-                        </span>
-                      )}
                       {isUnread && (
                         <span className="w-2 h-2 rounded-full bg-[#FF2E93] animate-pulse" />
                       )}
