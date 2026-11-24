@@ -301,3 +301,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 1.02s.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-033]: Separation of Audience & Privacy Settings from Text Editor into Dedicated Tab & Publish Flow
+- **Priority**: P0 (Information Architecture & User Experience Integrity)
+- **Assigned Agent**: product-manager & ui-ux-engineer & senior-engineer
+- **Description**: Addressed critical information architecture flaw where "Audience & Visibility" (Public / Friends / Private) and "Allow Comments on Pop" settings were misplaced inside `TextStudioTab.tsx`. Created dedicated `AudienceTab.tsx` providing focused audience selection, comment toggling, and discovery hashtags. In `CreateSpotModal.tsx`, added a dedicated `{ id: 'audience', label: 'Audience', icon: '🔒' }` tool and integrated a quick audience selector pill (`🌍 Public ⌵` / `👥 Friends ⌵` / `🔒 Private ⌵`) into the desktop review/placement footer. Cleaned `TextStudioTab.tsx` so it strictly focuses on headline, subtext, font family, typography styling, and colors.
+- **Status**: Completed
+- **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 895ms.
+- **Review Result**: Approved by CTO.

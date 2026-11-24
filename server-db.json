@@ -612,7 +612,7 @@
       "createdAt": "2026-11-24T06:28:54.612Z",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 8,
+      "viewsCount": 9,
       "sharesCount": 0,
       "orderId": "ord_1795501734605_alc1"
     },
@@ -6717,7 +6717,7 @@
       "visibility": "public",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 2200,
+      "viewsCount": 2201,
       "likesCount": 839,
       "sharesCount": 143,
       "allowComments": true,

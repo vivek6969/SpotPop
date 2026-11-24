@@ -15,6 +15,7 @@ import { DrawStudioTab } from './editor/DrawStudioTab';
 import { FramesTab } from './editor/FramesTab';
 import { ThemesTab } from './editor/ThemesTab';
 import { AudioStudioTab } from './editor/AudioStudioTab';
+import { AudienceTab } from './editor/AudienceTab';
 import { BrushStyle, PlanDraft } from './editor/types';
 import {
   FILTER_PRESETS,
@@ -1560,6 +1561,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     ...(tier === 'big_pop'
       ? [{ id: 'audio', label: 'Audio', icon: '🎙️', bigPopOnly: true }]
       : []),
+    { id: 'audience', label: 'Audience', icon: '🔒' },
   ];
 
   const handleMobileToolSelect = (toolId: string) => {
@@ -1666,6 +1668,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       case 'audio':
         return tier === 'big_pop' && !isDrawingMode ? (
           <AudioStudioTab
+            currentDraft={currentDraft}
+            updateDraft={updateDraft}
+          />
+        ) : null;
+      case 'audience':
+        return !isDrawingMode ? (
+          <AudienceTab
             currentDraft={currentDraft}
             updateDraft={updateDraft}
           />
@@ -2359,14 +2368,32 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         {/* PINNED ACTION FOOTER (Desktop only) */}
         {!isMobile && (
           <div className="shrink-0 px-4 py-3 bg-[#0a0c14] border-t border-white/10 flex items-center justify-between gap-3 z-30">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
-                {editSpot ? 'Save Changes' : 'Placement Fee'}
-              </span>
-              <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">
-                {editSpot ? 'Free' : tier === 'big_pop' ? '₹99' : '₹29'}
-                <span className="text-[11px] font-normal text-slate-400 ml-1">one-time</span>
-              </span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                  {editSpot ? 'Save Changes' : 'Placement Fee'}
+                </span>
+                <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">
+                  {editSpot ? 'Free' : tier === 'big_pop' ? '₹99' : '₹29'}
+                  <span className="text-[11px] font-normal text-slate-400 ml-1">one-time</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveEditorTab('audience');
+                  setMobileActiveSheet('audience');
+                }}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeEditorTab === 'audience'
+                    ? 'bg-pink-500/20 border-pink-500/50 text-pink-300'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="Change audience & privacy"
+              >
+                <span>{currentDraft.visibility === 'private' ? '🔒 Private' : currentDraft.visibility === 'friends_only' ? '👥 Friends' : '🌍 Public'}</span>
+                <span className="text-[10px] text-slate-400">⌵</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
