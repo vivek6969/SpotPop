@@ -144,3 +144,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 53/53 tests passing across 10 suites (`tests/reels-navigation.test.ts`), verified play/pause toggle and scrubber clamping in test suite, clean build in 904ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-018]: Permanent Removal of Top-Right Microphone Duration Pill Badge
+- **Priority**: P0 (Visual Cleanliness & UI De-cluttering)
+- **Assigned Agent**: ui-ux-engineer
+- **Description**: Permanently remove the top-right black rounded microphone duration pill badge (`🎙️ 15s`) from `SpotCard.tsx` across the entire application to keep all cards clean and un-obscured.
+- **Status**: Completed
+- **Test Evidence**: Removed badge from `SpotCard.tsx`, updated event propagation regression test, 53/53 passing tests, and verified build in 973ms.
+- **Review Result**: Approved by CTO.
