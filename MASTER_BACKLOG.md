@@ -101,6 +101,26 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Priority**: P1 (Reliability & Quality Assurance)
 - **Assigned Agent**: qa-engineer
 - **Description**: Expand `tests/` with runnable test suites for business logic, state integrity, and spotcard rendering using Node.js native test runner (`node:test`).
-- **Status**: Completed (35/35 tests passing across 8 suites in 225ms)
+- **Status**: Completed (48/48 tests passing across 10 suites)
 - **Test Evidence**: `npx tsx --test tests/**/*.test.ts` passed 100%.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-014]: Pop Reels Full-Screen Centered Stage & UI Redesign
+- **Priority**: P0 (User Experience & Visual Polish)
+- **Assigned Agent**: ui-ux-engineer
+- **Description**: Redesign Pop Reels to center the Pop card in the dead-center of the screen at high fidelity scale with dynamic ambient background glow. Restructure action rail and creator caption overlays.
+- **Status**: Completed
+- **Test Evidence**: Pop card centered via `absolute inset-0 flex items-center justify-center` with responsive scaling (`scale-[1.75]` to `scale-[2.2]`), floating right action rail, and left bottom caption bar.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-015]: Real Backend Like Synchronization & Interaction Engine
+- **Priority**: P1 (Core Engagement Feature)
+- **Assigned Agent**: senior-engineer
+- **Description**: Connect Pop Reels like button to real backend persistence via `POST /api/spots/:id/like` and `db.toggleSpotLike`, persist liked spots in `localStorage`, broadcast updates via SSE, and make creator follow, share, details, and teleport fully functional.
+- **Status**: Completed
+- **Test Evidence**: Verified `toggleSpotLike` in database, SSE broadcast `spot_updated`, `localStorage` persistence, and 48/48 passing tests in `tests/reels-navigation.test.ts`.
 - **Review Result**: Approved by CTO.
