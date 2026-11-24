@@ -43,6 +43,71 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Connected Spots State
+  const [connectedSpots, setConnectedSpots] = useState<Spot[]>([]);
+  const [loadingConnected, setLoadingConnected] = useState(false);
+  const [showConnectPicker, setShowConnectPicker] = useState(false);
+  const [connectableSpots, setConnectableSpots] = useState<Spot[]>([]);
+  const [loadingConnectable, setLoadingConnectable] = useState(false);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!spot?.id) return;
+    setLoadingConnected(true);
+    api.getConnectedSpots(spot.id, currentUser?.username)
+      .then(res => setConnectedSpots(res.connectedSpots || []))
+      .catch(() => setConnectedSpots([]))
+      .finally(() => setLoadingConnected(false));
+  }, [spot?.id, currentUser?.username]);
+
+  const handleOpenConnectPicker = async () => {
+    if (!spot?.id) return;
+    setShowConnectPicker(true);
+    setLoadingConnectable(true);
+    try {
+      const res = await api.getConnectableSpots(spot.id, authToken || undefined);
+      setConnectableSpots(res.spots || []);
+    } catch {
+      setConnectableSpots([]);
+    } finally {
+      setLoadingConnectable(false);
+    }
+  };
+
+  const handleConnectSpot = async (targetSpotId: string) => {
+    if (!spot?.id) return;
+    setConnectingId(targetSpotId);
+    try {
+      const res = await api.connectSpots(spot.id, targetSpotId, authToken || undefined);
+      if (res.success) {
+        setConnectedSpots(res.connectedSpots || []);
+        setShowConnectPicker(false);
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#FF2E93', '#00F0FF', '#FFE600'],
+        });
+      }
+    } catch (e: any) {
+      alert(e.message || 'Could not connect pops');
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  const handleDisconnectSpot = async (targetSpotId: string) => {
+    if (!spot?.id) return;
+    try {
+      const res = await api.disconnectSpots(spot.id, targetSpotId, authToken || undefined);
+      if (res.success) {
+        setConnectedSpots(res.connectedSpots || []);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Could not disconnect pops');
+    }
+  };
+
   const publicUrl = `${window.location.origin}?spot=${spot.slug || spot.id}`;
 
   const handleCopyLink = () => {
@@ -522,8 +587,103 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   ))}
                 </div>
               )}
+
+              {/* Tagged Friends */}
+              {Array.from(new Set([...(spot.taggedUsers || []), ...(spot.content?.taggedUsers || [])])).length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-white/10">
+                  <span className="text-xs text-slate-400 font-medium">👥 Tagged:</span>
+                  {Array.from(new Set([...(spot.taggedUsers || []), ...(spot.content?.taggedUsers || [])])).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => {
+                        if (onOpenCreatorProfile) {
+                          onClose();
+                          onOpenCreatorProfile(u);
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded-full bg-white/10 hover:bg-[#FF2E93]/20 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>@{u}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          {/* Connected Pops (Memory Thread) */}
+          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                <span>🔗</span>
+                <span>Connected Pops ({connectedSpots.length})</span>
+              </div>
+              {(isOwner || isFollowing || (currentUser?.username && Array.from(new Set([...(spot.taggedUsers || []), ...(spot.content?.taggedUsers || [])])).map(u => u.toLowerCase()).includes(currentUser.username.toLowerCase()))) && (
+                <button
+                  type="button"
+                  onClick={handleOpenConnectPicker}
+                  className="px-2.5 py-1 rounded-xl bg-[#0095F6]/20 hover:bg-[#0095F6]/30 text-[#0095F6] text-[11px] font-bold border border-[#0095F6]/30 transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span>+</span>
+                  <span>Connect Pop</span>
+                </button>
+              )}
+            </div>
+
+            {loadingConnected ? (
+              <div className="py-2 text-xs text-slate-400 flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span>Loading connected pops...</span>
+              </div>
+            ) : connectedSpots.length === 0 ? (
+              <p className="text-xs text-slate-400 py-1">
+                No pops connected to this memory thread yet.
+                {(isOwner || isFollowing) ? ' Tap "+ Connect Pop" to link another pop!' : ''}
+              </p>
+            ) : (
+              <div className="flex items-center gap-2.5 overflow-x-auto py-1 no-scrollbar">
+                {connectedSpots.map((cs) => (
+                  <div
+                    key={cs.id}
+                    className="w-36 shrink-0 p-2.5 rounded-xl bg-black/40 border border-white/10 hover:border-[#FF2E93]/50 transition-all flex flex-col justify-between gap-2 group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-[10px] text-slate-400 truncate">@{cs.creatorName}</span>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnectSpot(cs.id)}
+                            title="Disconnect pop"
+                            className="text-slate-500 hover:text-rose-400 text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-white truncate">
+                        {cs.title || cs.content?.headline || 'Untitled Pop'}
+                      </p>
+                      {cs.location && (
+                        <span className="text-[10px] text-amber-300 truncate block">📍 {cs.location}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onFlyToSpot(cs);
+                      }}
+                      className="w-full py-1 rounded-lg bg-white/10 hover:bg-[#FF2E93] text-white text-[10px] font-bold transition-all text-center cursor-pointer"
+                    >
+                      Travel to Pop 🚀
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* ================= SOCIAL ENGAGEMENT & REACTION BAR ================= */}
           <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/5 border border-white/10">
@@ -855,6 +1015,77 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   <span>Yes, Delete Pop</span>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connect Pop Picker Modal */}
+      {showConnectPicker && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md max-h-[80vh] flex flex-col rounded-3xl bg-[#171A29] border border-white/15 shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-black/30">
+              <div className="flex items-center gap-2">
+                <span>🔗</span>
+                <h4 className="font-outfit font-bold text-base text-white">Connect a Pop</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConnectPicker(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Connect another Pop you created, were tagged in, or from people you follow to create a connected thread.
+              </p>
+
+              {loadingConnectable ? (
+                <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                  <span className="w-5 h-5 border-2 border-[#FF2E93] border-t-transparent rounded-full animate-spin" />
+                  <span>Finding connectable pops...</span>
+                </div>
+              ) : connectableSpots.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  No other connectable pops found. Create another pop or follow creators to link pops!
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {connectableSpots.map((cs) => (
+                    <div
+                      key={cs.id}
+                      className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 hover:border-white/20 transition-all"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-400">@{cs.creatorName}</span>
+                          {cs.location && (
+                            <span className="text-[10px] text-amber-300">📍 {cs.location}</span>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold text-white truncate mt-0.5">
+                          {cs.title || cs.content?.headline || 'Untitled Pop'}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleConnectSpot(cs.id)}
+                        disabled={connectingId === cs.id}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white font-bold text-xs shrink-0 hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        {connectingId === cs.id ? (
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <span>Connect 🔗</span>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

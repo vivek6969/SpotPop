@@ -367,6 +367,86 @@ apiRouter.post('/spots/:id/like', (req: Request, res: Response) => {
   }
 });
 
+// =================== CONNECTED POPS & MEMORY THREADS ===================
+
+// GET connected pops for a spot
+apiRouter.get('/spots/:id/connected', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    const viewerKey = user?.username || (req.query.viewer as string) || undefined;
+    const connectedSpots = db.getConnectedSpots(req.params.id, viewerKey);
+    res.json({ success: true, connectedSpots });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET connectable pops for the user
+apiRouter.get('/spots/connectable', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    const userKey = user?.username || user?.id || (req.query.viewer as string) || undefined;
+    if (!userKey) {
+      return res.status(401).json({ error: 'Sign in or username required to view connectable Pops' });
+    }
+    const currentSpotId = (req.query.currentSpotId as string) || undefined;
+    const spots = db.getConnectableSpots(userKey, currentSpotId);
+    res.json({ success: true, spots });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST connect two pops together
+apiRouter.post('/spots/:id/connect', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    const userKey = user ? (user.username || user.id) : (req.body.userKey || undefined);
+    const { targetSpotId } = req.body;
+    if (!targetSpotId) {
+      return res.status(400).json({ error: 'Target Pop ID is required' });
+    }
+
+    const result = db.connectSpots(req.params.id, targetSpotId, userKey);
+    if (!result.success) {
+      return res.status(403).json({ error: result.error });
+    }
+
+    if (result.spotA) broadcastSpotEvent('spot_updated', { spot: result.spotA });
+    if (result.spotB) broadcastSpotEvent('spot_updated', { spot: result.spotB });
+
+    const connectedSpots = db.getConnectedSpots(req.params.id, userKey);
+    res.json({ success: true, spot: result.spotA, connectedSpots });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST disconnect two pops
+apiRouter.post('/spots/:id/disconnect', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    const userKey = user ? (user.username || user.id) : (req.body.userKey || undefined);
+    const { targetSpotId } = req.body;
+    if (!targetSpotId) {
+      return res.status(400).json({ error: 'Target Pop ID is required' });
+    }
+
+    const result = db.disconnectSpots(req.params.id, targetSpotId, userKey);
+    if (!result.success) {
+      return res.status(403).json({ error: result.error });
+    }
+
+    if (result.spotA) broadcastSpotEvent('spot_updated', { spot: result.spotA });
+    if (result.spotB) broadcastSpotEvent('spot_updated', { spot: result.spotB });
+
+    const connectedSpots = db.getConnectedSpots(req.params.id, userKey);
+    res.json({ success: true, spot: result.spotA, connectedSpots });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET comments for a spot
 apiRouter.get('/spots/:id/comments', (req: Request, res: Response) => {
   try {
@@ -1160,7 +1240,7 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
       return res.status(403).json({ error: 'You do not have permission to edit this Pop' });
     }
 
-    const { content, background, borderColor, shape, creatorName, allowComments, visibility, title, description, location, tags } = req.body;
+    const { content, background, borderColor, shape, creatorName, allowComments, visibility, title, description, location, tags, taggedUsers, connectedSpotIds } = req.body;
     const updates: Partial<Spot> = {};
 
     if (background) updates.background = background;
@@ -1173,6 +1253,8 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
     if (description !== undefined) updates.description = description;
     if (location !== undefined) updates.location = location;
     if (tags !== undefined) updates.tags = tags;
+    if (taggedUsers !== undefined) updates.taggedUsers = taggedUsers;
+    if (connectedSpotIds !== undefined) updates.connectedSpotIds = connectedSpotIds;
     if (content) {
       updates.content = {
         ...spot.content,
@@ -1182,6 +1264,8 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
       if (content.description !== undefined) updates.description = content.description;
       if (content.location !== undefined) updates.location = content.location;
       if (content.tags !== undefined) updates.tags = content.tags;
+      if (content.taggedUsers !== undefined) updates.taggedUsers = content.taggedUsers;
+      if (content.connectedSpotIds !== undefined) updates.connectedSpotIds = content.connectedSpotIds;
     }
 
     const updated = db.updateSpot(spot.id, updates);
@@ -1347,6 +1431,8 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       description: draft.description || draft.content?.description || undefined,
       location: draft.location || draft.content?.location || undefined,
       tags: draft.tags || draft.content?.tags || [],
+      taggedUsers: draft.taggedUsers || draft.content?.taggedUsers || [],
+      connectedSpotIds: draft.connectedSpotIds || draft.content?.connectedSpotIds || [],
       x,
       y,
       width: product.width,
@@ -1360,6 +1446,8 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         description: draft.description || draft.content?.description || undefined,
         location: draft.location || draft.content?.location || undefined,
         tags: draft.tags || draft.content?.tags || [],
+        taggedUsers: draft.taggedUsers || draft.content?.taggedUsers || [],
+        connectedSpotIds: draft.connectedSpotIds || draft.content?.connectedSpotIds || [],
         headline: draft.content?.headline || '',
         headlineX: draft.content?.headlineX,
         headlineY: draft.content?.headlineY,
@@ -1401,6 +1489,14 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
     };
 
     db.addSpot(newSpot);
+
+    // Establish mutual connection links if creator chained existing pops
+    if (newSpot.connectedSpotIds && newSpot.connectedSpotIds.length > 0) {
+      for (const targetId of newSpot.connectedSpotIds) {
+        db.connectSpots(newSpot.id, targetId, order.userId);
+      }
+    }
+
     broadcastSpotEvent('spot_created', { spot: newSpot, stats: db.getStats() });
     if (reservationId) {
       db.releaseReservation(reservationId);
@@ -1674,6 +1770,14 @@ apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
     };
 
     db.addSpot(newSpot);
+
+    // Establish mutual connection links if creator chained existing pops
+    if (newSpot.connectedSpotIds && newSpot.connectedSpotIds.length > 0) {
+      for (const targetId of newSpot.connectedSpotIds) {
+        db.connectSpots(newSpot.id, targetId, order.userId);
+      }
+    }
+
     broadcastSpotEvent('spot_created', { spot: newSpot, stats: db.getStats() });
     if (reservationId) {
       db.releaseReservation(reservationId);

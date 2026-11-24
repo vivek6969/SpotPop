@@ -16,6 +16,7 @@ interface UserAccountModalProps {
   onEditSpot?: (spot: Spot) => void;
   onDeleteSpot?: (spot: Spot) => void;
   onStartCreate?: () => void;
+  onOpenCreatorProfile?: (username: string) => void;
 }
 
 export const UserAccountModal: React.FC<UserAccountModalProps> = ({
@@ -30,6 +31,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   onEditSpot,
   onDeleteSpot,
   onStartCreate,
+  onOpenCreatorProfile,
 }) => {
   if (!isOpen) return null;
 
@@ -278,6 +280,18 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                       <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase shrink-0">
                         Admin
                       </span>
+                    )}
+                    {onOpenCreatorProfile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenCreatorProfile(currentUser.username);
+                        }}
+                        className="ml-auto px-2.5 py-1 rounded-xl bg-white/10 hover:bg-[#FF2E93]/20 text-slate-200 hover:text-white text-xs font-semibold transition-all border border-white/10 cursor-pointer"
+                      >
+                        View Profile →
+                      </button>
                     )}
                   </div>
                   <div className="text-xs text-slate-400 truncate mt-0.5">

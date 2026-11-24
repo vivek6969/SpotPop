@@ -93,6 +93,8 @@ export interface PlanDraft {
   description?: string;
   location?: string;
   tags?: string[];
+  taggedUsers?: string[];
+  connectedSpotIds?: string[];
   audioDraft?: AudioDraft | null;
   audio?: SpotAudio | null;
 }

@@ -127,7 +127,8 @@
       "createdAt": "2026-11-02T14:00:00.000Z",
       "ownedSpotIds": [
         "sp_riya_kabir"
-      ]
+      ],
+      "followersCount": 0
     },
     {
       "id": "usr_riya___kabir",
@@ -518,6 +519,244 @@
       "role": "user",
       "createdAt": "2026-11-01T00:00:00.000Z",
       "ownedSpotIds": []
+    },
+    {
+      "id": "usr_mira_c",
+      "username": "Mira_C",
+      "displayName": "Mira_C",
+      "isPrivate": true,
+      "bio": "Visual artist & pop creator 🌸 Friends-only pops. Follow to unlock!",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.874Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
+    },
+    {
+      "id": "usr_neotokio",
+      "username": "NeoTokio",
+      "displayName": "NeoTokio",
+      "isPrivate": true,
+      "bio": "Cyberpunk beats & midnight aesthetics 🌃",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.874Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
+    },
+    {
+      "id": "usr_simran_b",
+      "username": "Simran_B",
+      "displayName": "Simran_B",
+      "isPrivate": true,
+      "bio": "Design & coffee notes ☕ Follow to unlock!",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.874Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
+    },
+    {
+      "id": "usr_alice_1",
+      "email": "alice@example.com",
+      "username": "alice_art",
+      "displayName": "Alice Art",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.874Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_sara_3",
+      "email": "sara@example.com",
+      "username": "sara_singer",
+      "displayName": "Sara Singer",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.881Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_priya_5",
+      "email": "priya@example.com",
+      "username": "priya_p",
+      "displayName": "Priya P",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.888Z",
+      "ownedSpotIds": [],
+      "followersCount": 1
+    },
+    {
+      "id": "usr_rohit_6",
+      "email": "rohit@example.com",
+      "username": "rohit_r",
+      "displayName": "Rohit R",
+      "role": "user",
+      "createdAt": "2026-11-24T13:26:35.891Z",
+      "ownedSpotIds": [],
+      "followingCount": 1
+    },
+    {
+      "id": "usr_alice_1",
+      "email": "alice@example.com",
+      "username": "alice_art",
+      "displayName": "Alice Art",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.834Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_bob_2",
+      "email": "bob@example.com",
+      "username": "bob_builder",
+      "displayName": "Bob Builder",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.849Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_sara_3",
+      "email": "sara@example.com",
+      "username": "sara_singer",
+      "displayName": "Sara Singer",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.870Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_dave_4",
+      "email": "dave@example.com",
+      "username": "dave_dancer",
+      "displayName": "Dave Dancer",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.884Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_priya_5",
+      "email": "priya@example.com",
+      "username": "priya_p",
+      "displayName": "Priya P",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.908Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_rohit_6",
+      "email": "rohit@example.com",
+      "username": "rohit_r",
+      "displayName": "Rohit R",
+      "role": "user",
+      "createdAt": "2026-11-24T13:27:19.910Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_1",
+      "email": "p@x.com",
+      "username": "priya_p",
+      "displayName": "Priya",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_2",
+      "email": "r@x.com",
+      "username": "rohit_r",
+      "displayName": "Rohit",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_p",
+      "email": "p@x.com",
+      "username": "priya_p",
+      "displayName": "Priya P",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_r",
+      "email": "r@x.com",
+      "username": "rohit_r",
+      "displayName": "Rohit R",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_p",
+      "email": "p@x.com",
+      "username": "priya_p",
+      "displayName": "Priya P",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_r",
+      "email": "r@x.com",
+      "username": "rohit_r",
+      "displayName": "Rohit R",
+      "role": "user",
+      "createdAt": "",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_alice_ih8wa",
+      "email": "alice_ih8wa@example.com",
+      "username": "alice_ih8wa",
+      "displayName": "Alice ih8wa",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.666Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_bob_ih8wa",
+      "email": "bob_ih8wa@example.com",
+      "username": "bob_ih8wa",
+      "displayName": "Bob ih8wa",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.676Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_sara_g5502",
+      "email": "sara_g5502@example.com",
+      "username": "sara_g5502",
+      "displayName": "Sara g5502",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.706Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_dave_g5502",
+      "email": "dave_g5502@example.com",
+      "username": "dave_g5502",
+      "displayName": "Dave g5502",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.717Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_priya_fim7d",
+      "email": "priya_fim7d@example.com",
+      "username": "priya_fim7d",
+      "displayName": "Priya fim7d",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.731Z",
+      "ownedSpotIds": [],
+      "followersCount": 1
+    },
+    {
+      "id": "usr_rohit_fim7d",
+      "email": "rohit_fim7d@example.com",
+      "username": "rohit_fim7d",
+      "displayName": "Rohit fim7d",
+      "role": "user",
+      "createdAt": "2026-11-24T13:29:33.734Z",
+      "ownedSpotIds": [],
+      "followingCount": 1
     }
   ],
   "spots": [
@@ -612,7 +851,7 @@
       "createdAt": "2026-11-24T06:28:54.612Z",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 9,
+      "viewsCount": 10,
       "sharesCount": 0,
       "orderId": "ord_1795501734605_alc1"
     },
@@ -1872,7 +2111,7 @@
       "visibility": "public",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 2523,
+      "viewsCount": 2524,
       "likesCount": 528,
       "sharesCount": 67,
       "allowComments": true,
@@ -2320,7 +2559,7 @@
       "visibility": "public",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 1040,
+      "viewsCount": 1041,
       "likesCount": 281,
       "sharesCount": 47,
       "allowComments": true,
@@ -2732,6 +2971,9 @@
           "filter": "none",
           "effect": "none"
         }
+      },
+      "reactions": {
+        "🔥": 1
       }
     },
     {
@@ -5183,8 +5425,8 @@
       "visibility": "public",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 1941,
-      "likesCount": 532,
+      "viewsCount": 1942,
+      "likesCount": 533,
       "sharesCount": 76,
       "allowComments": true,
       "commentsCount": 7,
@@ -6364,7 +6606,7 @@
       "visibility": "public",
       "status": "published",
       "moderationStatus": "approved",
-      "viewsCount": 2387,
+      "viewsCount": 2388,
       "likesCount": 887,
       "sharesCount": 192,
       "allowComments": true,
@@ -9383,6 +9625,310 @@
       "viewsCount": 1,
       "sharesCount": 0,
       "orderId": "ord_1795520750380_1lcb"
+    },
+    {
+      "id": "sp_alice_1",
+      "x": 100,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "alice_art",
+      "ownerId": "usr_alice_1",
+      "title": "Alice's Birthday Party",
+      "description": "Celebrating 25th birthday with friends!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "birthday",
+        "party",
+        "friends"
+      ],
+      "taggedUsers": [
+        "bob_builder",
+        "charlie_chef"
+      ],
+      "content": {
+        "headline": "Alice's Birthday"
+      },
+      "createdAt": "2026-11-24T13:27:19.839Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 10,
+      "sharesCount": 2
+    },
+    {
+      "id": "sp_bob_1",
+      "x": 300,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "bob_builder",
+      "ownerId": "usr_bob_2",
+      "title": "Bob's Gift to Alice",
+      "description": "The surprise cake we got for Alice!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "cake",
+        "surprise",
+        "friends"
+      ],
+      "content": {
+        "headline": "Surprise Cake!"
+      },
+      "createdAt": "2026-11-24T13:27:19.854Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 5,
+      "sharesCount": 1
+    },
+    {
+      "id": "sp_sara_1",
+      "x": 10,
+      "y": 10,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "sara_singer",
+      "ownerId": "usr_sara_3",
+      "title": "Solo Pop",
+      "content": {
+        "headline": "Solo Song"
+      },
+      "createdAt": "2026-11-24T13:27:19.875Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_dave_1",
+      "x": 50,
+      "y": 50,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "dave_dancer",
+      "ownerId": "usr_dave_4",
+      "title": "Dance Pop",
+      "content": {
+        "headline": "Dance Routine"
+      },
+      "createdAt": "2026-11-24T13:27:19.892Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_priya_1",
+      "x": 200,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "priya_p",
+      "ownerId": "usr_priya_5",
+      "title": "Priya's Exhibition",
+      "content": {
+        "headline": "Art Fair"
+      },
+      "createdAt": "2026-11-24T13:27:19.920Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_rohit_1",
+      "x": 250,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#E9D5FF",
+      "creatorName": "rohit_r",
+      "ownerId": "usr_rohit_6",
+      "title": "At the exhibition with Priya!",
+      "content": {
+        "headline": "Awesome Show"
+      },
+      "createdAt": "2026-11-24T13:27:19.929Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_alice_ih8wa",
+      "x": 100,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "alice_ih8wa",
+      "ownerId": "usr_alice_ih8wa",
+      "title": "Alice's Birthday Party",
+      "description": "Celebrating 25th birthday with friends!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "birthday",
+        "party",
+        "friends"
+      ],
+      "taggedUsers": [
+        "bob_ih8wa",
+        "charlie_chef"
+      ],
+      "content": {
+        "headline": "Alice's Birthday",
+        "connectedSpotIds": []
+      },
+      "createdAt": "2026-11-24T13:29:33.669Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 10,
+      "sharesCount": 2,
+      "connectedSpotIds": []
+    },
+    {
+      "id": "sp_bob_ih8wa",
+      "x": 300,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "bob_ih8wa",
+      "ownerId": "usr_bob_ih8wa",
+      "title": "Bob's Gift to Alice",
+      "description": "The surprise cake we got for Alice!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "cake",
+        "surprise",
+        "friends"
+      ],
+      "content": {
+        "headline": "Surprise Cake!",
+        "connectedSpotIds": []
+      },
+      "createdAt": "2026-11-24T13:29:33.680Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 5,
+      "sharesCount": 1,
+      "connectedSpotIds": []
+    },
+    {
+      "id": "sp_sara_g5502",
+      "x": 10,
+      "y": 10,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "sara_g5502",
+      "ownerId": "usr_sara_g5502",
+      "title": "Solo Pop",
+      "content": {
+        "headline": "Solo Song"
+      },
+      "createdAt": "2026-11-24T13:29:33.710Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_dave_g5502",
+      "x": 50,
+      "y": 50,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "dave_g5502",
+      "ownerId": "usr_dave_g5502",
+      "title": "Dance Pop",
+      "content": {
+        "headline": "Dance Routine"
+      },
+      "createdAt": "2026-11-24T13:29:33.720Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_priya_fim7d",
+      "x": 200,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "priya_fim7d",
+      "ownerId": "usr_priya_fim7d",
+      "title": "Priya's Exhibition",
+      "content": {
+        "headline": "Art Fair",
+        "connectedSpotIds": [
+          "sp_rohit_fim7d"
+        ]
+      },
+      "createdAt": "2026-11-24T13:29:33.745Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0,
+      "connectedSpotIds": [
+        "sp_rohit_fim7d"
+      ]
+    },
+    {
+      "id": "sp_rohit_fim7d",
+      "x": 250,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "shape": "sticky",
+      "background": "#E9D5FF",
+      "creatorName": "rohit_fim7d",
+      "ownerId": "usr_rohit_fim7d",
+      "title": "At the exhibition with Priya!",
+      "content": {
+        "headline": "Awesome Show",
+        "connectedSpotIds": [
+          "sp_priya_fim7d"
+        ]
+      },
+      "createdAt": "2026-11-24T13:29:33.750Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0,
+      "connectedSpotIds": [
+        "sp_priya_fim7d"
+      ]
     }
   ],
   "orders": [
@@ -14110,6 +14656,186 @@
       "tier": "mini_pop",
       "message": "Vivek started following @Mira_C! ✨",
       "timestamp": "2026-11-24T11:56:14.381Z"
+    },
+    {
+      "id": "act_1795525300512",
+      "type": "liked",
+      "spotId": "sp_test_1795509505928_51_2tz4",
+      "creatorName": "Diya_Design",
+      "tier": "big_pop",
+      "message": "Diya_Design's spot received some love! ❤️",
+      "timestamp": "2026-11-24T13:01:40.512Z"
+    },
+    {
+      "id": "act_1795525317480",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Vivek",
+      "tier": "mini_pop",
+      "message": "Vivek started following @Riya! ✨",
+      "timestamp": "2026-11-24T13:01:57.480Z"
+    },
+    {
+      "id": "act_1795525318768",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Vivek",
+      "tier": "mini_pop",
+      "message": "Vivek started following @Riya! ✨",
+      "timestamp": "2026-11-24T13:01:58.768Z"
+    },
+    {
+      "id": "act_1795525319160",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Vivek",
+      "tier": "mini_pop",
+      "message": "Vivek started following @Riya! ✨",
+      "timestamp": "2026-11-24T13:01:59.160Z"
+    },
+    {
+      "id": "act_1795526795895",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Rohit R",
+      "tier": "mini_pop",
+      "message": "Rohit R started following @Priya P! ✨",
+      "timestamp": "2026-11-24T13:26:35.895Z"
+    },
+    {
+      "id": "act_1795526839839_yhsd",
+      "type": "claimed",
+      "spotId": "sp_alice_1",
+      "creatorName": "alice_art",
+      "tier": "mini_pop",
+      "message": "alice_art claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.839Z"
+    },
+    {
+      "id": "act_1795526839854_im9b",
+      "type": "claimed",
+      "spotId": "sp_bob_1",
+      "creatorName": "bob_builder",
+      "tier": "mini_pop",
+      "message": "bob_builder claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.854Z"
+    },
+    {
+      "id": "act_1795526839875_jhfn",
+      "type": "claimed",
+      "spotId": "sp_sara_1",
+      "creatorName": "sara_singer",
+      "tier": "mini_pop",
+      "message": "sara_singer claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.875Z"
+    },
+    {
+      "id": "act_1795526839892_jgca",
+      "type": "claimed",
+      "spotId": "sp_dave_1",
+      "creatorName": "dave_dancer",
+      "tier": "mini_pop",
+      "message": "dave_dancer claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.892Z"
+    },
+    {
+      "id": "act_1795526839920_loz9",
+      "type": "claimed",
+      "spotId": "sp_priya_1",
+      "creatorName": "priya_p",
+      "tier": "mini_pop",
+      "message": "priya_p claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.920Z"
+    },
+    {
+      "id": "act_1795526839929_pdtr",
+      "type": "claimed",
+      "spotId": "sp_rohit_1",
+      "creatorName": "rohit_r",
+      "tier": "mini_pop",
+      "message": "rohit_r claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:27:19.929Z"
+    },
+    {
+      "id": "act_1795526907270",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Rohit R",
+      "tier": "mini_pop",
+      "message": "Rohit R started following @Priya P! ✨",
+      "timestamp": "2026-11-24T13:28:27.270Z"
+    },
+    {
+      "id": "act_1795526930293",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Rohit R",
+      "tier": "mini_pop",
+      "message": "Rohit R started following @Priya P! ✨",
+      "timestamp": "2026-11-24T13:28:50.293Z"
+    },
+    {
+      "id": "act_1795526973669_8uwy",
+      "type": "claimed",
+      "spotId": "sp_alice_ih8wa",
+      "creatorName": "alice_ih8wa",
+      "tier": "mini_pop",
+      "message": "alice_ih8wa claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.669Z"
+    },
+    {
+      "id": "act_1795526973680_q1bh",
+      "type": "claimed",
+      "spotId": "sp_bob_ih8wa",
+      "creatorName": "bob_ih8wa",
+      "tier": "mini_pop",
+      "message": "bob_ih8wa claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.680Z"
+    },
+    {
+      "id": "act_1795526973710_g3hx",
+      "type": "claimed",
+      "spotId": "sp_sara_g5502",
+      "creatorName": "sara_g5502",
+      "tier": "mini_pop",
+      "message": "sara_g5502 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.710Z"
+    },
+    {
+      "id": "act_1795526973720_15xn",
+      "type": "claimed",
+      "spotId": "sp_dave_g5502",
+      "creatorName": "dave_g5502",
+      "tier": "mini_pop",
+      "message": "dave_g5502 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.720Z"
+    },
+    {
+      "id": "act_1795526973739",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Rohit fim7d",
+      "tier": "mini_pop",
+      "message": "Rohit fim7d started following @Priya fim7d! ✨",
+      "timestamp": "2026-11-24T13:29:33.739Z"
+    },
+    {
+      "id": "act_1795526973745_lj56",
+      "type": "claimed",
+      "spotId": "sp_priya_fim7d",
+      "creatorName": "priya_fim7d",
+      "tier": "mini_pop",
+      "message": "priya_fim7d claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.745Z"
+    },
+    {
+      "id": "act_1795526973751_smtg",
+      "type": "claimed",
+      "spotId": "sp_rohit_fim7d",
+      "creatorName": "rohit_fim7d",
+      "tier": "mini_pop",
+      "message": "rohit_fim7d claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-24T13:29:33.751Z"
     }
   ],
   "systemSettings": {
@@ -14184,6 +14910,22 @@
       "followerId": "usr_vivek",
       "followingId": "usr_mira_c",
       "createdAt": "2026-11-24T11:56:14.381Z"
+    },
+    {
+      "id": "flw_1795526930293_cl8d",
+      "followerId": "usr_rohit_6",
+      "followingId": "usr_priya_5",
+      "status": "accepted",
+      "createdAt": "2026-11-24T13:28:50.293Z",
+      "acceptedAt": "2026-11-24T13:28:50.293Z"
+    },
+    {
+      "id": "flw_1795526973739_n0h2",
+      "followerId": "usr_rohit_fim7d",
+      "followingId": "usr_priya_fim7d",
+      "status": "accepted",
+      "createdAt": "2026-11-24T13:29:33.739Z",
+      "acceptedAt": "2026-11-24T13:29:33.739Z"
     }
   ]
 }

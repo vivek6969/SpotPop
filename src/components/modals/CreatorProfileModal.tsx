@@ -10,6 +10,8 @@ interface CreatorProfileModalProps {
   onClose: () => void;
   onSelectSpot: (spot: Spot) => void;
   onProfileUpdated?: (updatedUser: User) => void;
+  onOpenAccountModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
@@ -19,6 +21,8 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   onClose,
   onSelectSpot,
   onProfileUpdated,
+  onOpenAccountModal,
+  onLogout,
 }) => {
   const [profileData, setProfileData] = useState<{
     user: User;
@@ -53,6 +57,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [pendingRequests, setPendingRequests] = useState<FollowRequestItem[]>([]);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   // Edit Mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -464,13 +469,61 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               {profileData?.user?.username || username}
             </span>
             {isSelf && (
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="text-slate-400 hover:text-white text-sm ml-1 transition-colors"
-                title="Profile Settings"
-              >
-                ⚙️
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                  className="text-slate-400 hover:text-white text-sm ml-1 p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Profile Settings"
+                >
+                  ⚙️
+                </button>
+
+                {showSettingsMenu && (
+                  <div className="absolute left-0 mt-2 w-48 rounded-2xl bg-[#1A1D2E] border border-white/15 shadow-2xl p-1.5 z-50 text-left animate-fade-in">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSettingsMenu(false);
+                        setIsEditing(!isEditing);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <span>✏️</span>
+                      <span>{isEditing ? 'Close Editor' : 'Edit Profile'}</span>
+                    </button>
+                    {onOpenAccountModal && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSettingsMenu(false);
+                          onClose();
+                          onOpenAccountModal();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <span>🛡️</span>
+                        <span>Account & Security</span>
+                      </button>
+                    )}
+                    {onLogout && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSettingsMenu(false);
+                          if (confirm('Are you sure you want to log out?')) {
+                            onClose();
+                            onLogout();
+                          }
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-white/10 mt-1 pt-1.5"
+                      >
+                        <span>🚪</span>
+                        <span>Log Out</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">

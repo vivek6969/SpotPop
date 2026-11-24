@@ -56,6 +56,70 @@ export const api = {
     return res.json();
   },
 
+  async getConnectedSpots(spotId: string, viewer?: string): Promise<{ connectedSpots: Spot[] }> {
+    const params = viewer ? `?viewer=${encodeURIComponent(viewer)}` : '';
+    const res = await fetch(`${API_BASE}/spots/${spotId}/connected${params}`, {
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch connected spots');
+    return res.json();
+  },
+
+  async getConnectableSpots(currentSpotId?: string, token?: string): Promise<{ spots: Spot[] }> {
+    const headers = getClientHeaders();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const params = currentSpotId ? `?currentSpotId=${encodeURIComponent(currentSpotId)}` : '';
+    const res = await fetch(`${API_BASE}/spots/connectable${params}`, {
+      headers,
+    });
+    if (!res.ok) throw new Error('Failed to fetch connectable spots');
+    return res.json();
+  },
+
+  async connectSpots(
+    spotId: string,
+    targetSpotId: string,
+    token?: string
+  ): Promise<{ success: boolean; spot: Spot; connectedSpots: Spot[] }> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getClientHeaders(),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/spots/${spotId}/connect`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ targetSpotId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to connect spots');
+    }
+    return res.json();
+  },
+
+  async disconnectSpots(
+    spotId: string,
+    targetSpotId: string,
+    token?: string
+  ): Promise<{ success: boolean; spot: Spot; connectedSpots: Spot[] }> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getClientHeaders(),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/spots/${spotId}/disconnect`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ targetSpotId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to disconnect spots');
+    }
+    return res.json();
+  },
+
   async getStats(): Promise<{ stats: CanvasStats }> {
     const res = await fetch(`${API_BASE}/stats`);
     if (!res.ok) throw new Error('Failed to fetch stats');

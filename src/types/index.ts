@@ -27,7 +27,7 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
       'Curated aesthetic fonts',
       'Colourful sticky & themed backgrounds',
       'Tape, pin & washi frame styles',
-      'Free drag & corner resize stickers',
+      'Drag & resize stickers freely',
       'Instant permanent canvas spot',
       'Personal share kit & QR code',
     ],
@@ -52,7 +52,7 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
       'Draw anywhere across the full card space',
       '8 brush styles: Neon, Calligraphy, Spray, Watercolor & more',
       'Halloween, Christmas, Love & Galaxy themes',
-      'Free drag, corner resize & opacity on every element',
+      'Customize & position every sticker and layer',
       'HD viral social media share kit',
     ],
     restrictions: [],
@@ -298,6 +298,8 @@ export interface SpotContent {
   description?: string;
   location?: string;
   tags?: string[];
+  taggedUsers?: string[];
+  connectedSpotIds?: string[];
   audio?: SpotAudio; // Optional voice note or sound clip (Big Pop only)
 }
 
@@ -311,6 +313,8 @@ export interface Spot {
   description?: string;
   location?: string;
   tags?: string[];
+  taggedUsers?: string[];
+  connectedSpotIds?: string[];
   x: number;
   y: number;
   width: number;

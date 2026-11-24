@@ -192,7 +192,64 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
         </div>
       </div>
 
-      {/* 5. Visibility Selector */}
+      {/* 5. Tag Friends & Mentions */}
+      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-pink-400 transition-colors">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>👥</span>
+            <span>Tag Friends (@users)</span>
+          </label>
+          {(currentDraft.taggedUsers || []).length > 0 && (
+            <span className="text-[10px] text-slate-400 font-mono">
+              {(currentDraft.taggedUsers || []).length} tagged
+            </span>
+          )}
+        </div>
+        <input
+          type="text"
+          value={(currentDraft.taggedUsers || []).map((u) => (u.startsWith('@') ? u : `@${u}`)).join(' ')}
+          onChange={(e) => {
+            const raw = e.target.value;
+            const users = raw
+              .split(/[\s,]+/)
+              .filter(Boolean)
+              .map((u) => u.replace(/^@/, '').trim().toLowerCase())
+              .filter(Boolean);
+            updateDraft({ taggedUsers: users });
+          }}
+          placeholder="e.g. @jay @sarah @vivek"
+          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-pink-400 font-medium"
+        />
+        <p className="text-[10px] text-slate-400">
+          Tagged friends can see this Pop, and can connect their own pops to this memory thread.
+        </p>
+      </div>
+
+      {/* 6. Connect to Existing Pop (Memory Thread) */}
+      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-cyan-400 transition-colors">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>🔗</span>
+            <span>Connect to Existing Pop (Memory Thread)</span>
+          </label>
+        </div>
+        <p className="text-[10px] text-slate-400">
+          Link this Pop to another Pop (e.g. birthday thread, travel album, group memory) so users can travel between them.
+        </p>
+        <input
+          type="text"
+          value={(currentDraft.connectedSpotIds || []).join(' ')}
+          onChange={(e) => {
+            const raw = e.target.value;
+            const ids = raw.split(/[\s,]+/).filter(Boolean);
+            updateDraft({ connectedSpotIds: ids });
+          }}
+          placeholder="Paste Pop ID or Slug (e.g. sp_123456)"
+          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-mono placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+        />
+      </div>
+
+      {/* 7. Visibility Selector */}
       <div className="space-y-2 pt-2 border-t border-white/10">
         <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
           Audience & Privacy

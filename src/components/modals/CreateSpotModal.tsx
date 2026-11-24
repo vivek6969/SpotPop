@@ -445,6 +445,8 @@ const DEFAULT_MINI_DRAFT: PlanDraft = {
   description: '',
   location: '',
   tags: [],
+  taggedUsers: [],
+  connectedSpotIds: [],
 };
 
 const DEFAULT_BIG_DRAFT: PlanDraft = {
@@ -479,6 +481,8 @@ const DEFAULT_BIG_DRAFT: PlanDraft = {
   description: '',
   location: '',
   tags: [],
+  taggedUsers: [],
+  connectedSpotIds: [],
 };
 
 export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
@@ -557,6 +561,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         description: editSpot.description || editSpot.content?.description || '',
         location: editSpot.location || editSpot.content?.location || '',
         tags: editSpot.tags || editSpot.content?.tags || [],
+        taggedUsers: editSpot.taggedUsers || editSpot.content?.taggedUsers || [],
+        connectedSpotIds: editSpot.connectedSpotIds || editSpot.content?.connectedSpotIds || [],
         audioDraft: editSpot.content?.audio
           ? {
               previewUrl: editSpot.content.audio.url,
@@ -1453,11 +1459,15 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         description: currentDraft.description?.trim() || undefined,
         location: currentDraft.location?.trim() || undefined,
         tags: currentDraft.tags || [],
+        taggedUsers: currentDraft.taggedUsers || [],
+        connectedSpotIds: currentDraft.connectedSpotIds || [],
         content: {
           title: currentDraft.title?.trim() || resolvedHeadline || undefined,
           description: currentDraft.description?.trim() || undefined,
           location: currentDraft.location?.trim() || undefined,
           tags: currentDraft.tags || [],
+          taggedUsers: currentDraft.taggedUsers || [],
+          connectedSpotIds: currentDraft.connectedSpotIds || [],
           headline: resolvedHeadline,
           headlineX: currentDraft.headlineX,
           headlineY: currentDraft.headlineY,
@@ -1524,6 +1534,8 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
             description: currentDraft.description?.trim() || undefined,
             location: currentDraft.location?.trim() || undefined,
             tags: currentDraft.tags || [],
+            taggedUsers: currentDraft.taggedUsers || [],
+            connectedSpotIds: currentDraft.connectedSpotIds || [],
             content: draftSpot.content,
           },
           authToken || undefined

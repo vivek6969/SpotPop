@@ -326,7 +326,13 @@ export function App() {
         unreadActivityCount={unreadActivityCount}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenActivity={() => setIsActivityOpen(true)}
-        onOpenAccount={() => setIsAccountOpen(true)}
+        onOpenAccount={() => {
+          if (currentUser) {
+            setSelectedCreatorUsername(currentUser.username);
+          } else {
+            setIsAccountOpen(true);
+          }
+        }}
         onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
@@ -335,20 +341,28 @@ export function App() {
 
       {/* Instagram-Style Bottom Navigation Dock */}
       <BottomDock
-        activeTab={isReelsOpen ? 'reels' : isSearchOpen ? 'search' : isAccountOpen ? 'profile' : 'home'}
+        activeTab={isReelsOpen ? 'reels' : isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
         onTabChange={(tab) => {
           if (tab === 'home') {
             setIsReelsOpen(false);
             setIsSearchOpen(false);
             setIsAccountOpen(false);
+            setSelectedCreatorUsername(null);
           }
         }}
         onStartCreate={handleStartCreate}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenReels={() => setIsReelsOpen(true)}
-        onOpenAccount={() => setIsAccountOpen(true)}
+        onOpenAccount={() => {
+          if (currentUser) {
+            setSelectedCreatorUsername(currentUser.username);
+          } else {
+            setIsAccountOpen(true);
+          }
+        }}
         onHomeClick={() => {
           setIsReelsOpen(false);
+          setSelectedCreatorUsername(null);
           setTargetFocus({ x: 0, y: 0, zoom: 0.9, timestamp: Date.now() });
         }}
         selectedTier={selectedTier}
@@ -485,6 +499,8 @@ export function App() {
           onProfileUpdated={(updated) => {
             setCurrentUser(prev => prev ? { ...prev, ...updated } : prev);
           }}
+          onOpenAccountModal={() => setIsAccountOpen(true)}
+          onLogout={handleLogout}
         />
       )}
 
@@ -504,6 +520,7 @@ export function App() {
         onEditSpot={handleEditSpot}
         onDeleteSpot={handleDeleteSpot}
         onStartCreate={() => handleStartCreate()}
+        onOpenCreatorProfile={(u) => setSelectedCreatorUsername(u)}
       />
 
       {/* Admin Panel Modal */}

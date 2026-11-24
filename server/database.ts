@@ -1661,6 +1661,150 @@ class Database {
     };
   }
 
+  // =================== CONNECTED POPS & TAGGING ===================
+
+  canUserConnectSpot(userKey: string, spot: Spot): boolean {
+    if (!userKey || !spot) return false;
+    const cleanUser = userKey.toLowerCase().replace(/^@/, '');
+
+    // 1. Is user the owner of this spot?
+    const isOwner =
+      spot.ownerId?.toLowerCase() === cleanUser ||
+      spot.ownerId?.toLowerCase() === `usr_${cleanUser}` ||
+      spot.creatorName?.toLowerCase() === cleanUser;
+    if (isOwner) return true;
+
+    // 2. Is user tagged in this spot?
+    const tags = [
+      ...(spot.taggedUsers || []),
+      ...(spot.content?.taggedUsers || []),
+    ].map((t) => t.toLowerCase().replace(/^@/, ''));
+    if (tags.includes(cleanUser)) return true;
+
+    // 3. Does user follow the creator of this spot?
+    const followsCreator =
+      this.isUserFollowing(cleanUser, spot.creatorName) ||
+      (spot.ownerId ? this.isUserFollowing(cleanUser, spot.ownerId) : false);
+    if (followsCreator) return true;
+
+    return false;
+  }
+
+  connectSpots(
+    spotAId: string,
+    spotBId: string,
+    userKey?: string
+  ): { success: boolean; error?: string; spotA?: Spot; spotB?: Spot } {
+    if (spotAId === spotBId) {
+      return { success: false, error: 'Cannot connect a Pop to itself' };
+    }
+
+    const spotA = this.getSpotByIdOrSlug(spotAId);
+    const spotB = this.getSpotByIdOrSlug(spotBId);
+
+    if (!spotA || !spotB) {
+      return { success: false, error: 'One or both Pops were not found' };
+    }
+
+    // Permission check: user must be eligible to connect (own, tagged, or following)
+    if (userKey) {
+      const canA = this.canUserConnectSpot(userKey, spotA);
+      const canB = this.canUserConnectSpot(userKey, spotB);
+      if (!canA && !canB) {
+        return {
+          success: false,
+          error:
+            'You can only connect Pops that you created, are tagged in, or created by creators you follow.',
+        };
+      }
+    }
+
+    // Mutual bidirectional connection
+    spotA.connectedSpotIds = Array.from(new Set([...(spotA.connectedSpotIds || []), spotB.id]));
+    spotB.connectedSpotIds = Array.from(new Set([...(spotB.connectedSpotIds || []), spotA.id]));
+
+    if (spotA.content) {
+      spotA.content.connectedSpotIds = spotA.connectedSpotIds;
+    }
+    if (spotB.content) {
+      spotB.content.connectedSpotIds = spotB.connectedSpotIds;
+    }
+
+    this.save();
+    return { success: true, spotA, spotB };
+  }
+
+  disconnectSpots(
+    spotAId: string,
+    spotBId: string,
+    userKey?: string
+  ): { success: boolean; error?: string; spotA?: Spot; spotB?: Spot } {
+    const spotA = this.getSpotByIdOrSlug(spotAId);
+    const spotB = this.getSpotByIdOrSlug(spotBId);
+
+    if (!spotA || !spotB) {
+      return { success: false, error: 'One or both Pops were not found' };
+    }
+
+    if (userKey) {
+      const canA = this.canUserConnectSpot(userKey, spotA);
+      const canB = this.canUserConnectSpot(userKey, spotB);
+      if (!canA && !canB) {
+        return { success: false, error: 'Permission denied to disconnect these Pops' };
+      }
+    }
+
+    spotA.connectedSpotIds = (spotA.connectedSpotIds || []).filter((id) => id !== spotB.id);
+    spotB.connectedSpotIds = (spotB.connectedSpotIds || []).filter((id) => id !== spotA.id);
+
+    if (spotA.content) {
+      spotA.content.connectedSpotIds = spotA.connectedSpotIds;
+    }
+    if (spotB.content) {
+      spotB.content.connectedSpotIds = spotB.connectedSpotIds;
+    }
+
+    this.save();
+    return { success: true, spotA, spotB };
+  }
+
+  getConnectedSpots(spotId: string, viewerKey?: string): Spot[] {
+    const spot = this.getSpotByIdOrSlug(spotId);
+    if (!spot || !spot.connectedSpotIds || spot.connectedSpotIds.length === 0) {
+      return [];
+    }
+
+    const connected = spot.connectedSpotIds
+      .map((id) => this.getSpotByIdOrSlug(id))
+      .filter((s): s is Spot => !!s && s.status === 'published' && s.moderationStatus === 'approved');
+
+    // Apply visibility/privacy gating
+    return connected.map((s) => {
+      if (s.visibility === 'friends_only') {
+        const isOwner =
+          viewerKey &&
+          (viewerKey.toLowerCase() === s.creatorName.toLowerCase() ||
+            viewerKey.toLowerCase() === s.ownerId?.toLowerCase());
+        if (isOwner) return { ...s, isLocked: false };
+        const isFollowing = viewerKey ? this.isUserFollowing(viewerKey, s.creatorName) : false;
+        return { ...s, isLocked: !isFollowing };
+      }
+      return s;
+    });
+  }
+
+  getConnectableSpots(userKey: string, currentSpotId?: string): Spot[] {
+    if (!userKey) return [];
+    const all = this.data.spots.filter(
+      (s) =>
+        s.status === 'published' &&
+        s.moderationStatus === 'approved' &&
+        s.id !== currentSpotId
+    );
+
+    return all.filter((s) => this.canUserConnectSpot(userKey, s));
+  }
+
   // System Stats
   getStats(): CanvasStats {
     const totalCapacity = 300000;
@@ -1688,4 +1832,5 @@ class Database {
   }
 }
 
+export { Database };
 export const db = new Database();
