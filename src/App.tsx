@@ -102,6 +102,98 @@ export function App() {
     }
   }, [loadCanvasData]);
 
+  // Real-time live synchronization (Server-Sent Events + smart background polling)
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const connectLiveStream = () => {
+      try {
+        eventSource = new EventSource('/api/spots/live');
+
+        eventSource.addEventListener('spot_created', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data?.spot) {
+              setSpots(prev => {
+                // If spot is already on the canvas, avoid duplicate
+                if (prev.some(s => s.id === data.spot.id)) {
+                  return prev.map(s => s.id === data.spot.id ? data.spot : s);
+                }
+                return [data.spot, ...prev];
+              });
+              if (data.stats) {
+                setStats(data.stats);
+              }
+              // Flash new spot briefly on the canvas so user notices the live arrival
+              setHighlightedSpotId(data.spot.id);
+              setTimeout(() => {
+                setHighlightedSpotId(prev => prev === data.spot.id ? null : prev);
+              }, 4000);
+            }
+          } catch (err) {
+            console.warn('[LiveSync] Error parsing spot_created event:', err);
+          }
+        });
+
+        eventSource.addEventListener('spot_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data?.spot) {
+              setSpots(prev => prev.map(s => s.id === data.spot.id ? data.spot : s));
+              setSelectedSpot(prev => prev?.id === data.spot.id ? data.spot : prev);
+            }
+          } catch (err) {
+            console.warn('[LiveSync] Error parsing spot_updated event:', err);
+          }
+        });
+
+        eventSource.addEventListener('spot_deleted', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data?.id) {
+              setSpots(prev => prev.filter(s => s.id !== data.id));
+              setSelectedSpot(prev => prev?.id === data.id ? null : prev);
+              if (data.stats) {
+                setStats(data.stats);
+              }
+            }
+          } catch (err) {
+            console.warn('[LiveSync] Error parsing spot_deleted event:', err);
+          }
+        });
+
+        eventSource.onerror = () => {
+          // EventSource automatically retries reconnection
+        };
+      } catch (err) {
+        console.warn('[LiveSync] EventSource not available:', err);
+      }
+    };
+
+    connectLiveStream();
+
+    // Visibility-aware smart background refresh fallback (sync every 15s if visible)
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        loadCanvasData();
+      }
+    };
+
+    pollInterval = setInterval(handleVisibilitySync, 15000);
+    document.addEventListener('visibilitychange', handleVisibilitySync);
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilitySync);
+    };
+  }, [loadCanvasData]);
+
   // Auth Callbacks
   const handleLoginSuccess = (user: User, token: string) => {
     setCurrentUser(user);

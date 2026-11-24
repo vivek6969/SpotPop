@@ -20,6 +20,46 @@ function getAuthenticatedUser(req: Request): User | null {
   return db.getUserById(userId) || null;
 }
 
+// =================== REAL-TIME LIVE STREAM (SSE) ===================
+const liveClients = new Set<Response>();
+
+export function broadcastSpotEvent(event: 'spot_created' | 'spot_updated' | 'spot_deleted', data: unknown) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of liveClients) {
+    try {
+      client.write(payload);
+    } catch {
+      liveClients.delete(client);
+    }
+  }
+}
+
+// 25-second keepalive ping to prevent reverse proxies and browsers from timing out
+setInterval(() => {
+  for (const client of liveClients) {
+    try {
+      client.write(': keep-alive\n\n');
+    } catch {
+      liveClients.delete(client);
+    }
+  }
+}, 25000).unref();
+
+apiRouter.get('/spots/live', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  res.write(`event: connected\ndata: {"status":"connected","timestamp":${Date.now()}}\n\n`);
+  liveClients.add(res);
+
+  req.on('close', () => {
+    liveClients.delete(res);
+  });
+});
+
 // =================== SPOTS ===================
 
 // GET spots: backward-compatible full list OR high-performance bounding box viewport query
@@ -635,6 +675,8 @@ apiRouter.put('/spots/:id', (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to update Pop' });
     }
 
+    broadcastSpotEvent('spot_updated', { spot: updated });
+
     res.json({ success: true, spot: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -672,6 +714,8 @@ apiRouter.delete('/spots/:id', (req: Request, res: Response) => {
       user.ownedSpotIds = user.ownedSpotIds.filter(id => id !== spot.id);
       db.save();
     }
+
+    broadcastSpotEvent('spot_deleted', { id: spot.id, stats: db.getStats() });
 
     res.json({ success: true, spotId: spot.id });
   } catch (err: any) {
@@ -833,6 +877,7 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
     };
 
     db.addSpot(newSpot);
+    broadcastSpotEvent('spot_created', { spot: newSpot, stats: db.getStats() });
     if (reservationId) {
       db.releaseReservation(reservationId);
     }
@@ -1018,6 +1063,7 @@ apiRouter.post('/admin/spots/:id/moderate', (req: Request, res: Response) => {
     if (!updated) {
       return res.status(404).json({ error: 'Spot not found' });
     }
+    broadcastSpotEvent('spot_updated', { spot: updated });
     res.json({ success: true, spot: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1031,6 +1077,7 @@ apiRouter.delete('/admin/spots/:id', (req: Request, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ error: 'Spot not found' });
     }
+    broadcastSpotEvent('spot_deleted', { id: req.params.id, stats: db.getStats() });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1045,6 +1092,9 @@ apiRouter.post('/admin/spots/batch-delete', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'IDs array required' });
     }
     const count = db.deleteSpots(ids);
+    for (const id of ids) {
+      broadcastSpotEvent('spot_deleted', { id, stats: db.getStats() });
+    }
     res.json({ success: true, deletedCount: count });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1100,6 +1150,7 @@ apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
     };
 
     db.addSpot(newSpot);
+    broadcastSpotEvent('spot_created', { spot: newSpot, stats: db.getStats() });
     if (reservationId) {
       db.releaseReservation(reservationId);
     }
