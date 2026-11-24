@@ -222,9 +222,16 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       audio.onplay = () => {
         if (!isCancelled) setIsAudioPlaying(true);
       };
+      audio.onplaying = () => {
+        if (!isCancelled) setIsAudioPlaying(true);
+      };
       audio.onpause = () => {
         if (!isCancelled) setIsAudioPlaying(false);
       };
+      audio.onended = () => {
+        if (!isCancelled) setIsAudioPlaying(false);
+      };
+      audioRef.current = audio;
       audio.play()
         .then(() => {
           if (!isCancelled) setIsAudioPlaying(true);
@@ -233,7 +240,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
           console.warn('[ReelsAudio] Autoplay notice:', err);
           if (!isCancelled) setIsAudioPlaying(false);
         });
-      audioRef.current = audio;
     }, 140);
 
     return () => {
@@ -258,38 +264,50 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       if (currentSpot?.content?.audio?.url) {
         const audio = new Audio(currentSpot.content.audio.url);
         audio.loop = true;
+        const initialDur = currentSpot.content.audio.duration || 15;
         audio.ontimeupdate = () => {
           if (audio) {
-            setAudioCurrentTime(audio.currentTime || 0);
+            const cur = audio.currentTime || 0;
+            const rawDur = audio.duration;
+            const dur = (rawDur && !isNaN(rawDur) && isFinite(rawDur) && rawDur > 0) ? rawDur : initialDur;
+            setAudioCurrentTime(cur);
+            setAudioDuration(dur);
           }
         };
+        audio.onplay = () => setIsAudioPlaying(true);
+        audio.onplaying = () => setIsAudioPlaying(true);
+        audio.onpause = () => setIsAudioPlaying(false);
+        audio.onended = () => setIsAudioPlaying(false);
+        audioRef.current = audio;
         audio.play()
           .then(() => setIsAudioPlaying(true))
           .catch(() => setIsAudioPlaying(false));
-        audioRef.current = audio;
       }
       return;
     }
 
-    if (isAudioPlaying) {
+    if (!audioRef.current.paused) {
       audioRef.current.pause();
       setIsAudioPlaying(false);
     } else {
       audioRef.current.play()
         .then(() => setIsAudioPlaying(true))
-        .catch(() => {});
+        .catch(() => setIsAudioPlaying(false));
     }
   };
 
   // Timeline Scrubber Click & Drag Seeking
   const handleScrub = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    if (!audioRef.current || !timelineRef.current) return;
+    if (!timelineRef.current) return;
     const rect = timelineRef.current.getBoundingClientRect();
-    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
+    const clientX = 'clientX' in e ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left);
     const clickRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const targetTime = clickRatio * (audioDuration || 15);
-    audioRef.current.currentTime = targetTime;
+    const effectiveDur = audioDuration && audioDuration > 0 ? audioDuration : (displaySpots[activeIndex]?.content?.audio?.duration || 15);
+    const targetTime = clickRatio * effectiveDur;
+    if (audioRef.current) {
+      audioRef.current.currentTime = targetTime;
+    }
     setAudioCurrentTime(targetTime);
   };
 
@@ -660,16 +678,8 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
       <div className="w-full sm:max-w-[430px] h-full sm:h-[94vh] sm:max-h-[850px] sm:rounded-[36px] bg-black border-0 sm:border sm:border-white/15 relative overflow-hidden flex flex-col justify-between shadow-[0_0_80px_rgba(0,0,0,0.9)] z-20">
         {/* Top Header Bar: SpotPop Brand & Discovery Shuffle */}
         <div className="absolute top-0 inset-x-0 z-40 px-4 py-3 sm:py-3.5 pt-safe flex items-center justify-between bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-auto">
-          <div className="flex items-center gap-2.5">
-            <SpotPopLogo variant="icon" size={26} />
-            <div className="flex items-center gap-2">
-              <span className="font-outfit font-black text-white text-base tracking-tight drop-shadow-md">
-                Spot<span className="text-[#FF2E93]">Pop</span>
-              </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/80 font-medium">
-                Reels
-              </span>
-            </div>
+          <div className="flex items-center px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 shadow-md">
+            <SpotPopLogo variant="full" size={24} textSize="text-base" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -908,22 +918,6 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
                     </div>
                     <span className="text-[9px] font-black text-pink-300 drop-shadow uppercase tracking-wider">Wall</span>
                   </button>
-
-                  {/* Rotating Vinyl Disc for Audio: Synchronized with isAudioPlaying */}
-                  {hasAudio && (
-                    <div
-                      onClick={toggleAudioPlay}
-                      className={`w-10 h-10 rounded-full border-2 border-white/40 bg-black flex items-center justify-center shadow-lg overflow-hidden cursor-pointer ${
-                        isCurrentActive && isAudioPlaying ? 'animate-spin' : ''
-                      }`}
-                      style={{ animationDuration: '4s' }}
-                      title={isAudioPlaying ? 'Pause Audio' : 'Play Audio'}
-                    >
-                      <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-600 flex items-center justify-center">
-                        <div className="w-1 h-1 rounded-full bg-black" />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Quick Emoji Reactions Floating Bar (When Toggled) */}

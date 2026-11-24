@@ -1373,7 +1373,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     try {
       const resolvedCreator = currentDraft.creatorName?.trim() || 'Spotter';
       const resolvedHeadline = currentDraft.headline ? currentDraft.headline.trim() : '';
-      const resolvedAuthor = currentDraft.creatorName ? currentDraft.creatorName.trim() : '';
+      const resolvedAuthor = editSpot?.content?.author && editSpot.content.author !== 'Spot Pioneer' ? editSpot.content.author : '';
       // Ensure image is converted to optimized object storage asset before submitting
       let finalImageUrl = currentDraft.imageUrl;
       if (finalImageUrl && finalImageUrl.startsWith('data:image')) {

@@ -194,3 +194,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 62/62 passing tests across 11 suites (`tests/reels-navigation.test.ts`), verified unique ID set and initial spot pinning tests, clean production build in 856ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-023]: Mic Badge Removal, Spot Pioneer Watermark Elimination, and Header/Reels Branding Alignment
+- **Priority**: P0 (Visual Consistency & Audio Ergonomics)
+- **Assigned Agent**: senior-engineer
+- **Description**: Permanently removed the `🎤 15s` / `🎙️ 15s` badge from `SpotCard.tsx` across the application. Removed hardcoded `♡` author suffix and prevented default creatorName stamping on spot creation so cards don't have unwanted "Spot Pioneer ♡" watermark text over user drawings and photos. Harmonized Pop Reels header branding to feature the official full SpotPop brand logo pill without "Reels" or index counters. Robustly synchronized audio playback events so the pause icon immediately reflects active autoplay, and timeline dragging seeks accurately.
+- **Status**: Completed
+- **Test Evidence**: `npx tsc --noEmit` 0 errors, 62/62 unit tests passing, production build completed in 1.01s.
+- **Review Result**: Approved by CTO.
