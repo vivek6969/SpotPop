@@ -134,3 +134,13 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 52/52 tests passing across 10 suites (`tests/reels-navigation.test.ts`), zero TypeScript errors, and <1s bundle build.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-017]: Reels Audio State Synchronization & Seekable Timeline Scrubber
+- **Priority**: P0 (Audio Player Usability)
+- **Assigned Agent**: senior-engineer
+- **Description**: Remove disconnected static card audio play button in Reels via `hideAudioBar={true}`, directly autoplay audio with dynamic Pause/Play button (`⏸`/`▶`), render real-time progress line that fills up as audio plays, and empower users to scrub/seek anywhere on the audio timeline.
+- **Status**: Completed
+- **Test Evidence**: 53/53 tests passing across 10 suites (`tests/reels-navigation.test.ts`), verified play/pause toggle and scrubber clamping in test suite, clean build in 904ms.
+- **Review Result**: Approved by CTO.
