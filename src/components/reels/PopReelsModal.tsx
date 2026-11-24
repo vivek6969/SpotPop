@@ -158,6 +158,16 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
         }
       });
     }
+
+    // High-Speed Preloader: Preload next 2 upcoming slides so GIFs & photos play instantly
+    for (let offset = 1; offset <= 2; offset++) {
+      const nextSpot = displaySpots[activeIndex + offset];
+      if (nextSpot?.content?.imageUrl) {
+        const preloadImg = new Image();
+        preloadImg.decoding = 'async';
+        preloadImg.src = nextSpot.content.imageUrl;
+      }
+    }
   }, [activeIndex, isOpen, displaySpots]);
 
   // Audio Manager with Real-time Time & Timeline Progress Synchronization
