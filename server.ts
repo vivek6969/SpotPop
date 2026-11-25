@@ -75,19 +75,16 @@ async function startServer() {
           { stdio: 'ignore' }
         );
       }
-    } catch {}
+    } catch { }
   }
 
   const httpServer = http.createServer(app);
 
-  // In development, hook up Vite dev server middlewares with shared HTTP server for HMR
+  // In development, hook up Vite dev server middlewares
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: {
-          server: httpServer,
-        },
         watch: {
           ignored: [
             '**/uploads/**',
@@ -110,25 +107,25 @@ async function startServer() {
     });
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    const interfaces = os.networkInterfaces();
-    const networkIps: string[] = [];
-    for (const name of Object.keys(interfaces)) {
-      for (const net of interfaces[name] || []) {
-        if (net.family === 'IPv4' && !net.internal) {
-          networkIps.push(net.address);
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      const interfaces = os.networkInterfaces();
+      const networkIps: string[] = [];
+      for (const name of Object.keys(interfaces)) {
+        for (const net of interfaces[name] || []) {
+          if (net.family === 'IPv4' && !net.internal) {
+            networkIps.push(net.address);
+          }
         }
       }
-    }
-    console.log(`🚀 SpotPop server running:`);
-    console.log(`   • Local:   http://localhost:${PORT}`);
-    for (const ip of networkIps) {
-      console.log(`   • Network: http://${ip}:${PORT} (Open on your phone)`);
-    }
-  });
-}
+      console.log(`🚀 SpotPop server running:`);
+      console.log(`   • Local:   http://localhost:${PORT}`);
+      for (const ip of networkIps) {
+        console.log(`   • Network: http://${ip}:${PORT} (Open on your phone)`);
+      }
+    });
+  }
 
 startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
