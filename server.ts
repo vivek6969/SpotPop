@@ -1,7 +1,9 @@
 import express from 'express';
 import fs from 'fs';
+import http from 'http';
 import os from 'os';
 import path from 'path';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './server/api.ts';
@@ -64,11 +66,28 @@ async function startServer() {
   // API router
   app.use('/api', apiRouter);
 
-  // In development, hook up Vite dev server middlewares
+  // Automatically free port in development if a zombie instance is still running
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      if (process.platform === 'win32') {
+        execSync(
+          `powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort ${PORT} -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"`,
+          { stdio: 'ignore' }
+        );
+      }
+    } catch {}
+  }
+
+  const httpServer = http.createServer(app);
+
+  // In development, hook up Vite dev server middlewares with shared HTTP server for HMR
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
+        hmr: {
+          server: httpServer,
+        },
         watch: {
           ignored: [
             '**/uploads/**',
@@ -91,7 +110,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     const interfaces = os.networkInterfaces();
     const networkIps: string[] = [];
     for (const name of Object.keys(interfaces)) {
