@@ -272,7 +272,7 @@ apiRouter.get('/spots/:idOrSlug', (req: Request, res: Response) => {
     const isOwner = Boolean(
       rawViewer &&
       (rawSpot.ownerId?.toLowerCase() === rawViewer ||
-       rawSpot.creatorName.toLowerCase() === rawViewer)
+        rawSpot.creatorName.toLowerCase() === rawViewer)
     );
 
     // Private spot: only owner or creator can view
@@ -301,9 +301,9 @@ apiRouter.get('/spots/:idOrSlug', (req: Request, res: Response) => {
       isLocked,
       content: isLocked
         ? {
-            ...rawSpot.content,
-            audio: undefined,
-          }
+          ...rawSpot.content,
+          audio: undefined,
+        }
         : rawSpot.content,
     };
 
@@ -666,7 +666,7 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
     // Find matched user
     const user = allUsers.find(
       u => u.username.toLowerCase() === rawUsername.toLowerCase() ||
-           u.displayName.toLowerCase() === rawUsername.toLowerCase()
+        u.displayName.toLowerCase() === rawUsername.toLowerCase()
     );
 
     // Find all spots belonging to this creator
@@ -698,8 +698,8 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
     const isOwner = Boolean(
       rawViewer &&
       (user?.id?.toLowerCase() === rawViewer ||
-       username.toLowerCase() === rawViewer ||
-       displayName.toLowerCase() === rawViewer)
+        username.toLowerCase() === rawViewer ||
+        displayName.toLowerCase() === rawViewer)
     );
     const followStatus = viewer ? db.getFollowStatus(viewer, username) : 'not_following';
     const isFollowing = followStatus === 'accepted';
@@ -708,13 +708,13 @@ apiRouter.get('/creators/:username', (req: Request, res: Response) => {
 
     const spots = isLockedAccount
       ? creatorSpots.map(s => ({
-          ...s,
-          isLocked: true,
-          content: {
-            ...s.content,
-            audio: undefined,
-          },
-        }))
+        ...s,
+        isLocked: true,
+        content: {
+          ...s.content,
+          audio: undefined,
+        },
+      }))
       : creatorSpots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({

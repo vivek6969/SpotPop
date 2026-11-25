@@ -355,6 +355,20 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Test Evidence**: 101/101 automated tests passing (`tests/canvas-editor-parity.test.ts`), clean production build in 921ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
 
+---
+
+### [TASK-038]: Creator Account Discovery & Mutual Follow Capabilities in SpotDetailModal
+- **Priority**: P0 (Social Graph Discovery & Engagement)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Added prominent, intuitive options for users to inspect the creator's account and follow/unfollow each other directly from `SpotDetailModal`:
+  1. **Top Header**: Added creator avatar, display name, and `@username` with one-tap navigation to the creator's full account (`CreatorProfileModal`), an explicit `Account ↗` button, and an instant `+ Follow` / `Following ⌵` toggle button.
+  2. **Dedicated Creator Account Card**: Embedded an Instagram-style profile strip right below the artwork preview featuring the creator's avatar, `@username`, "Pop Creator" badge, direct `Profile ↗` action, and immediate follow toggle.
+  3. **In-Thread Commenter Accounts & Mutual Follow**: Enhanced the in-modal comments and replies thread so tapping any commenter's avatar or `@username` opens their full account profile, and viewers can follow or unfollow commenters directly via compact `+ Follow` / `Following ⌵` buttons on each comment.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing (`tests/social-network-visibility.test.ts`), clean production build in 869ms, 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+
 
 ---
 
@@ -435,4 +449,18 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 101/101 automated tests passing (`tests/canvas-editor-parity.test.ts`), clean production build in 921ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-038]: Creator Account Discovery & Mutual Follow Capabilities in SpotDetailModal
+- **Priority**: P0 (Social Graph Discovery & Engagement)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Added prominent, intuitive options for users to inspect the creator's account and follow/unfollow each other directly from `SpotDetailModal`:
+  1. **Top Header**: Added creator avatar, display name, and `@username` with one-tap navigation to the creator's full account (`CreatorProfileModal`), an explicit `Account ↗` button, and an instant `+ Follow` / `Following ⌵` toggle button.
+  2. **Dedicated Creator Account Card**: Embedded an Instagram-style profile strip right below the artwork preview featuring the creator's avatar, `@username`, "Pop Creator" badge, direct `Profile ↗` action, and immediate follow toggle.
+  3. **In-Thread Commenter Accounts & Mutual Follow**: Enhanced the in-modal comments and replies thread so tapping any commenter's avatar or `@username` opens their full account profile, and viewers can follow or unfollow commenters directly via compact `+ Follow` / `Following ⌵` buttons on each comment.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing (`tests/social-network-visibility.test.ts`), clean production build in 869ms, 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
 

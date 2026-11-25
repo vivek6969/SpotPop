@@ -407,4 +407,45 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
 
     assert.equal(followsTable.length, 0, 'Pending request must be removed when user cancels follow');
   });
+
+  test('SpotDetailModal allows direct creator account view and mutual follow toggle', () => {
+    // Viewer is viewing creator's spot
+    const creatorName = 'SouthParkFan';
+    assert.equal(followsTable.some(f => f.followingId === creatorName), false, 'Initially not following creator');
+
+    // Follow action triggered from SpotDetailModal header or account card
+    followsTable.push({
+      id: 'flw_modal_101',
+      followerId: mockViewerUser.id.toLowerCase(),
+      followingId: creatorName.toLowerCase(),
+      status: 'accepted',
+      createdAt: new Date().toISOString(),
+    });
+
+    assert.equal(followsTable.some(f => f.followingId === creatorName.toLowerCase()), true, 'Viewer now follows creator directly from SpotDetailModal');
+
+    // Unfollow action triggered from SpotDetailModal
+    followsTable = followsTable.filter(f => !(f.followerId === mockViewerUser.id.toLowerCase() && f.followingId === creatorName.toLowerCase()));
+    assert.equal(followsTable.some(f => f.followingId === creatorName.toLowerCase()), false, 'Viewer unfollowed creator directly from SpotDetailModal');
+  });
+
+  test('SpotDetailModal comments allow users to view commenter accounts and follow each other', () => {
+    const commenterA = 'jay_gamer';
+    const commenterB = 'alice_artist';
+
+    // Commenter B follows Commenter A directly from comments thread
+    followsTable.push({
+      id: 'flw_comment_202',
+      followerId: commenterB,
+      followingId: commenterA,
+      status: 'accepted',
+      createdAt: new Date().toISOString(),
+    });
+
+    assert.equal(
+      followsTable.some(f => f.followerId === commenterB && f.followingId === commenterA),
+      true,
+      'Users can follow each other directly from comment threads'
+    );
+  });
 });

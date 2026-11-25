@@ -124,6 +124,15 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
     )
   );
 
+  const [followedUsernames, setFollowedUsernames] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('spotpop_followed_creators');
+      return saved ? new Set<string>(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('spotpop_followed_creators');
@@ -134,51 +143,87 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
     }
   });
   const [isRequested, setIsRequested] = useState(false);
-  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [loadingFollowUsernames, setLoadingFollowUsernames] = useState<Set<string>>(new Set());
+  const isFollowingLoading = loadingFollowUsernames.has(spot.creatorName);
   const [unlockedLocally, setUnlockedLocally] = useState(false);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('spotpop_followed_creators');
-      const set = saved ? new Set(JSON.parse(saved)) : new Set();
+      const set = saved ? new Set<string>(JSON.parse(saved)) : new Set<string>();
+      setFollowedUsernames(set);
       setIsFollowing(set.has(spot.creatorName));
     } catch {}
   }, [spot.creatorName]);
 
   const isSpotLocked = Boolean(spot.isLocked && !isOwner && !isFollowing && !unlockedLocally);
 
-  const handleFollowToUnlock = async () => {
-    if (!spot.creatorName || isFollowingLoading) return;
-    setIsFollowingLoading(true);
+  const handleToggleFollowUser = async (targetUsername: string) => {
+    if (!targetUsername || loadingFollowUsernames.has(targetUsername)) return;
+    setLoadingFollowUsernames(prev => new Set(prev).add(targetUsername));
+    const isCurrentlyFollowing = followedUsernames.has(targetUsername);
+
     try {
-      const res = await api.followUser(spot.creatorName, authToken || undefined);
-      if (res.followStatus === 'accepted' || res.isFollowing) {
-        setIsFollowing(true);
-        setIsRequested(false);
-        setUnlockedLocally(true);
-        try {
-          const saved = localStorage.getItem('spotpop_followed_creators');
-          const set = saved ? new Set(JSON.parse(saved)) : new Set();
-          set.add(spot.creatorName);
-          localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-        } catch {}
-        onFollowChange?.(spot.creatorName, true);
-        confetti({
-          particleCount: 50,
-          spread: 70,
-          origin: { y: 0.6, x: 0.5 },
-          colors: ['#FF2E93', '#7928CA', '#00F0FF'],
+      if (isCurrentlyFollowing) {
+        await api.unfollowUser(targetUsername, authToken || undefined);
+        setFollowedUsernames(prev => {
+          const next = new Set(prev);
+          next.delete(targetUsername);
+          try {
+            localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
         });
-      } else if (res.followStatus === 'pending' || res.isRequested) {
-        setIsRequested(true);
-        setIsFollowing(false);
-        setUnlockedLocally(false);
+        if (targetUsername.toLowerCase() === spot.creatorName.toLowerCase()) {
+          setIsFollowing(false);
+          setUnlockedLocally(false);
+          setIsRequested(false);
+          onFollowChange?.(spot.creatorName, false);
+        }
+      } else {
+        const res = await api.followUser(targetUsername, authToken || undefined);
+        if (res.followStatus === 'accepted' || res.isFollowing) {
+          setFollowedUsernames(prev => {
+            const next = new Set(prev);
+            next.add(targetUsername);
+            try {
+              localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(next)));
+            } catch {}
+            return next;
+          });
+          if (targetUsername.toLowerCase() === spot.creatorName.toLowerCase()) {
+            setIsFollowing(true);
+            setIsRequested(false);
+            setUnlockedLocally(true);
+            onFollowChange?.(spot.creatorName, true);
+          }
+          confetti({
+            particleCount: 50,
+            spread: 70,
+            origin: { y: 0.6, x: 0.5 },
+            colors: ['#FF2E93', '#7928CA', '#00F0FF'],
+          });
+        } else if (res.followStatus === 'pending' || res.isRequested) {
+          if (targetUsername.toLowerCase() === spot.creatorName.toLowerCase()) {
+            setIsRequested(true);
+            setIsFollowing(false);
+            setUnlockedLocally(false);
+          }
+        }
       }
     } catch (e) {
-      console.warn('Follow error in modal:', e);
+      console.warn('Toggle follow error in SpotDetailModal:', e);
     } finally {
-      setIsFollowingLoading(false);
+      setLoadingFollowUsernames(prev => {
+        const next = new Set(prev);
+        next.delete(targetUsername);
+        return next;
+      });
     }
+  };
+
+  const handleFollowToUnlock = async () => {
+    await handleToggleFollowUser(spot.creatorName);
   };
 
   // Social Interactions: Likes
@@ -397,59 +442,106 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
         
         {/* Top Header */}
-        <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/30">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2E93] shrink-0" />
+        <div className="px-4 sm:px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40 backdrop-blur-md">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Creator Avatar - One-tap view profile */}
             <button
+              type="button"
               onClick={() => {
                 if (onOpenCreatorProfile) {
                   onClose();
                   onOpenCreatorProfile(spot.creatorName);
                 }
               }}
-              className="font-outfit font-bold text-base text-white hover:text-[#FF5EAA] truncate max-w-[200px] sm:max-w-[260px] text-left transition-colors flex items-center gap-1 group cursor-pointer"
-              title="View Creator Profile"
+              className="relative w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-[#FF2E93] via-purple-500 to-cyan-400 shrink-0 hover:scale-105 transition-transform cursor-pointer"
+              title={`View @${spot.creatorName}'s profile`}
             >
-              <span>{spot.creatorName}&apos;s Spot</span>
-              <span className="text-xs text-slate-500 group-hover:text-white transition-colors">↗</span>
+              <div className="w-full h-full rounded-full bg-[#12141F] flex items-center justify-center text-white text-xs font-black">
+                {spot.creatorName?.[0]?.toUpperCase() || 'U'}
+              </div>
             </button>
-            {!isOwner && isFollowing && (
+
+            {/* Creator Name & Username */}
+            <div className="flex flex-col min-w-0 text-left">
               <button
                 type="button"
-                onClick={async () => {
-                  if (isFollowingLoading) return;
-                  setIsFollowingLoading(true);
-                  try {
-                    await api.unfollowUser(spot.creatorName, authToken || undefined);
-                    setIsFollowing(false);
-                    setUnlockedLocally(false);
-                    try {
-                      const saved = localStorage.getItem('spotpop_followed_creators');
-                      const set = saved ? new Set(JSON.parse(saved)) : new Set();
-                      set.delete(spot.creatorName);
-                      localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-                    } catch {}
-                    onFollowChange?.(spot.creatorName, false);
-                  } catch (e) {
-                    console.warn('Unfollow error:', e);
-                  } finally {
-                    setIsFollowingLoading(false);
+                onClick={() => {
+                  if (onOpenCreatorProfile) {
+                    onClose();
+                    onOpenCreatorProfile(spot.creatorName);
                   }
                 }}
-                className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 transition-all cursor-pointer group flex items-center gap-1 shrink-0"
-                title="Click to unfollow this creator"
+                className="font-outfit font-bold text-sm text-white hover:text-[#FF2E93] truncate max-w-[130px] sm:max-w-[170px] text-left transition-colors flex items-center gap-1 group cursor-pointer"
+                title={`View @${spot.creatorName}'s profile`}
               >
-                <span className="group-hover:hidden">Following ⌵</span>
-                <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                <span className="truncate">{spot.creatorName}</span>
+                <span className="text-[10px] text-slate-400 group-hover:text-white transition-colors">↗</span>
               </button>
+              <span className="text-[10px] text-slate-400 truncate">
+                @{spot.creatorName.toLowerCase().replace(/[^a-z0-9_.]/g, '')}
+              </span>
+            </div>
+
+            {/* Follow / Following Status Button */}
+            {!isOwner ? (
+              <button
+                type="button"
+                onClick={() => handleToggleFollowUser(spot.creatorName)}
+                disabled={loadingFollowUsernames.has(spot.creatorName)}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  isFollowing
+                    ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                    : isRequested
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-rose-500/20 hover:text-rose-400'
+                    : 'bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:brightness-110 text-white shadow-md shadow-pink-500/20 active:scale-95'
+                }`}
+                title={isFollowing ? 'Click to unfollow' : isRequested ? 'Request pending' : `Follow @${spot.creatorName}`}
+              >
+                {loadingFollowUsernames.has(spot.creatorName) ? (
+                  <span className="animate-pulse">...</span>
+                ) : isFollowing ? (
+                  <>
+                    <span className="group-hover:hidden">Following ⌵</span>
+                    <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                  </>
+                ) : isRequested ? (
+                  <span>Requested</span>
+                ) : (
+                  <span>+ Follow</span>
+                )}
+              </button>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/10 shrink-0">
+                You
+              </span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            ✕
-          </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Dedicated View Account Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenCreatorProfile) {
+                  onClose();
+                  onOpenCreatorProfile(spot.creatorName);
+                }
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-white/10"
+              title="See Creator Account & Pops"
+            >
+              <span>Account</span>
+              <span className="text-[10px] text-slate-400">↗</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Spot Visual Showcase */}
@@ -555,6 +647,98 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
               creatorName={spot.creatorName}
             />
           )}
+
+          {/* Creator Account Card & Social Follow Connection */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-white/[0.08] to-white/[0.03] border border-white/10 flex items-center justify-between gap-3 text-left shadow-lg">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenCreatorProfile) {
+                    onClose();
+                    onOpenCreatorProfile(spot.creatorName);
+                  }
+                }}
+                className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-[#FF2E93] via-purple-500 to-cyan-400 shrink-0 hover:scale-105 transition-transform cursor-pointer"
+                title={`View @${spot.creatorName}'s profile`}
+              >
+                <div className="w-full h-full rounded-full bg-[#12141F] flex items-center justify-center text-white text-sm font-black">
+                  {spot.creatorName?.[0]?.toUpperCase() || 'U'}
+                </div>
+              </button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenCreatorProfile) {
+                        onClose();
+                        onOpenCreatorProfile(spot.creatorName);
+                      }
+                    }}
+                    className="text-xs font-bold text-white hover:text-[#FF2E93] truncate transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{spot.creatorName}</span>
+                    <span className="text-[10px] text-slate-400">↗</span>
+                  </button>
+                  {isOwner && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-pink-500/20 text-pink-300 font-bold">
+                      Author
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 truncate">
+                  @{spot.creatorName.toLowerCase().replace(/[^a-z0-9_.]/g, '')} · Pop Creator
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenCreatorProfile) {
+                    onClose();
+                    onOpenCreatorProfile(spot.creatorName);
+                  }
+                }}
+                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 border border-white/10"
+                title={`View @${spot.creatorName}'s profile`}
+              >
+                <span>Profile</span>
+                <span className="text-[10px] text-slate-400">↗</span>
+              </button>
+
+              {!isOwner && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleFollowUser(spot.creatorName)}
+                  disabled={loadingFollowUsernames.has(spot.creatorName)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    isFollowing
+                      ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                      : isRequested
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-rose-500/20 hover:text-rose-400'
+                      : 'bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:brightness-110 text-white shadow-md shadow-pink-500/20 active:scale-95'
+                  }`}
+                  title={isFollowing ? 'Click to unfollow' : isRequested ? 'Request pending' : `Follow @${spot.creatorName}`}
+                >
+                  {loadingFollowUsernames.has(spot.creatorName) ? (
+                    <span className="animate-pulse">...</span>
+                  ) : isFollowing ? (
+                    <>
+                      <span className="group-hover:hidden">Following ⌵</span>
+                      <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                    </>
+                  ) : isRequested ? (
+                    <span>Requested</span>
+                  ) : (
+                    <span>+ Follow</span>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Metadata Card: Title, Location, Story & Hashtags */}
           {((spot.title || spot.content?.title) || (spot.location || spot.content?.location) || (spot.description || spot.content?.description) || (spot.tags && spot.tags.length > 0) || (spot.content?.tags && spot.content.tags.length > 0)) && (
@@ -805,26 +989,88 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   commentsList.map((c) => (
                     <div key={c.id} className="space-y-1.5 text-left">
                       <div className="flex items-start gap-2.5">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-500 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenCreatorProfile) {
+                              onClose();
+                              onOpenCreatorProfile(c.authorName);
+                            }
+                          }}
+                          className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FF2E93] to-purple-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 hover:ring-2 hover:ring-pink-400 transition-all cursor-pointer"
+                          title={`View @${c.authorName}'s profile`}
+                        >
                           {c.authorName?.[0]?.toUpperCase() || 'U'}
-                        </div>
+                        </button>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-white">@{c.authorName}</span>
-                            <span className="text-[9px] text-slate-500">
-                              {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onOpenCreatorProfile) {
+                                    onClose();
+                                    onOpenCreatorProfile(c.authorName);
+                                  }
+                                }}
+                                className="text-xs font-bold text-white hover:text-pink-400 truncate cursor-pointer transition-colors"
+                                title={`View @${c.authorName}'s profile`}
+                              >
+                                @{c.authorName}
+                              </button>
+                              <span className="text-[9px] text-slate-500 shrink-0">
+                                {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+
+                            {/* Commenter Follow Toggle (if not current viewer) */}
+                            {currentUser?.username?.toLowerCase() !== c.authorName.toLowerCase() && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleFollowUser(c.authorName)}
+                                disabled={loadingFollowUsernames.has(c.authorName)}
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                                  followedUsernames.has(c.authorName)
+                                    ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                                    : 'bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 hover:text-pink-200 border border-pink-500/30'
+                                }`}
+                                title={followedUsernames.has(c.authorName) ? 'Click to unfollow' : `Follow @${c.authorName}`}
+                              >
+                                {loadingFollowUsernames.has(c.authorName) ? (
+                                  <span className="animate-pulse">...</span>
+                                ) : followedUsernames.has(c.authorName) ? (
+                                  <>
+                                    <span className="group-hover:hidden">Following</span>
+                                    <span className="hidden group-hover:inline text-rose-400">Unfollow</span>
+                                  </>
+                                ) : (
+                                  <span>+ Follow</span>
+                                )}
+                              </button>
+                            )}
                           </div>
                           <p className="text-xs text-slate-200 mt-0.5 leading-snug">
                             {renderRichText(c.text)}
                           </p>
-                          <div className="mt-1">
+                          <div className="mt-1 flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => setReplyingTo({ id: c.id, authorName: c.authorName })}
                               className="text-[10px] font-semibold text-pink-400 hover:underline cursor-pointer"
                             >
                               Reply
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onOpenCreatorProfile) {
+                                  onClose();
+                                  onOpenCreatorProfile(c.authorName);
+                                }
+                              }}
+                              className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
+                            >
+                              View Account ↗
                             </button>
                           </div>
                         </div>
@@ -835,11 +1081,49 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                         <div className="pl-8 space-y-1.5 border-l border-white/10 ml-3">
                           {c.replies.map((reply) => (
                             <div key={reply.id} className="flex items-start gap-2 text-left">
-                              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onOpenCreatorProfile) {
+                                    onClose();
+                                    onOpenCreatorProfile(reply.authorName);
+                                  }
+                                }}
+                                className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0 hover:ring-1 hover:ring-pink-400 transition-all cursor-pointer"
+                                title={`View @${reply.authorName}'s profile`}
+                              >
                                 {reply.authorName?.[0]?.toUpperCase() || 'R'}
-                              </div>
+                              </button>
                               <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-bold text-white">@{reply.authorName}</span>
+                                <div className="flex items-center justify-between gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (onOpenCreatorProfile) {
+                                        onClose();
+                                        onOpenCreatorProfile(reply.authorName);
+                                      }
+                                    }}
+                                    className="text-[11px] font-bold text-white hover:text-pink-400 truncate cursor-pointer transition-colors"
+                                    title={`View @${reply.authorName}'s profile`}
+                                  >
+                                    @{reply.authorName}
+                                  </button>
+                                  {currentUser?.username?.toLowerCase() !== reply.authorName.toLowerCase() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleFollowUser(reply.authorName)}
+                                      disabled={loadingFollowUsernames.has(reply.authorName)}
+                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-full transition-all cursor-pointer ${
+                                        followedUsernames.has(reply.authorName)
+                                          ? 'bg-white/10 text-slate-400 hover:text-rose-400'
+                                          : 'bg-pink-500/15 text-pink-300 hover:text-pink-200'
+                                      }`}
+                                    >
+                                      {followedUsernames.has(reply.authorName) ? 'Following' : '+ Follow'}
+                                    </button>
+                                  )}
+                                </div>
                                 <p className="text-[11px] text-slate-300 mt-0.5">{renderRichText(reply.text)}</p>
                               </div>
                             </div>
