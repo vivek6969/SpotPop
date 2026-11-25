@@ -381,6 +381,17 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Test Evidence**: 103/103 automated tests passing (`tests/reels-navigation.test.ts`), clean production build in 831ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
 
+---
+
+### [TASK-040]: Integration of "Pop Details & Discovery" Tab in Studio Desktop Navigation Bar
+- **Priority**: P0 (Feature Discoverability & Studio Navigation)
+- **Assigned Agent**: ui-ux-engineer & senior-engineer
+- **Description**: Added a dedicated `📝 Details` tab button to the desktop tool navigation strip in `CreateSpotModal.tsx` directly alongside `Text`, `Stickers`, `Frames`, and `Background`. Clicking `📝 Details` immediately displays the complete `Pop Details & Discovery` section: optional Pop Title, Description & Story, Location with one-tap city suggestions, Hashtags & Topics, Friends Tagging, Connected Pops, and Audience Visibility settings.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
+
 
 
 
@@ -489,6 +500,17 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 103/103 automated tests passing (`tests/reels-navigation.test.ts`), clean production build in 831ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-040]: Integration of "Pop Details & Discovery" Tab in Studio Desktop Navigation Bar
+- **Priority**: P0 (Feature Discoverability & Studio Navigation)
+- **Assigned Agent**: ui-ux-engineer & senior-engineer
+- **Description**: Added a dedicated `📝 Details` tab button to the desktop tool navigation strip in `CreateSpotModal.tsx` directly alongside `Text`, `Stickers`, `Frames`, and `Background`. Clicking `📝 Details` immediately displays the complete `Pop Details & Discovery` section: optional Pop Title, Description & Story, Location with one-tap city suggestions, Hashtags & Topics, Friends Tagging, Connected Pops, and Audience Visibility settings.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
 
 
 

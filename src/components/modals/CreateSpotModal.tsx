@@ -2361,6 +2361,23 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     <span>Background</span>
                   </button>
 
+                  <button
+                    type="button"
+                    data-active={activeEditorTab === 'audience' && !isDrawingMode}
+                    onClick={() => {
+                      setActiveEditorTab('audience');
+                      setIsDrawingMode(false);
+                      setSelectedItemId(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'audience' && !isDrawingMode
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
+                  >
+                    <span>📝</span>
+                    <span>Details</span>
+                  </button>
+
                   {tier === 'big_pop' && (
                     <button
                       type="button"
