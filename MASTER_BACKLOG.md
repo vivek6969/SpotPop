@@ -368,6 +368,20 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Test Evidence**: 103/103 automated tests passing (`tests/social-network-visibility.test.ts`), clean production build in 869ms, 0 TypeScript errors.
 - **Review Result**: Approved by CTO.
 
+---
+
+### [TASK-039]: Purge Unwanted "Reels" Clapperboard and Story Highlights Filler Circles
+- **Priority**: P0 (Product Scope & UI Authenticity)
+- **Assigned Agent**: ui-ux-engineer & product-manager & senior-engineer
+- **Description**: Removed erroneous "Reels" feature and fake Instagram story highlights ("affordable", "Spotter", "exciting offer", "+ New") that did not belong to SpotPop:
+  1. **CreatorProfileModal**: Completely removed the story highlights circles row and deleted the `[REELS]` tab button. The profile now cleanly displays the creator's header and `▦ Created Pops` grid.
+  2. **Bottom Navigation Dock**: Removed the `Reels` clapperboard button from `BottomDock.tsx` and updated `NavTab` to `home | search | create | profile`.
+  3. **App Level**: Removed `PopReelsModal` import, state, and modal wrapper from `src/App.tsx`.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing (`tests/reels-navigation.test.ts`), clean production build in 831ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
+
 
 
 ---
@@ -462,5 +476,19 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 103/103 automated tests passing (`tests/social-network-visibility.test.ts`), clean production build in 869ms, 0 TypeScript errors.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-039]: Purge Unwanted "Reels" Clapperboard and Story Highlights Filler Circles
+- **Priority**: P0 (Product Scope & UI Authenticity)
+- **Assigned Agent**: ui-ux-engineer & product-manager & senior-engineer
+- **Description**: Removed erroneous "Reels" feature and fake Instagram story highlights ("affordable", "Spotter", "exciting offer", "+ New") that did not belong to SpotPop:
+  1. **CreatorProfileModal**: Completely removed the story highlights circles row and deleted the `[REELS]` tab button. The profile now cleanly displays the creator's header and `▦ Created Pops` grid.
+  2. **Bottom Navigation Dock**: Removed the `Reels` clapperboard button from `BottomDock.tsx` and updated `NavTab` to `home | search | create | profile`.
+  3. **App Level**: Removed `PopReelsModal` import, state, and modal wrapper from `src/App.tsx`.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing (`tests/reels-navigation.test.ts`), clean production build in 831ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
 
 

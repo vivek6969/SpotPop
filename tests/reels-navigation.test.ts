@@ -40,7 +40,7 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
     sharesCount: 3,
   });
 
-  test('Instagram navigation bar tabs trigger designated application actions', () => {
+  test('Navigation bar dock tabs trigger designated application actions', () => {
     const actionsTriggered: string[] = [];
 
     const navProps = {
@@ -48,17 +48,15 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
       onHomeClick: () => actionsTriggered.push('home'),
       onOpenSearch: () => actionsTriggered.push('search'),
       onStartCreate: () => actionsTriggered.push('create'),
-      onOpenReels: () => actionsTriggered.push('reels'),
       onOpenAccount: () => actionsTriggered.push('profile'),
     };
 
     navProps.onHomeClick();
     navProps.onOpenSearch();
     navProps.onStartCreate();
-    navProps.onOpenReels();
     navProps.onOpenAccount();
 
-    assert.deepEqual(actionsTriggered, ['home', 'search', 'create', 'reels', 'profile']);
+    assert.deepEqual(actionsTriggered, ['home', 'search', 'create', 'profile']);
   });
 
   test('Pop Reels filters out hidden/moderated spots and preserves order', () => {

@@ -1,14 +1,13 @@
 import React from 'react';
 import { ProductTier, User } from '../../types';
 
-export type NavTab = 'home' | 'search' | 'create' | 'reels' | 'profile';
+export type NavTab = 'home' | 'search' | 'create' | 'profile';
 
 interface BottomDockProps {
   activeTab?: NavTab;
   onTabChange?: (tab: NavTab) => void;
   onStartCreate: (tier?: ProductTier) => void;
   onOpenSearch?: () => void;
-  onOpenReels?: () => void;
   onOpenAccount?: () => void;
   onHomeClick?: () => void;
   selectedTier?: ProductTier;
@@ -21,7 +20,6 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   onStartCreate,
   onOpenSearch,
-  onOpenReels,
   onOpenAccount,
   onHomeClick,
   selectedTier = 'big_pop',
@@ -40,11 +38,6 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   const handleCreate = () => {
     onTabChange?.('create');
     onStartCreate(selectedTier);
-  };
-
-  const handleReels = () => {
-    onTabChange?.('reels');
-    onOpenReels?.();
   };
 
   const handleProfile = () => {
@@ -115,31 +108,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
             </div>
           </button>
 
-          {/* 4. Reels Tab - Instagram Reels Clapperboard Icon */}
-          <button
-            type="button"
-            onClick={handleReels}
-            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
-              activeTab === 'reels'
-                ? 'text-[#FF2E93] scale-105'
-                : 'text-slate-400 hover:text-white active:scale-90'
-            }`}
-            title="Pop Reels (Watch All Pops)"
-            aria-label="Reels"
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              {/* Clapperboard Body */}
-              <rect x="2" y="3" width="20" height="18" rx="4" strokeWidth="2" />
-              <line x1="2" y1="8" x2="22" y2="8" strokeWidth="1.8" />
-              <line x1="7" y1="3" x2="5" y2="8" strokeWidth="1.8" />
-              <line x1="17" y1="3" x2="15" y2="8" strokeWidth="1.8" />
-              {/* Play Triangle in center */}
-              <polygon points="10 11 16 14.5 10 18 10 11" fill="currentColor" stroke="none" />
-            </svg>
-            <span className={`w-1 h-1 rounded-full bg-[#FF2E93] mt-1 transition-opacity ${activeTab === 'reels' ? 'opacity-100' : 'opacity-0'}`} />
-          </button>
-
-          {/* 5. Profile Tab */}
+          {/* 4. Profile Tab */}
           <button
             type="button"
             onClick={handleProfile}

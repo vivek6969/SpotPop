@@ -36,7 +36,6 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'tagged'>('posts');
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Social & Follow state (Instagram logic)
@@ -436,12 +435,8 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   if (!username) return null;
 
-  // Filter spots by tab
-  const displayedSpots = (profileData?.spots || []).filter((s) => {
-    if (activeTab === 'posts') return true;
-    if (activeTab === 'reels') return s.tier === 'big_pop';
-    return true;
-  });
+  // Creator spots
+  const displayedSpots = profileData?.spots || [];
 
   // Check if account is locked to this viewer
   const isAccountLocked = Boolean(
@@ -937,53 +932,11 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 </form>
               )}
 
-              {/* Story Highlights Circles Row (Matching uploaded screenshot) */}
-              <div className="flex items-center gap-4 overflow-x-auto py-2 no-scrollbar">
-                {[
-                  { name: 'affordable', img: '🏷️' },
-                  { name: username || 'spotpop.in', img: '🌐' },
-                  { name: 'exciting offer', img: '⚡' },
-                  { name: 'New', img: '+', isAdd: true },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group">
-                    <div className="w-14 h-14 rounded-full p-[2px] border border-white/20 group-hover:border-white/50 transition-colors flex items-center justify-center">
-                      <div className="w-full h-full rounded-full bg-[#181B2A] flex items-center justify-center text-lg text-slate-200">
-                        {item.img}
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-slate-300 font-medium truncate max-w-[64px]">
-                      {item.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Instagram Post Tabs Bar: [Posts] [Reels] [Tagged] */}
-              <div className="border-t border-white/10 pt-1">
-                <div className="flex items-center justify-around">
-                  <button
-                    onClick={() => setActiveTab('posts')}
-                    className={`py-3 flex-1 flex items-center justify-center gap-2 border-b-2 text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'posts'
-                        ? 'border-white text-white'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    <span>▦</span>
-                    <span className="uppercase text-[11px]">POSTS</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('reels')}
-                    className={`py-3 flex-1 flex items-center justify-center gap-2 border-b-2 text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'reels'
-                        ? 'border-white text-white'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    <span>▶</span>
-                    <span className="uppercase text-[11px]">REELS</span>
-                  </button>
+              {/* Created Pops Section */}
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider pb-2 px-1">
+                  <span>▦</span>
+                  <span>Created Pops ({profileData?.spots?.length || 0})</span>
                 </div>
 
                 {/* Content Area: Private Account Screen VS Spots Grid */}

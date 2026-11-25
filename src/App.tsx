@@ -14,7 +14,6 @@ import { CreatorProfileModal } from './components/modals/CreatorProfileModal';
 import { UserAccountModal } from './components/modals/UserAccountModal';
 import { AdminPanelModal } from './components/modals/AdminPanelModal';
 import { PolicyModal } from './components/modals/PolicyModal';
-import { PopReelsModal } from './components/reels/PopReelsModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { SpotPopLogo } from './components/brand/SpotPopLogo';
 import { useGlobalHorizontalScroll } from './hooks/useGlobalHorizontalScroll';
@@ -54,7 +53,6 @@ export function App() {
     isOpen: false,
     tab: 'terms',
   });
-  const [isReelsOpen, setIsReelsOpen] = useState(false);
 
   // Fetch Spots and Stats on Mount
   const loadCanvasData = useCallback(async () => {
@@ -339,12 +337,11 @@ export function App() {
       {/* Floating Canvas Explore Filter Bar */}
       <ExploreBar onSelectSpot={flyToSpot} />
 
-      {/* Instagram-Style Bottom Navigation Dock */}
+      {/* Navigation Dock */}
       <BottomDock
-        activeTab={isReelsOpen ? 'reels' : isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
+        activeTab={isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
         onTabChange={(tab) => {
           if (tab === 'home') {
-            setIsReelsOpen(false);
             setIsSearchOpen(false);
             setIsAccountOpen(false);
             setSelectedCreatorUsername(null);
@@ -352,7 +349,6 @@ export function App() {
         }}
         onStartCreate={handleStartCreate}
         onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenReels={() => setIsReelsOpen(true)}
         onOpenAccount={() => {
           if (currentUser) {
             setSelectedCreatorUsername(currentUser.username);
@@ -361,7 +357,6 @@ export function App() {
           }
         }}
         onHomeClick={() => {
-          setIsReelsOpen(false);
           setSelectedCreatorUsername(null);
           setTargetFocus({ x: 0, y: 0, zoom: 0.9, timestamp: Date.now() });
         }}
@@ -536,18 +531,6 @@ export function App() {
         isOpen={policyModal.isOpen}
         initialTab={policyModal.tab}
         onClose={() => setPolicyModal({ isOpen: false, tab: 'terms' })}
-      />
-
-      {/* Instagram-Style Pop Reels Vertical Feed Modal */}
-      <PopReelsModal
-        isOpen={isReelsOpen}
-        onClose={() => setIsReelsOpen(false)}
-        spots={spots}
-        onFlyToSpot={flyToSpot}
-        onSelectSpot={(spot) => setSelectedSpot(spot)}
-        onOpenShareKit={(spot) => setShareKitSpot(spot)}
-        onOpenCreatorProfile={(username) => setSelectedCreatorUsername(username)}
-        onStartCreate={() => handleStartCreate()}
       />
     </div>
   );
