@@ -1442,24 +1442,38 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
       background: draft.background || '#FFF8E7',
       borderColor: draft.borderColor,
       content: {
+        ...(draft.content || {}),
         title: draft.title || draft.content?.title || draft.content?.headline || undefined,
         description: draft.description || draft.content?.description || undefined,
         location: draft.location || draft.content?.location || undefined,
         tags: draft.tags || draft.content?.tags || [],
         taggedUsers: draft.taggedUsers || draft.content?.taggedUsers || [],
         connectedSpotIds: draft.connectedSpotIds || draft.content?.connectedSpotIds || [],
-        headline: draft.content?.headline || '',
+        headline: draft.content?.headline !== undefined ? draft.content.headline : '',
         headlineX: draft.content?.headlineX,
         headlineY: draft.content?.headlineY,
-        text: draft.content?.text || '',
+        text: draft.content?.text !== undefined ? draft.content.text : '',
         subtextX: draft.content?.subtextX,
         subtextY: draft.content?.subtextY,
         subtextSize: draft.content?.subtextSize,
+        subtextFontFamily: draft.content?.subtextFontFamily,
+        subtextColor: draft.content?.subtextColor,
+        subtextOpacity: draft.content?.subtextOpacity,
+        subtextStroke: draft.content?.subtextStroke,
+        subtextGlow: draft.content?.subtextGlow,
+        subtext3D: draft.content?.subtext3D,
+        subtextGradient: draft.content?.subtextGradient,
+        subtextLetterSpacing: draft.content?.subtextLetterSpacing,
         author: draft.content?.author !== undefined ? draft.content.author : (draft.creatorName || ''),
         authorX: draft.content?.authorX,
         authorY: draft.content?.authorY,
         authorSize: draft.content?.authorSize,
         authorOpacity: draft.content?.authorOpacity,
+        authorFontFamily: draft.content?.authorFontFamily,
+        authorColor: draft.content?.authorColor,
+        authorStroke: draft.content?.authorStroke,
+        authorGlow: draft.content?.authorGlow,
+        author3D: draft.content?.author3D,
         textColor: draft.content?.textColor || '#1E293B',
         fontFamily: draft.content?.fontFamily || 'Caveat',
         fontSize: draft.content?.fontSize || 24,
@@ -1476,6 +1490,17 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         drawingOpacity: draft.content?.drawingOpacity ?? 1,
         frameStyle: draft.content?.frameStyle || 'tape',
         badge: 'NEW',
+        photoAdjustments: draft.content?.photoAdjustments || undefined,
+        layers: draft.content?.layers || [],
+        isCurvedText: draft.content?.isCurvedText || false,
+        curveRadius: draft.content?.curveRadius,
+        textStroke: draft.content?.textStroke,
+        textGlow: draft.content?.textGlow,
+        text3D: draft.content?.text3D,
+        textGradient: draft.content?.textGradient,
+        letterSpacing: draft.content?.letterSpacing || 0,
+        lineHeight: draft.content?.lineHeight,
+        badgeColor: draft.content?.badgeColor,
         audio: order.productId === 'big_pop' ? draft.content?.audio : undefined,
       },
       createdAt: new Date().toISOString(),
@@ -1493,7 +1518,7 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
     // Establish mutual connection links if creator chained existing pops
     if (newSpot.connectedSpotIds && newSpot.connectedSpotIds.length > 0) {
       for (const targetId of newSpot.connectedSpotIds) {
-        db.connectSpots(newSpot.id, targetId, order.userId);
+        db.connectSpots(newSpot.id, targetId, 'usr_admin');
       }
     }
 
@@ -1774,7 +1799,7 @@ apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
     // Establish mutual connection links if creator chained existing pops
     if (newSpot.connectedSpotIds && newSpot.connectedSpotIds.length > 0) {
       for (const targetId of newSpot.connectedSpotIds) {
-        db.connectSpots(newSpot.id, targetId, order.userId);
+        db.connectSpots(newSpot.id, targetId, 'usr_admin');
       }
     }
 

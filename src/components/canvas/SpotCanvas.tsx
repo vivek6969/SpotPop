@@ -7,8 +7,8 @@ import { getCleanFontFamily, getPhotoFilterStyle } from '../../utils/photoFilter
 const CELL_SIZE = 500;
 const CHUNK_SIZE = 1500;
 const MAX_CLIENT_CACHE = 50000;
-const ZOOM_LOD_THRESHOLD = 0.28; // Below 0.28: 2D canvas overview for 120 FPS
-const MAX_FULL_DOM_CARDS = 32;   // Upper bound of heavy interactive SpotCard DOM nodes
+const ZOOM_LOD_THRESHOLD = 0.20; // Below 0.20: 2D canvas overview for 120 FPS
+const MAX_FULL_DOM_CARDS = 80;   // Upper bound of heavy interactive SpotCard DOM nodes
 
 interface FastSpotCardProps {
   spot: Spot;
@@ -17,6 +17,7 @@ interface FastSpotCardProps {
 const FastSpotCard: React.FC<FastSpotCardProps> = React.memo(({ spot }) => {
   const { content } = spot;
   const isPolaroid = spot.shape === 'polaroid';
+  const isFullBleed = spot.shape === 'frameless' || spot.shape === 'poster' || content?.photoAdjustments?.aspectRatio === 'full';
   const hasImage = Boolean(content?.imageUrl);
   const isAudio = Boolean(content?.audio);
 
@@ -24,22 +25,41 @@ const FastSpotCard: React.FC<FastSpotCardProps> = React.memo(({ spot }) => {
     <div
       className="w-full h-full rounded-xs shadow-md overflow-hidden relative select-none flex flex-col justify-between p-2 pointer-events-none"
       style={{
-        background: spot.background || (isPolaroid ? '#FFFFFF' : '#1E293B'),
+        background: spot.background || (isPolaroid && !isFullBleed ? '#FFFFFF' : '#1E293B'),
         border: spot.borderColor ? `2px solid ${spot.borderColor}` : '1px solid rgba(255,255,255,0.15)',
         transform: spot.rotation ? `rotate(${spot.rotation}deg)` : undefined,
       }}
     >
+      {/* Tape style */}
+      {content?.frameStyle === 'tape' && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-16 h-6.5 bg-[#F5F5DC]/80 backdrop-blur-xs border-y border-white/40 shadow-sm rotate-[-2deg] z-40 pointer-events-none" />
+      )}
+
       {hasImage ? (
-        <div className="w-full h-[64%] rounded-xs overflow-hidden bg-black/30 shrink-0">
-          <img
-            src={content.imageUrl}
-            alt={content.headline || spot.creatorName}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover pointer-events-none select-none"
-            draggable={false}
-          />
-        </div>
+        isFullBleed ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <img
+              src={content.imageUrl}
+              alt={content.headline || spot.creatorName}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover pointer-events-none select-none"
+              draggable={false}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
+          </div>
+        ) : (
+          <div className="w-full h-[64%] rounded-xs overflow-hidden bg-black/30 shrink-0">
+            <img
+              src={content.imageUrl}
+              alt={content.headline || spot.creatorName}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover pointer-events-none select-none"
+              draggable={false}
+            />
+          </div>
+        )
       ) : isAudio ? (
         <div className="w-full h-[64%] rounded-xs overflow-hidden bg-gradient-to-tr from-[#FF2E93]/20 to-purple-900/40 border border-pink-500/30 flex items-center justify-center shrink-0">
           <span className="text-xl">🎵</span>
@@ -59,19 +79,46 @@ const FastSpotCard: React.FC<FastSpotCardProps> = React.memo(({ spot }) => {
         <div className="flex-1" />
       )}
 
+      {/* Stickers */}
+      {content?.stickers && content.stickers.length > 0 && (
+        <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+          {content.stickers.map((stk) => (
+            <div
+              key={stk.id}
+              className="absolute select-none pointer-events-none"
+              style={{
+                left: stk.x,
+                top: stk.y,
+                fontSize: `${stk.size || 24}px`,
+                transform: stk.rotation ? `rotate(${stk.rotation}deg)` : undefined,
+                opacity: stk.opacity ?? 1,
+              }}
+            >
+              {stk.emojiOrIcon}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Card Headline & Signature */}
-      <div className="mt-1 min-w-0">
+      <div
+        className={`min-w-0 z-20 ${content?.headlineX !== undefined && content?.headlineY !== undefined ? 'absolute' : 'mt-auto relative'}`}
+        style={content?.headlineX !== undefined && content?.headlineY !== undefined ? { left: content.headlineX, top: content.headlineY } : undefined}
+      >
         {content?.headline && (
           <p
-            className="font-bold text-[10px] leading-tight truncate"
-            style={{ color: content.textColor || (isPolaroid ? '#0F172A' : '#FFFFFF'), fontFamily: getCleanFontFamily(content.fontFamily) }}
+            className="font-bold text-[11px] leading-tight truncate"
+            style={{
+              color: content.textColor || (isPolaroid && !isFullBleed ? '#0F172A' : '#FFFFFF'),
+              fontFamily: getCleanFontFamily(content.fontFamily),
+            }}
           >
             {content.headline}
           </p>
         )}
         <p
           className="text-[8px] font-semibold opacity-75 truncate mt-0.5"
-          style={{ color: content?.textColor || (isPolaroid ? '#475569' : '#94A3B8') }}
+          style={{ color: content?.textColor || (isPolaroid && !isFullBleed ? '#475569' : '#94A3B8') }}
         >
           @{spot.creatorName}
         </p>

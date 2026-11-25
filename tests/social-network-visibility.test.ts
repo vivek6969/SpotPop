@@ -126,8 +126,8 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
               (f.status === 'accepted' || (f.status as any) === undefined) &&
               ((f.followerId.toLowerCase() === rawViewer &&
                 f.followingId.toLowerCase() === s.ownerId.toLowerCase()) ||
-              (f.followerId.toLowerCase() === rawViewer &&
-                f.followingId.toLowerCase() === s.creatorName.toLowerCase()))
+                (f.followerId.toLowerCase() === rawViewer &&
+                  f.followingId.toLowerCase() === s.creatorName.toLowerCase()))
           );
           return { ...s, isLocked: !isFollowing };
         }

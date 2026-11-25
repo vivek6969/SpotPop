@@ -675,7 +675,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   // Active Tool Tab in Editor
   const [activeEditorTab, setActiveEditorTab] = useState<
-    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes' | 'audio'
+    'photo' | 'adjust' | 'retouch' | 'text' | 'stickers' | 'draw' | 'frames' | 'themes' | 'audio' | 'audience'
   >('photo');
   const [selectedBgCategory, setSelectedBgCategory] = useState<'all' | 'halloween' | 'christmas' | 'love' | 'retro' | 'classic'>('all');
   const [selectedFontCategory, setSelectedFontCategory] = useState<string>('All');
@@ -1515,7 +1515,6 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
           textStroke: currentDraft.textStroke,
           textGlow: currentDraft.textGlow,
           letterSpacing: currentDraft.letterSpacing,
-          tags: currentDraft.tags,
           audio: finalAudio,
         },
       };
