@@ -311,3 +311,40 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 895ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-031]: Universal Unfollow Capabilities across Following Lists, Profile Sheet, and Spot Modal
+- **Priority**: P0 (User Freedom & Social Graph Autonomy)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Enabled users to unfollow any creator whenever they want across the application. Added dedicated idempotent `db.unfollowUser()` in `server/database.ts` and explicit endpoints `POST /api/users/:username/unfollow` and `DELETE /api/users/:username/follow` with real-time SSE event broadcasts. Added `api.unfollowUser()` in frontend client. In `CreatorProfileModal.tsx`, added interactive `Following ⌵` buttons next to each creator in the Following network list (hovering turns red `Unfollow`, one tap immediately unfollows and decrements following count with ability to re-follow). Added Instagram-style Unfollow Confirmation Modal Sheet (`Unfollow @username?`) when clicking `Following ⌵` on creator profiles. In `UserAccountModal.tsx`, added `Following ⌵` / `Unfollow` buttons in the user's Following list. In `SpotDetailModal.tsx`, added a `Following ⌵` / `Unfollow` pill next to the creator name in the modal header allowing immediate unfollow. Unfollowing instantly re-locks private/friends-only spots.
+- **Status**: Completed
+- **Test Evidence**: 80/80 passing tests across 12 test suites (`tests/social-network-visibility.test.ts`), 0 TypeScript compiler errors, clean production build in 940ms.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-032]: Elimination of Developer Jargon, Robotic AI Labels, and Programmer-Facing Copy
+- **Priority**: P0 (User-First Consumer Experience & UI Polish)
+- **Assigned Agent**: ui-ux-engineer & product-manager & senior-engineer
+- **Description**: Conducted an exhaustive scan across all frontend views and modals to eliminate developer jargon, robotic AI tags, and programmer-facing text:
+  1. Removed `100% LIVE PARITY · DIRECT FREE DRAG & CORNER RESIZE` and blinking dot from `CreateSpotModal.tsx` desktop and mobile preview bars.
+  2. Removed the cheesy `Pop Creator` pill badge from `UserAccountModal.tsx` profile card.
+  3. Removed `Instagram Format Compliant` programmer note from `CreatorProfileModal.tsx`.
+  4. Removed internal database tier tags (`BIG POP` / `MINI POP`) from `SpotDetailModal.tsx`, `SearchDrawer.tsx`, and `ActivityDrawer.tsx`.
+  5. Replaced `Owner Controls` label in `SpotDetailModal.tsx` with clean, natural user interface text.
+  6. Replaced marketer/growth-hacking jargon `🚀 Open Viral Share Kit` with clean, user-friendly `Share Spot` in `SpotDetailModal.tsx` and `ViralShareKitModal.tsx`.
+  7. Replaced developer terminology in editor tabs: `Blur Studio` -> `Blur`, `Vignette Edge Falloff` -> `Vignette`, `🔷 Or Stamp Vector Shape Layers` -> `🔷 Add Shapes`, `Insert Vector Shape Layer:` -> `Add Shapes:`, `Add Elements & Multi-Photo Layers` -> `Add Elements`, and `Audio Memory (Big Pop Exclusive)` -> `Voice Note`.
+- **Status**: Completed
+- **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 1.02s.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-033]: Separation of Audience & Privacy Settings from Text Editor into Dedicated Tab & Publish Flow
+- **Priority**: P0 (Information Architecture & User Experience Integrity)
+- **Assigned Agent**: product-manager & ui-ux-engineer & senior-engineer
+- **Description**: Addressed critical information architecture flaw where "Audience & Visibility" (Public / Friends / Private) and "Allow Comments on Pop" settings were misplaced inside `TextStudioTab.tsx`. Created dedicated `AudienceTab.tsx` providing focused audience selection, comment toggling, and discovery hashtags. In `CreateSpotModal.tsx`, added a dedicated `{ id: 'audience', label: 'Audience', icon: '🔒' }` tool and integrated a quick audience selector pill (`🌍 Public ⌵` / `👥 Friends ⌵` / `🔒 Private ⌵`) into the desktop review/placement footer. Cleaned `TextStudioTab.tsx` so it strictly focuses on headline, subtext, font family, typography styling, and colors.
+- **Status**: Completed
+- **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 895ms.
+- **Review Result**: Approved by CTO.

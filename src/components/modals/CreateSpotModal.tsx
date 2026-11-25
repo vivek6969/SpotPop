@@ -565,12 +565,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         connectedSpotIds: editSpot.connectedSpotIds || editSpot.content?.connectedSpotIds || [],
         audioDraft: editSpot.content?.audio
           ? {
-              previewUrl: editSpot.content.audio.url,
-              duration: editSpot.content.audio.duration,
-              type: editSpot.content.audio.type,
-              mimeType: editSpot.content.audio.mimeType,
-              storageKey: editSpot.content.audio.storageKey,
-            }
+            previewUrl: editSpot.content.audio.url,
+            duration: editSpot.content.audio.duration,
+            type: editSpot.content.audio.type,
+            mimeType: editSpot.content.audio.mimeType,
+            storageKey: editSpot.content.audio.storageKey,
+          }
           : null,
       };
 
@@ -1016,7 +1016,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
 
   const triggerMobileHaptic = (ms = 10) => {
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try { navigator.vibrate(ms); } catch (_) {}
+      try { navigator.vibrate(ms); } catch (_) { }
     }
   };
 
@@ -1804,13 +1804,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         letterSpacing: currentDraft.letterSpacing,
         audio: currentDraft.audioDraft
           ? {
-              url: currentDraft.audioDraft.previewUrl,
-              duration: currentDraft.audioDraft.duration,
-              type: currentDraft.audioDraft.type,
-              mimeType: currentDraft.audioDraft.mimeType,
-              size: currentDraft.audioDraft.size || 0,
-              storageKey: (currentDraft.audioDraft as any).storageKey || '',
-            }
+            url: currentDraft.audioDraft.previewUrl,
+            duration: currentDraft.audioDraft.duration,
+            type: currentDraft.audioDraft.type,
+            mimeType: currentDraft.audioDraft.mimeType,
+            size: currentDraft.audioDraft.size || 0,
+            storageKey: (currentDraft.audioDraft as any).storageKey || '',
+          }
           : editSpot?.content?.audio,
       }}
       creatorName={currentDraft.creatorName}
@@ -1883,22 +1883,20 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('mini_pop')}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
-                    tier === 'mini_pop'
-                      ? 'bg-amber-400 text-black shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${tier === 'mini_pop'
+                    ? 'bg-amber-400 text-black shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
                 >
                   Mini ₹29
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('big_pop')}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
-                    tier === 'big_pop'
-                      ? 'bg-[#FF2E93] text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${tier === 'big_pop'
+                    ? 'bg-[#FF2E93] text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
                 >
                   Big ₹99
                 </button>
@@ -1942,13 +1940,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
               type="button"
               disabled={isSubmitting}
               onClick={handleProceedToPayment}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95 ${
-                editSpot
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                  : tier === 'big_pop'
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95 ${editSpot
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                : tier === 'big_pop'
                   ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-pink-500/25'
                   : 'bg-amber-400 text-black'
-              }`}
+                }`}
             >
               {isSubmitting ? (
                 <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -1970,15 +1967,13 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   handleSelectItemWithMobileSheet(null);
                 }
               }}
-              className={`w-full flex-1 min-h-0 flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${
-                mobileActiveSheet !== null ? 'p-2 border-b border-white/10' : 'p-4'
-              }`}
+              className={`w-full flex-1 min-h-0 flex flex-col items-center justify-center relative select-none overflow-hidden transition-all duration-300 ${mobileActiveSheet !== null ? 'p-2 border-b border-white/10' : 'p-4'
+                }`}
             >
               {/* Card centered and scaled for mobile viewport to ensure prominent, crystal-clear readability */}
               <div
-                className={`relative transition-transform duration-300 origin-center my-auto ${
-                  mobileActiveSheet !== null ? 'scale-[1.18] xs:scale-[1.28] sm:scale-[1.38]' : 'scale-[1.55] xs:scale-[1.68] sm:scale-[1.80]'
-                }`}
+                className={`relative transition-transform duration-300 origin-center my-auto ${mobileActiveSheet !== null ? 'scale-[1.18] xs:scale-[1.28] sm:scale-[1.38]' : 'scale-[1.55] xs:scale-[1.68] sm:scale-[1.80]'
+                  }`}
               >
                 {renderSpotCardElement()}
               </div>
@@ -1992,16 +1987,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       {activeSelectedSticker
                         ? `Sticker (${activeSelectedSticker.emojiOrIcon})`
                         : selectedItemId === 'headline'
-                        ? 'Headline'
-                        : selectedItemId === 'subtext'
-                        ? 'Subtext'
-                        : selectedItemId === 'author'
-                        ? 'Creator Tag'
-                        : selectedItemId === 'photo'
-                        ? 'Photo Artwork'
-                        : selectedItemId === 'background'
-                        ? 'Background'
-                        : 'Selected'}
+                          ? 'Headline'
+                          : selectedItemId === 'subtext'
+                            ? 'Subtext'
+                            : selectedItemId === 'author'
+                              ? 'Creator Tag'
+                              : selectedItemId === 'photo'
+                                ? 'Photo Artwork'
+                                : selectedItemId === 'background'
+                                  ? 'Background'
+                                  : 'Selected'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -2102,11 +2097,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       key={tool.id}
                       type="button"
                       onClick={() => handleMobileToolSelect(tool.id)}
-                      className={`min-w-[62px] h-[52px] px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${
-                        isActive
-                          ? 'bg-[#FF2E93] text-white shadow-lg shadow-pink-500/20'
-                          : 'text-slate-400 hover:text-white hover:bg-white/5'
-                      }`}
+                      className={`min-w-[62px] h-[52px] px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all shrink-0 cursor-pointer active:scale-95 ${isActive
+                        ? 'bg-[#FF2E93] text-white shadow-lg shadow-pink-500/20'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
                     >
                       <span className="text-lg leading-none shrink-0">{tool.icon}</span>
                       <span className="text-[10px] font-bold tracking-tight leading-tight shrink-0 mt-0.5">{tool.label}</span>
@@ -2171,16 +2165,16 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       {activeSelectedSticker
                         ? `Sticker (${activeSelectedSticker.emojiOrIcon}) Selected`
                         : selectedItemId === 'headline'
-                        ? 'Headline Selected'
-                        : selectedItemId === 'subtext'
-                        ? 'Subtext Selected'
-                        : selectedItemId === 'author'
-                        ? 'Creator Tag Selected'
-                        : selectedItemId === 'photo'
-                        ? 'Photo Selected'
-                        : selectedItemId === 'background'
-                        ? 'Background Selected'
-                        : 'Item Selected'}
+                          ? 'Headline Selected'
+                          : selectedItemId === 'subtext'
+                            ? 'Subtext Selected'
+                            : selectedItemId === 'author'
+                              ? 'Creator Tag Selected'
+                              : selectedItemId === 'photo'
+                                ? 'Photo Selected'
+                                : selectedItemId === 'background'
+                                  ? 'Background Selected'
+                                  : 'Item Selected'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -2237,11 +2231,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                         setIsDrawingMode(false);
                         setSelectedItemId('photo');
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                        activeEditorTab === 'photo' && !isDrawingMode
-                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'photo' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       <span>📐</span>
                       <span>Tools</span>
@@ -2257,11 +2250,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                         setIsDrawingMode(false);
                         setSelectedItemId('photo');
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                        activeEditorTab === 'adjust' && !isDrawingMode
-                          ? 'bg-amber-400 text-black shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'adjust' && !isDrawingMode
+                        ? 'bg-amber-400 text-black shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       <span>🎨</span>
                       <span>Adjust</span>
@@ -2277,11 +2269,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                         setIsDrawingMode(false);
                         setSelectedItemId('photo');
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                        activeEditorTab === 'retouch' && !isDrawingMode
-                          ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'retouch' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       <span>✨</span>
                       <span>Retouch</span>
@@ -2295,11 +2286,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       setActiveEditorTab('text');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      activeEditorTab === 'text' && !isDrawingMode
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'text' && !isDrawingMode
+                      ? 'bg-white text-black shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
                   >
                     <span>✍️</span>
                     <span>Text</span>
@@ -2312,11 +2302,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       setActiveEditorTab('stickers');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      activeEditorTab === 'stickers' && !isDrawingMode
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'stickers' && !isDrawingMode
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
                   >
                     <span>💖</span>
                     <span>Stickers</span>
@@ -2331,11 +2320,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                         setIsDrawingMode(true);
                         setSelectedItemId(null);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                        isDrawingMode
-                          ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${isDrawingMode
+                        ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       <span>🖌️</span>
                       <span>Draw</span>
@@ -2349,11 +2337,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       setActiveEditorTab('frames');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      activeEditorTab === 'frames' && !isDrawingMode
-                        ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'frames' && !isDrawingMode
+                      ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
                   >
                     <span>🖼️</span>
                     <span>Frames</span>
@@ -2366,11 +2353,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                       setActiveEditorTab('themes');
                       setIsDrawingMode(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                      activeEditorTab === 'themes' && !isDrawingMode
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'themes' && !isDrawingMode
+                      ? 'bg-white text-black shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
                   >
                     <span>🌈</span>
                     <span>Background</span>
@@ -2384,11 +2370,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                         setActiveEditorTab('audio');
                         setIsDrawingMode(false);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                        activeEditorTab === 'audio' && !isDrawingMode
-                          ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-black shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${activeEditorTab === 'audio' && !isDrawingMode
+                        ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-black shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       <span>🎙️</span>
                       <span>Audio</span>
@@ -2462,11 +2447,10 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                   setActiveEditorTab('audience');
                   setMobileActiveSheet('audience');
                 }}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  activeEditorTab === 'audience'
-                    ? 'bg-pink-500/20 border-pink-500/50 text-pink-300'
-                    : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${activeEditorTab === 'audience'
+                  ? 'bg-pink-500/20 border-pink-500/50 text-pink-300'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
                 title="Change audience & privacy"
               >
                 <span>{currentDraft.visibility === 'private' ? '🔒 Private' : currentDraft.visibility === 'friends_only' ? '👥 Friends' : '🌍 Public'}</span>
@@ -2486,13 +2470,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleProceedToPayment}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  editSpot
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
-                    : tier === 'big_pop'
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap ${editSpot
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 shadow-emerald-500/25'
+                  : tier === 'big_pop'
                     ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white hover:opacity-90 shadow-pink-500/25'
                     : 'bg-amber-400 text-black hover:bg-amber-300'
-                }`}
+                  }`}
               >
                 {isSubmitting ? (
                   <>

@@ -105,7 +105,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
       .then(res => {
         setNetworkCounts({ followers: res.followersCount || 0, following: res.followingCount || 0 });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [currentUser?.username]);
 
   const [loading, setLoading] = useState(false);
@@ -199,17 +199,17 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   // Find user's owned spots
   const userSpots = currentUser
     ? allSpots.filter(s =>
-        s.ownerId === currentUser.id ||
-        currentUser.ownedSpotIds?.includes(s.id) ||
-        s.creatorName.toLowerCase() === currentUser.displayName.toLowerCase() ||
-        s.creatorName.toLowerCase() === currentUser.username.toLowerCase()
-      )
+      s.ownerId === currentUser.id ||
+      currentUser.ownedSpotIds?.includes(s.id) ||
+      s.creatorName.toLowerCase() === currentUser.displayName.toLowerCase() ||
+      s.creatorName.toLowerCase() === currentUser.username.toLowerCase()
+    )
     : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
       <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
-        
+
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40">
           <div className="flex items-center gap-2.5">
@@ -276,9 +276,16 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     <span className="font-bold text-white text-base truncate">
                       {currentUser.displayName}
                     </span>
-                    {currentUser.role === 'admin' && (
-                      <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase shrink-0">
-                        Admin
+                    {currentUser.role === 'admin' ? (
+                      {
+                        currentUser.role === 'admin' && (
+                          <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase shrink-0">
+                            👑 Admin
+                            Admin
+                          </span>
+                        ) : (
+                      <span className="px-2 py-0.5 rounded-md bg-[#FF2E93]/20 text-[#FF5EAA] border border-[#FF2E93]/30 text-[10px] font-bold uppercase shrink-0">
+                        Pop Creator
                       </span>
                     )}
                     {onOpenCreatorProfile && (
@@ -356,14 +363,12 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 <button
                   type="button"
                   onClick={handleTogglePrivacy}
-                  className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                    isPrivateAccount ? 'bg-[#0095F6]' : 'bg-white/20'
-                  }`}
+                  className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${isPrivateAccount ? 'bg-[#0095F6]' : 'bg-white/20'
+                    }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      isPrivateAccount ? 'right-0.5' : 'left-0.5'
-                    }`}
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isPrivateAccount ? 'right-0.5' : 'left-0.5'
+                      }`}
                   />
                 </button>
               </div>
@@ -528,11 +533,10 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     setTab('login');
                     setError(null);
                   }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                    tab === 'login'
-                      ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${tab === 'login'
+                    ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
                 >
                   Sign In
                 </button>
@@ -542,11 +546,10 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     setTab('register');
                     setError(null);
                   }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                    tab === 'register'
-                      ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${tab === 'register'
+                    ? 'bg-gradient-to-r from-[#FF2E93] to-[#E6007A] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
                 >
                   Create Account
                 </button>
@@ -929,7 +932,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                               if (u.username) set.delete(u.username);
                               if (u.id) set.delete(u.id);
                               localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-                            } catch {}
+                            } catch { }
                           } catch (e: any) {
                             alert(e.message || 'Failed to unfollow user');
                           }

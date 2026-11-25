@@ -1168,7 +1168,7 @@ class Database {
 
     const existingIdx = this.data.follows.findIndex(
       f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     let followStatus: FollowStatus = 'not_following';
@@ -1240,7 +1240,7 @@ class Database {
     if (fUser) {
       fUser.followingCount = this.data.follows.filter(
         f => (f.status === 'accepted' || !f.status) &&
-             (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+          (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
       ).length;
     }
 
@@ -1296,7 +1296,7 @@ class Database {
       if (fUser) {
         fUser.followingCount = this.data.follows.filter(
           f => (f.status === 'accepted' || !f.status) &&
-               (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+            (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
         ).length;
       }
       this.save();
@@ -1322,7 +1322,7 @@ class Database {
 
     const relation = this.data.follows.find(
       f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     if (!relation) return 'not_following';
@@ -1337,8 +1337,8 @@ class Database {
     const targetId = this.normalizeUserKey(targetInput);
     return this.data.follows.some(
       f => (f.status === 'accepted' || !f.status) &&
-           (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
   }
 
@@ -1355,7 +1355,7 @@ class Database {
     const targetId = this.normalizeUserKey(targetInput);
     const pendingRelations = this.data.follows.filter(
       f => f.status === 'pending' &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     return pendingRelations.map(r => {
@@ -1385,7 +1385,7 @@ class Database {
 
     const relation = this.data.follows.find(
       f => f.id === requestId &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     if (!relation) return null;
@@ -1413,7 +1413,7 @@ class Database {
     if (followerUser) {
       followerUser.followingCount = this.data.follows.filter(
         f => (f.status === 'accepted' || !f.status) &&
-             (f.followerId.toLowerCase() === followerUser.id.toLowerCase() || f.followerId.toLowerCase() === followerUser.username.toLowerCase())
+          (f.followerId.toLowerCase() === followerUser.id.toLowerCase() || f.followerId.toLowerCase() === followerUser.username.toLowerCase())
       ).length;
     }
 
@@ -1433,7 +1433,7 @@ class Database {
 
     const idx = this.data.follows.findIndex(
       f => f.id === requestId &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     if (idx === -1) return false;
@@ -1450,7 +1450,7 @@ class Database {
 
     const idx = this.data.follows.findIndex(
       f => (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase()) &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     if (idx === -1) return false;
@@ -1465,7 +1465,7 @@ class Database {
     if (fUser) {
       fUser.followingCount = this.data.follows.filter(
         f => (f.status === 'accepted' || !f.status) &&
-             (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+          (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
       ).length;
     }
 
@@ -1486,7 +1486,7 @@ class Database {
     const targetId = this.normalizeUserKey(targetInput);
     const relations = this.data.follows.filter(
       f => (f.status === 'accepted' || !f.status) &&
-           (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
+        (f.followingId.toLowerCase() === targetId.toLowerCase() || f.followingId.toLowerCase() === targetInput.toLowerCase())
     );
 
     return relations.map(r => {
@@ -1508,7 +1508,7 @@ class Database {
     const followerId = this.normalizeUserKey(followerInput);
     const relations = this.data.follows.filter(
       f => (f.status === 'accepted' || !f.status) &&
-           (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
+        (f.followerId.toLowerCase() === followerId.toLowerCase() || f.followerId.toLowerCase() === followerInput.toLowerCase())
     );
 
     return relations.map(r => {
@@ -1530,11 +1530,11 @@ class Database {
     const userKey = this.normalizeUserKey(userInput);
     const followersCount = this.data.follows.filter(
       f => (f.status === 'accepted' || !f.status) &&
-           (f.followingId.toLowerCase() === userKey.toLowerCase() || f.followingId.toLowerCase() === userInput.toLowerCase())
+        (f.followingId.toLowerCase() === userKey.toLowerCase() || f.followingId.toLowerCase() === userInput.toLowerCase())
     ).length;
     const followingCount = this.data.follows.filter(
       f => (f.status === 'accepted' || !f.status) &&
-           (f.followerId.toLowerCase() === userKey.toLowerCase() || f.followerId.toLowerCase() === userInput.toLowerCase())
+        (f.followerId.toLowerCase() === userKey.toLowerCase() || f.followerId.toLowerCase() === userInput.toLowerCase())
     ).length;
     return { followersCount, followingCount };
   }

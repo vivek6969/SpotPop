@@ -130,11 +130,10 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
                 key={loc}
                 type="button"
                 onClick={() => updateDraft({ location: isSelected ? '' : loc })}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-amber-400 text-black shadow-sm font-bold'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
-                }`}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${isSelected
+                  ? 'bg-amber-400 text-black shadow-sm font-bold'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
+                  }`}
               >
                 📍 {loc}
               </button>
@@ -179,11 +178,10 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
                 key={tag}
                 type="button"
                 onClick={() => handleTagToggle(tag)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-purple-600 text-white font-bold shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
-                }`}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${isSelected
+                  ? 'bg-purple-600 text-white font-bold shadow-sm'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
+                  }`}
               >
                 {tag} {isSelected ? '✓' : '+'}
               </button>
@@ -266,11 +264,10 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
                 key={opt.id}
                 type="button"
                 onClick={() => updateDraft({ visibility: opt.id as any })}
-                className={`p-3 rounded-2xl border text-left flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-gradient-to-br from-[#FF2E93]/25 to-purple-600/25 border-[#FF2E93] text-white shadow-lg shadow-pink-500/20 ring-1 ring-[#FF2E93]'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                }`}
+                className={`p-3 rounded-2xl border text-left flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${isSelected
+                  ? 'bg-gradient-to-br from-[#FF2E93]/25 to-purple-600/25 border-[#FF2E93] text-white shadow-lg shadow-pink-500/20 ring-1 ring-[#FF2E93]'
+                  : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
               >
                 <span className="text-2xl">{opt.icon}</span>
                 <span className="text-xs font-bold leading-tight">{opt.label}</span>
@@ -297,14 +294,12 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
         <button
           type="button"
           onClick={() => updateDraft({ allowComments: !(currentDraft.allowComments ?? true) })}
-          className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer ${
-            (currentDraft.allowComments ?? true) ? 'bg-[#FF2E93]' : 'bg-slate-700'
-          }`}
+          className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer ${(currentDraft.allowComments ?? true) ? 'bg-[#FF2E93]' : 'bg-slate-700'
+            }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 w-5.5 h-5.5 rounded-full bg-white transition-transform shadow-md ${
-              (currentDraft.allowComments ?? true) ? 'translate-x-5.5' : 'translate-x-0'
-            }`}
+            className={`absolute top-0.5 left-0.5 w-5.5 h-5.5 rounded-full bg-white transition-transform shadow-md ${(currentDraft.allowComments ?? true) ? 'translate-x-5.5' : 'translate-x-0'
+              }`}
           />
         </button>
       </div>
