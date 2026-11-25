@@ -314,6 +314,50 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 
 ---
 
+### [TASK-034]: Per-Element Typography Styling Isolation (Headline vs Subtext vs Author)
+- **Priority**: P0 (Editor Precision & WYSIWYG Styling)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Fixed issue where modifying font family, color, effects, or sizing while editing secondary text (subtext) or author signature globally altered the headline or all text elements. Added element-level isolation in `TextTab.tsx` and `CreateSpotModal.tsx` so font changes strictly apply to the currently selected text layer (`selectedTextElement: 'headline' | 'subtext' | 'author'`).
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/studio-state-integrity.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-035]: Semantic Sticker Search Engine with English Keyword Dictionary
+- **Priority**: P0 (Creative Studio Usability)
+- **Assigned Agent**: senior-engineer & product-manager
+- **Description**: Resolved bug where sticker search query (e.g. typing "heart") returned an empty result. Implemented semantic keyword lookup engine in `src/utils/stickerKeywords.ts` mapping emojis, stamps, and doodles to comprehensive English search keywords (e.g., hearts, love, romance, fire, stars, gaming, spooky, food, coffee, badges). Built clean empty-state fallback with popular quick-search preset pills in `StickersStockTab.tsx`.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/sticker-search.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-036]: Connected Pops (Memory Threads) & Optional Discovery Metadata
+- **Priority**: P0 (Social Graph & Content Discovery)
+- **Assigned Agent**: senior-engineer & product-manager
+- **Description**: Added ability for users to connect pops together into memory threads and tag following friends or mutual pops. Added optional title, description, location, and `#hashtags` to pop creation and global canvas search. Connected pops can be traversed bidirectionally with permission verification.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/connected-pops.test.ts`, `tests/spot-metadata-search.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-037]: 100% WYSIWYG Editor-to-Canvas Parity & Lossless Persistence Engine
+- **Priority**: P0 (Visual Fidelity & Critical Rendering Invariant)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer & qa-engineer
+- **Description**: Fixed critical defect where a spot created with Full Frame crop mode (`aspectRatio: 'full'`) in the editor reverted to a standard white Polaroid frame on the canvas with invisible white text. 
+  1. Updated `server/api.ts` `POST /api/orders/verify` to perform lossless persistence of all editor properties: `photoAdjustments`, `layers`, `isCurvedText`, `curveRadius`, `textStroke`, `textGlow`, `text3D`, `textGradient`, `letterSpacing`, `lineHeight`, `stickers`, and `frameStyle`.
+  2. Restored existing canvas spot `sp_1795596197108_grla` with its original full-bleed adjustments and snowflake sticker.
+  3. Upgraded `SpotCard.tsx` and `FastSpotCard` in `SpotCanvas.tsx` to ensure `isFullBleed` spots render edge-to-edge artwork with a bottom gradient scrim, preserving full legibility for white text (#FFFFFF) across both standard and LOD zoom levels.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/canvas-editor-parity.test.ts`), clean production build in 921ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
+
+---
+
 ### [TASK-031]: Universal Unfollow Capabilities across Following Lists, Profile Sheet, and Spot Modal
 - **Priority**: P0 (User Freedom & Social Graph Autonomy)
 - **Assigned Agent**: senior-engineer & ui-ux-engineer
@@ -348,3 +392,47 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 80/80 passing tests across 12 test suites, 0 TypeScript compiler errors, clean Vite production build in 895ms.
 - **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-034]: Per-Element Typography Styling Isolation (Headline vs Subtext vs Author)
+- **Priority**: P0 (Editor Precision & WYSIWYG Styling)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer
+- **Description**: Fixed issue where modifying font family, color, effects, or sizing while editing secondary text (subtext) or author signature globally altered the headline or all text elements. Added element-level isolation in `TextTab.tsx` and `CreateSpotModal.tsx` so font changes strictly apply to the currently selected text layer (`selectedTextElement: 'headline' | 'subtext' | 'author'`).
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/studio-state-integrity.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-035]: Semantic Sticker Search Engine with English Keyword Dictionary
+- **Priority**: P0 (Creative Studio Usability)
+- **Assigned Agent**: senior-engineer & product-manager
+- **Description**: Resolved bug where sticker search query (e.g. typing "heart") returned an empty result. Implemented semantic keyword lookup engine in `src/utils/stickerKeywords.ts` mapping emojis, stamps, and doodles to comprehensive English search keywords (e.g., hearts, love, romance, fire, stars, gaming, spooky, food, coffee, badges). Built clean empty-state fallback with popular quick-search preset pills in `StickersStockTab.tsx`.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/sticker-search.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-036]: Connected Pops (Memory Threads) & Optional Discovery Metadata
+- **Priority**: P0 (Social Graph & Content Discovery)
+- **Assigned Agent**: senior-engineer & product-manager
+- **Description**: Added ability for users to connect pops together into memory threads and tag following friends or mutual pops. Added optional title, description, location, and `#hashtags` to pop creation and global canvas search. Connected pops can be traversed bidirectionally with permission verification.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/connected-pops.test.ts`, `tests/spot-metadata-search.test.ts`), 0 TypeScript errors.
+- **Review Result**: Approved by CTO.
+
+---
+
+### [TASK-037]: 100% WYSIWYG Editor-to-Canvas Parity & Lossless Persistence Engine
+- **Priority**: P0 (Visual Fidelity & Critical Rendering Invariant)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer & qa-engineer
+- **Description**: Fixed critical defect where a spot created with Full Frame crop mode (`aspectRatio: 'full'`) in the editor reverted to a standard white Polaroid frame on the canvas with invisible white text. 
+  1. Updated `server/api.ts` `POST /api/orders/verify` to perform lossless persistence of all editor properties: `photoAdjustments`, `layers`, `isCurvedText`, `curveRadius`, `textStroke`, `textGlow`, `text3D`, `textGradient`, `letterSpacing`, `lineHeight`, `stickers`, and `frameStyle`.
+  2. Restored existing canvas spot `sp_1795596197108_grla` with its original full-bleed adjustments and snowflake sticker.
+  3. Upgraded `SpotCard.tsx` and `FastSpotCard` in `SpotCanvas.tsx` to ensure `isFullBleed` spots render edge-to-edge artwork with a bottom gradient scrim, preserving full legibility for white text (#FFFFFF) across both standard and LOD zoom levels.
+- **Status**: Completed
+- **Test Evidence**: 101/101 automated tests passing (`tests/canvas-editor-parity.test.ts`), clean production build in 921ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
