@@ -9,6 +9,7 @@ interface CreatorProfileModalProps {
   authToken?: string | null;
   onClose: () => void;
   onSelectSpot: (spot: Spot) => void;
+  onOpenStories?: (spotId?: string) => void;
   onProfileUpdated?: (updatedUser: User) => void;
   onOpenAccountModal?: () => void;
   onLogout?: () => void;
@@ -20,6 +21,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   authToken,
   onClose,
   onSelectSpot,
+  onOpenStories,
   onProfileUpdated,
   onOpenAccountModal,
   onLogout,
@@ -36,6 +38,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'posts' | 'stories'>('posts');
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Social & Follow state (Instagram logic)
@@ -435,8 +438,13 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   if (!username) return null;
 
-  // Creator spots
-  const displayedSpots = profileData?.spots || [];
+  // Creator spots filtered by active tab
+  const allSpots = profileData?.spots || [];
+  const displayedSpots = allSpots.filter((s) => {
+    if (activeTab === 'posts') return true;
+    if (activeTab === 'stories') return s.tier === 'big_pop' || Boolean(s.content?.audio) || Boolean(s.content?.imageUrl);
+    return true;
+  });
 
   // Check if account is locked to this viewer
   const isAccountLocked = Boolean(
@@ -929,11 +937,34 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 </form>
               )}
 
-              {/* Created Pops Section */}
-              <div className="border-t border-white/10 pt-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider pb-2 px-1">
-                  <span>▦</span>
-                  <span>Created Pops ({profileData?.spots?.length || 0})</span>
+              {/* Instagram Post Tabs Bar: [POSTS] [STORIES] */}
+              <div className="border-t border-white/10 pt-1">
+                <div className="flex items-center justify-around">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('posts')}
+                    className={`py-3 flex-1 flex items-center justify-center gap-2 border-b-2 text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'posts'
+                        ? 'border-white text-white'
+                        : 'border-transparent text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <span>▦</span>
+                    <span className="uppercase text-[11px]">POSTS ({allSpots.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('stories')}
+                    className={`py-3 flex-1 flex items-center justify-center gap-2 border-b-2 text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'stories'
+                        ? 'border-white text-white'
+                        : 'border-transparent text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-[#FF2E93]">▶</span>
+                    <span className="uppercase text-[11px]">STORIES</span>
+                  </button>
                 </div>
 
                 {/* Content Area: Private Account Screen VS Spots Grid */}
@@ -975,8 +1006,13 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                       <div
                         key={spot.id}
                         onClick={() => {
-                          onSelectSpot(spot);
-                          onClose();
+                          if (activeTab === 'stories' && onOpenStories) {
+                            onOpenStories(spot.id);
+                            onClose();
+                          } else {
+                            onSelectSpot(spot);
+                            onClose();
+                          }
                         }}
                         className="aspect-square relative bg-[#1E2235] rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-white/5"
                       >

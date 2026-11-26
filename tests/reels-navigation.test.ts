@@ -48,15 +48,17 @@ describe('Instagram-Style Navigation & Pop Reels Feed', () => {
       onHomeClick: () => actionsTriggered.push('home'),
       onOpenSearch: () => actionsTriggered.push('search'),
       onStartCreate: () => actionsTriggered.push('create'),
+      onOpenStories: () => actionsTriggered.push('stories'),
       onOpenAccount: () => actionsTriggered.push('profile'),
     };
 
     navProps.onHomeClick();
     navProps.onOpenSearch();
     navProps.onStartCreate();
+    navProps.onOpenStories();
     navProps.onOpenAccount();
 
-    assert.deepEqual(actionsTriggered, ['home', 'search', 'create', 'profile']);
+    assert.deepEqual(actionsTriggered, ['home', 'search', 'create', 'stories', 'profile']);
   });
 
   test('Pop Reels filters out hidden/moderated spots and preserves order', () => {

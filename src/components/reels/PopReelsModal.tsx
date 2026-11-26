@@ -447,7 +447,7 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
     }
-    showToast('Shuffled Reels discovery feed! 🔀');
+    showToast('Shuffled Stories discovery feed! 🔀');
   }, [spots, createShuffledPool, showToast]);
 
   // Sync background updates (likes, views, comments) in-place without altering feed ordering
@@ -901,11 +901,11 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
               </button>
             )}
 
-            {/* Close Reels Button */}
+            {/* Close Stories Button */}
             <button
               onClick={onClose}
               className="w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all cursor-pointer shadow-md"
-              title="Close Reels"
+              title="Close Stories"
               aria-label="Close"
             >
               <span className="text-base font-bold leading-none">✕</span>
@@ -1340,3 +1340,5 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
     </div>
   );
 };
+
+export const PopStoriesModal = PopReelsModal;

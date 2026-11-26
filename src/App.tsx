@@ -14,6 +14,7 @@ import { CreatorProfileModal } from './components/modals/CreatorProfileModal';
 import { UserAccountModal } from './components/modals/UserAccountModal';
 import { AdminPanelModal } from './components/modals/AdminPanelModal';
 import { PolicyModal } from './components/modals/PolicyModal';
+import { PopReelsModal as PopStoriesModal } from './components/reels/PopReelsModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { SpotPopLogo } from './components/brand/SpotPopLogo';
 import { useGlobalHorizontalScroll } from './hooks/useGlobalHorizontalScroll';
@@ -53,6 +54,8 @@ export function App() {
     isOpen: false,
     tab: 'terms',
   });
+  const [isStoriesOpen, setIsStoriesOpen] = useState(false);
+  const [storiesInitialSpotId, setStoriesInitialSpotId] = useState<string | null>(null);
 
   // Fetch Spots and Stats on Mount
   const loadCanvasData = useCallback(async () => {
@@ -351,9 +354,10 @@ export function App() {
 
       {/* Navigation Dock */}
       <BottomDock
-        activeTab={isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
+        activeTab={isStoriesOpen ? 'stories' : isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
         onTabChange={(tab) => {
           if (tab === 'home') {
+            setIsStoriesOpen(false);
             setIsSearchOpen(false);
             setIsAccountOpen(false);
             setSelectedCreatorUsername(null);
@@ -361,6 +365,10 @@ export function App() {
         }}
         onStartCreate={handleStartCreate}
         onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenStories={() => {
+          setStoriesInitialSpotId(null);
+          setIsStoriesOpen(true);
+        }}
         onOpenAccount={() => {
           if (currentUser) {
             setSelectedCreatorUsername(currentUser.username);
@@ -369,6 +377,7 @@ export function App() {
           }
         }}
         onHomeClick={() => {
+          setIsStoriesOpen(false);
           setSelectedCreatorUsername(null);
           setTargetFocus({ x: 0, y: 0, zoom: 0.9, timestamp: Date.now() });
         }}
@@ -503,6 +512,10 @@ export function App() {
           authToken={authToken}
           onClose={() => setSelectedCreatorUsername(null)}
           onSelectSpot={flyToSpot}
+          onOpenStories={(spotId) => {
+            setStoriesInitialSpotId(spotId || null);
+            setIsStoriesOpen(true);
+          }}
           onProfileUpdated={(updated) => {
             setCurrentUser(prev => prev ? { ...prev, ...updated } : prev);
           }}
@@ -543,6 +556,22 @@ export function App() {
         isOpen={policyModal.isOpen}
         initialTab={policyModal.tab}
         onClose={() => setPolicyModal({ isOpen: false, tab: 'terms' })}
+      />
+
+      {/* Pop Stories Full-Screen Vertical Feed Modal */}
+      <PopStoriesModal
+        isOpen={isStoriesOpen}
+        initialSpotId={storiesInitialSpotId}
+        onClose={() => {
+          setIsStoriesOpen(false);
+          setStoriesInitialSpotId(null);
+        }}
+        spots={spots}
+        onFlyToSpot={flyToSpot}
+        onSelectSpot={(spot) => setSelectedSpot(spot)}
+        onOpenShareKit={(spot) => setShareKitSpot(spot)}
+        onOpenCreatorProfile={(username) => setSelectedCreatorUsername(username)}
+        onStartCreate={() => handleStartCreate()}
       />
     </div>
   );

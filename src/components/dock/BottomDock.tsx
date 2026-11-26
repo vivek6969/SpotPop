@@ -1,13 +1,15 @@
 import React from 'react';
 import { ProductTier, User } from '../../types';
 
-export type NavTab = 'home' | 'search' | 'create' | 'profile';
+export type NavTab = 'home' | 'search' | 'create' | 'stories' | 'reels' | 'profile';
 
 interface BottomDockProps {
   activeTab?: NavTab;
   onTabChange?: (tab: NavTab) => void;
   onStartCreate: (tier?: ProductTier) => void;
   onOpenSearch?: () => void;
+  onOpenStories?: () => void;
+  onOpenReels?: () => void; // backwards-compatible alias
   onOpenAccount?: () => void;
   onHomeClick?: () => void;
   selectedTier?: ProductTier;
@@ -20,6 +22,8 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   onStartCreate,
   onOpenSearch,
+  onOpenStories,
+  onOpenReels,
   onOpenAccount,
   onHomeClick,
   selectedTier = 'big_pop',
@@ -38,6 +42,15 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   const handleCreate = () => {
     onTabChange?.('create');
     onStartCreate(selectedTier);
+  };
+
+  const handleStories = () => {
+    onTabChange?.('stories');
+    if (onOpenStories) {
+      onOpenStories();
+    } else if (onOpenReels) {
+      onOpenReels();
+    }
   };
 
   const handleProfile = () => {
@@ -108,7 +121,30 @@ export const BottomDock: React.FC<BottomDockProps> = ({
             </div>
           </button>
 
-          {/* 4. Profile Tab */}
+          {/* 4. Stories Tab - Watch All Stories */}
+          <button
+            type="button"
+            onClick={handleStories}
+            className={`flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'stories' || (activeTab as string) === 'reels'
+                ? 'text-[#FF2E93] scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title="Pop Stories (Watch All Pops)"
+            aria-label="Stories"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              {/* Clapperboard / Story frame */}
+              <rect x="3" y="3" width="18" height="18" rx="4" strokeWidth="2" />
+              <line x1="3" y1="8" x2="21" y2="8" strokeWidth="1.8" />
+              <line x1="8" y1="3" x2="6" y2="8" strokeWidth="1.8" />
+              <line x1="16" y1="3" x2="14" y2="8" strokeWidth="1.8" />
+              <polygon points="10 11.5 15.5 14.5 10 17.5 10 11.5" fill="currentColor" stroke="none" />
+            </svg>
+            <span className={`w-1 h-1 rounded-full bg-[#FF2E93] mt-1 transition-opacity ${activeTab === 'stories' || (activeTab as string) === 'reels' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
+
+          {/* 5. Profile Tab */}
           <button
             type="button"
             onClick={handleProfile}
