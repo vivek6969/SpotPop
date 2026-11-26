@@ -22,6 +22,12 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FollowRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+
+  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(() => {
     try {
@@ -71,8 +77,9 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
       await api.acceptFollowRequest(requestId, currentUser.username, authToken || undefined);
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
       fetchActivity();
+      showToast('Follow request accepted', 'success');
     } catch (e: any) {
-      alert(e.message || 'Failed to accept request');
+      showToast(e.message || 'Failed to accept request', 'error');
     }
   };
 
@@ -81,8 +88,9 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
     try {
       await api.declineFollowRequest(requestId, currentUser.username, authToken || undefined);
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      showToast('Follow request declined', 'success');
     } catch (e: any) {
-      alert(e.message || 'Failed to decline request');
+      showToast(e.message || 'Failed to decline request', 'error');
     }
   };
 
@@ -146,6 +154,18 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
             </button>
           </div>
         </div>
+
+        {/* In-drawer Toast Notification */}
+        {toast && (
+          <div className={`mx-4 mt-3 p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 border animate-fade-in ${
+            toast.type === 'error'
+              ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+          }`}>
+            <span>{toast.type === 'error' ? '⚠️' : '✅'}</span>
+            <span>{toast.message}</span>
+          </div>
+        )}
 
         {/* Filter Tabs */}
         <div className="px-5 py-2.5 bg-black/20 border-b border-white/10 flex items-center gap-2">

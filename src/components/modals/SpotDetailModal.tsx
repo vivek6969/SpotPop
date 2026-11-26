@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotAudioPlayer } from '../audio/SpotAudioPlayer';
 import { MentionHashtagPopover } from '../common/MentionHashtagPopover';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 const QUICK_REACTIONS = ['🔥', '❤️', '👏', '😂', '😮', '🚀', '💯'];
 
@@ -43,6 +44,12 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+
+  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // Connected Spots State
   const [connectedSpots, setConnectedSpots] = useState<Spot[]>([]);
@@ -91,7 +98,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
         });
       }
     } catch (e: any) {
-      alert(e.message || 'Could not connect pops');
+      showToast(e.message || 'Could not connect pops', 'error');
     } finally {
       setConnectingId(null);
     }
@@ -103,9 +110,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       const res = await api.disconnectSpots(spot.id, targetSpotId, authToken || undefined);
       if (res.success) {
         setConnectedSpots(res.connectedSpots || []);
+        showToast('Pop disconnected successfully', 'success');
       }
     } catch (e: any) {
-      alert(e.message || 'Could not disconnect pops');
+      showToast(e.message || 'Could not disconnect pops', 'error');
     }
   };
 
@@ -172,7 +180,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
           next.delete(targetUsername);
           try {
             localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(next)));
-          } catch {}
+          } catch { }
           return next;
         });
         if (targetUsername.toLowerCase() === spot.creatorName.toLowerCase()) {
@@ -189,7 +197,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
             next.add(targetUsername);
             try {
               localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(next)));
-            } catch {}
+            } catch { }
             return next;
           });
           if (targetUsername.toLowerCase() === spot.creatorName.toLowerCase()) {
@@ -435,7 +443,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       setShowDeleteConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete Pop');
+      showToast(err.message || 'Failed to delete Pop', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -452,14 +460,27 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
         reporterEmail: reporterEmail || undefined,
       });
       setReportStatus('submitted');
+      showToast('Report submitted successfully. Thank you for keeping SpotPop safe.', 'success');
     } catch (e) {
-      alert('Could not submit report. Please try again.');
+      showToast('Could not submit report. Please try again.', 'error');
       setReportStatus('idle');
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border shadow-2xl backdrop-blur-md animate-fade-in ${
+          toast.type === 'error'
+            ? 'bg-[#181016]/95 border-rose-500/40 text-rose-300 shadow-rose-950/50'
+            : 'bg-[#101816]/95 border-emerald-500/40 text-emerald-300 shadow-emerald-950/50'
+        }`}>
+          <span>{toast.type === 'error' ? '⚠️' : '✅'}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Floating Emojis Reaction Animation */}
       {floatingEmojis.map((item) => (
         <div
@@ -524,13 +545,12 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                 type="button"
                 onClick={() => handleToggleFollowUser(spot.creatorName)}
                 disabled={loadingFollowUsernames.has(spot.creatorName)}
-                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  isFollowing
-                    ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
-                    : isRequested
+                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${isFollowing
+                  ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                  : isRequested
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-rose-500/20 hover:text-rose-400'
                     : 'bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:brightness-110 text-white shadow-md shadow-pink-500/20 active:scale-95'
-                }`}
+                  }`}
                 title={isFollowing ? 'Click to unfollow' : isRequested ? 'Request pending' : `Follow @${spot.creatorName}`}
               >
                 {loadingFollowUsernames.has(spot.creatorName) ? (
@@ -750,13 +770,12 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   type="button"
                   onClick={() => handleToggleFollowUser(spot.creatorName)}
                   disabled={loadingFollowUsernames.has(spot.creatorName)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                    isFollowing
-                      ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
-                      : isRequested
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${isFollowing
+                    ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                    : isRequested
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-rose-500/20 hover:text-rose-400'
                       : 'bg-gradient-to-r from-[#FF2E93] to-purple-600 hover:brightness-110 text-white shadow-md shadow-pink-500/20 active:scale-95'
-                  }`}
+                    }`}
                   title={isFollowing ? 'Click to unfollow' : isRequested ? 'Request pending' : `Follow @${spot.creatorName}`}
                 >
                   {loadingFollowUsernames.has(spot.creatorName) ? (
@@ -1063,11 +1082,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                                 type="button"
                                 onClick={() => handleToggleFollowUser(c.authorName)}
                                 disabled={loadingFollowUsernames.has(c.authorName)}
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                                  followedUsernames.has(c.authorName)
-                                    ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
-                                    : 'bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 hover:text-pink-200 border border-pink-500/30'
-                                }`}
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all cursor-pointer flex items-center gap-1 shrink-0 ${followedUsernames.has(c.authorName)
+                                  ? 'bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 group'
+                                  : 'bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 hover:text-pink-200 border border-pink-500/30'
+                                  }`}
                                 title={followedUsernames.has(c.authorName) ? 'Click to unfollow' : `Follow @${c.authorName}`}
                               >
                                 {loadingFollowUsernames.has(c.authorName) ? (
@@ -1148,11 +1166,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                                       type="button"
                                       onClick={() => handleToggleFollowUser(reply.authorName)}
                                       disabled={loadingFollowUsernames.has(reply.authorName)}
-                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-full transition-all cursor-pointer ${
-                                        followedUsernames.has(reply.authorName)
-                                          ? 'bg-white/10 text-slate-400 hover:text-rose-400'
-                                          : 'bg-pink-500/15 text-pink-300 hover:text-pink-200'
-                                      }`}
+                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-full transition-all cursor-pointer ${followedUsernames.has(reply.authorName)
+                                        ? 'bg-white/10 text-slate-400 hover:text-rose-400'
+                                        : 'bg-pink-500/15 text-pink-300 hover:text-pink-200'
+                                        }`}
                                     >
                                       {followedUsernames.has(reply.authorName) ? 'Following' : '+ Follow'}
                                     </button>
@@ -1308,46 +1325,19 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-sm rounded-3xl bg-[#171A29] border border-rose-500/30 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <span className="text-2xl">🗑️</span>
-              <h4 className="font-outfit font-bold text-base text-white">Delete Your Pop?</h4>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete this Pop from the canvas? This action cannot be undone.
-            </p>
-
-            <div className="flex items-center gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
-              >
-                {isDeleting ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Yes, Delete Pop</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Your Pop?"
+        message={`Are you sure you want to permanently delete "${spot.content.headline || spot.creatorName}" from the canvas? This action cannot be undone.`}
+        confirmText="Yes, Delete Pop"
+        cancelText="Cancel"
+        danger={true}
+        warningBadge="This Pop and all its likes, views, and comments will be permanently erased from the canvas."
+        icon="🗑️"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
 
       {/* Connect Pop Picker Modal */}
       {showConnectPicker && (

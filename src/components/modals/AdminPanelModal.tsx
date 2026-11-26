@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Spot, ModerationReport, Order, User, ProductTier, SpotShape, Comment } from '../../types';
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -22,6 +23,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Custom warning / confirmation modal state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    danger?: boolean;
+    warningBadge?: string;
+    icon?: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
   // Core Data
   const [metrics, setMetrics] = useState<any>(null);
@@ -249,7 +263,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserEmail || !newUserUsername) {
-      alert('Email and username are required');
+      showToast('Email and username are required');
       return;
     }
     setIsSubmitting(true);
@@ -275,7 +289,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       setNewUserPassword('');
       await loadData();
     } catch (err: any) {
-      alert(`Error creating user: ${err.message}`);
+      showToast(`Error creating user: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -301,7 +315,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       setEditingUser(null);
       await loadData();
     } catch (err: any) {
-      alert(`Error updating user: ${err.message}`);
+      showToast(`Error updating user: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -309,31 +323,51 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleDeleteUser = async (user: User) => {
     if (user.id === 'usr_admin') {
-      alert('Cannot delete primary root administrator account.');
+      showToast('⚠️ Cannot delete primary root administrator account.');
       return;
     }
-    if (!window.confirm(`Permanently delete user @${user.username} (${user.email})?`)) return;
-    try {
-      await api.deleteAdminUser(user.id);
-      showToast(`Deleted user @${user.username}`);
-      await loadData();
-    } catch (err: any) {
-      alert(`Could not delete user: ${err.message}`);
-    }
+    setConfirmDialog({
+      title: 'Permanently Delete User?',
+      message: `Permanently delete user @${user.username} (${user.email})?`,
+      danger: true,
+      icon: '👤',
+      confirmText: 'Delete User & All Spots',
+      warningBadge: 'CRITICAL: All spots, comments, and media owned by this user will be permanently deleted from the canvas.',
+      onConfirm: async () => {
+        try {
+          await api.deleteAdminUser(user.id);
+          showToast(`Deleted user @${user.username} and cascade-deleted their spots`);
+          await loadData();
+          onRefreshSpots();
+        } catch (err: any) {
+          showToast(`Could not delete user: ${err.message}`);
+        }
+      },
+    });
   };
 
   const handleDeleteSelectedUsers = async () => {
     const ids = Array.from(selectedUserIds).filter((id) => id !== 'usr_admin');
     if (ids.length === 0) return;
-    if (!window.confirm(`Permanently delete ${ids.length} selected user(s)?`)) return;
-    try {
-      const res = await api.deleteAdminUsersBatch(ids);
-      showToast(`Deleted ${res.deletedCount} user(s)`);
-      setSelectedUserIds(new Set());
-      await loadData();
-    } catch (err: any) {
-      alert(`Batch delete failed: ${err.message}`);
-    }
+    setConfirmDialog({
+      title: `Delete ${ids.length} Selected Users?`,
+      message: `Permanently delete ${ids.length} selected user account(s)?`,
+      danger: true,
+      icon: '👥',
+      confirmText: `Delete ${ids.length} Users & Spots`,
+      warningBadge: 'All spots, comments, and media owned by these users will be permanently erased.',
+      onConfirm: async () => {
+        try {
+          const res = await api.deleteAdminUsersBatch(ids);
+          showToast(`Deleted ${res.deletedCount} user(s) and cascade-deleted their spots`);
+          setSelectedUserIds(new Set());
+          await loadData();
+          onRefreshSpots();
+        } catch (err: any) {
+          showToast(`Batch delete failed: ${err.message}`);
+        }
+      },
+    });
   };
 
   // =================== SPOT ACTIONS ===================
@@ -343,50 +377,77 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       showToast(`Spot status updated to ${status}`);
       await loadData();
       onRefreshSpots();
-    } catch (e) {
-      alert('Could not update spot');
+    } catch (e: any) {
+      showToast(e.message || 'Could not update spot');
     }
   };
 
   const handleDeleteSingleSpot = async (spot: Spot) => {
-    if (!window.confirm(`Permanently delete "${spot.content.headline || spot.creatorName}"?`)) return;
-    try {
-      await api.deleteAdminSpot(spot.id);
-      showToast('Spot deleted.');
-      await loadData();
-      onRefreshSpots();
-    } catch (e) {
-      alert('Could not delete spot');
-    }
+    setConfirmDialog({
+      title: 'Delete Spot from Canvas?',
+      message: `Permanently delete "${spot.content.headline || spot.creatorName}"?`,
+      danger: true,
+      icon: '🗑️',
+      confirmText: 'Delete Spot',
+      warningBadge: 'This spot, artwork, audio, and its comments will be permanently erased.',
+      onConfirm: async () => {
+        try {
+          await api.deleteAdminSpot(spot.id);
+          showToast('Spot deleted.');
+          await loadData();
+          onRefreshSpots();
+        } catch (e: any) {
+          showToast('Could not delete spot: ' + (e.message || 'unknown error'));
+        }
+      },
+    });
   };
 
   const handleDeleteSelectedSpots = async () => {
     const ids = Array.from(selectedSpotIds);
     if (ids.length === 0) return;
-    if (!window.confirm(`Permanently delete ${ids.length} selected spot(s) from canvas?`)) return;
-    try {
-      await api.deleteAdminSpotsBatch(ids);
-      showToast(`Deleted ${ids.length} spot(s)`);
-      setSelectedSpotIds(new Set());
-      await loadData();
-      onRefreshSpots();
-    } catch (e) {
-      alert('Could not delete selected spots');
-    }
+    setConfirmDialog({
+      title: `Delete ${ids.length} Selected Spots?`,
+      message: `Permanently delete ${ids.length} selected spot(s) from canvas?`,
+      danger: true,
+      icon: '🗑️',
+      confirmText: `Delete ${ids.length} Spots`,
+      warningBadge: 'Selected spots and their media will be permanently purged from the canvas.',
+      onConfirm: async () => {
+        try {
+          await api.deleteAdminSpotsBatch(ids);
+          showToast(`Deleted ${ids.length} spot(s)`);
+          setSelectedSpotIds(new Set());
+          await loadData();
+          onRefreshSpots();
+        } catch (e: any) {
+          showToast('Could not delete selected spots: ' + (e.message || 'error'));
+        }
+      },
+    });
   };
 
   const handleDeleteAllSpots = async () => {
     if (spots.length === 0) return;
-    if (!window.confirm(`⚠️ DANGER: Are you sure you want to delete ALL ${spots.length} spots from the entire canvas? This cannot be undone.`)) return;
-    try {
-      await api.deleteAllAdminSpots();
-      showToast('All spots deleted from canvas.');
-      setSelectedSpotIds(new Set());
-      await loadData();
-      onRefreshSpots();
-    } catch (e) {
-      alert('Could not delete all spots');
-    }
+    setConfirmDialog({
+      title: '⚠️ WIPE ENTIRE CANVAS?',
+      message: `Are you sure you want to delete ALL ${spots.length} spots from the entire canvas?`,
+      danger: true,
+      icon: '💥',
+      confirmText: 'Wipe All Canvas Spots',
+      warningBadge: 'CRITICAL DANGER: This will delete every single spot created by all users across the world. This action CANNOT be undone.',
+      onConfirm: async () => {
+        try {
+          await api.deleteAllAdminSpots();
+          showToast('All spots deleted from canvas.');
+          setSelectedSpotIds(new Set());
+          await loadData();
+          onRefreshSpots();
+        } catch (e: any) {
+          showToast('Could not delete all spots: ' + (e.message || 'error'));
+        }
+      },
+    });
   };
 
   const handleUpdateSpotGodMode = async (e: React.FormEvent) => {
@@ -416,7 +477,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       await loadData();
       onRefreshSpots();
     } catch (err: any) {
-      alert(`Could not update spot: ${err.message}`);
+      showToast(`Could not update spot: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -442,7 +503,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       await loadData();
       onRefreshSpots();
     } catch (e: any) {
-      alert(`Could not create spot: ${e.message}`);
+      showToast(`Could not create spot: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -455,32 +516,49 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       showToast(`Order ${orderId} marked as ${status}`);
       await loadData();
     } catch (err: any) {
-      alert(`Could not update order: ${err.message}`);
+      showToast(`Could not update order: ${err.message}`);
     }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!window.confirm(`Permanently delete order ${orderId}?`)) return;
-    try {
-      await api.deleteAdminOrder(orderId);
-      showToast(`Deleted order ${orderId}`);
-      await loadData();
-    } catch (err: any) {
-      alert(`Could not delete order: ${err.message}`);
-    }
+    setConfirmDialog({
+      title: 'Delete Order Record?',
+      message: `Permanently delete financial order record ${orderId}?`,
+      danger: true,
+      icon: '🧾',
+      confirmText: 'Delete Order',
+      warningBadge: 'The financial record will be removed from the database.',
+      onConfirm: async () => {
+        try {
+          await api.deleteAdminOrder(orderId);
+          showToast(`Deleted order ${orderId}`);
+          await loadData();
+        } catch (err: any) {
+          showToast(`Could not delete order: ${err.message}`);
+        }
+      },
+    });
   };
 
   // =================== COMMENT ACTIONS ===================
   const handleDeleteComment = async (commentId: string) => {
-    if (!window.confirm('Permanently delete this comment?')) return;
-    try {
-      await api.deleteAdminComment(commentId);
-      showToast('Comment deleted.');
-      await loadData();
-      onRefreshSpots();
-    } catch (err: any) {
-      alert(`Could not delete comment: ${err.message}`);
-    }
+    setConfirmDialog({
+      title: 'Delete Comment?',
+      message: 'Permanently delete this comment from the spot discussion thread?',
+      danger: true,
+      icon: '💬',
+      confirmText: 'Delete Comment',
+      onConfirm: async () => {
+        try {
+          await api.deleteAdminComment(commentId);
+          showToast('Comment deleted.');
+          await loadData();
+          onRefreshSpots();
+        } catch (err: any) {
+          showToast(`Could not delete comment: ${err.message}`);
+        }
+      },
+    });
   };
 
   // =================== BACKUP ACTIONS ===================
@@ -490,20 +568,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       showToast(`Backup snapshot created: ${res.filename}`);
       await loadData();
     } catch (err: any) {
-      alert(`Failed to create backup: ${err.message}`);
+      showToast(`Failed to create backup: ${err.message}`);
     }
   };
 
   const handleRestoreBackup = async (filename: string) => {
-    if (!window.confirm(`⚠️ RESTORE DATABASE: Are you sure you want to restore snapshot "${filename}"? Current data will be replaced by this snapshot.`)) return;
-    try {
-      const res = await api.restoreAdminBackup(filename);
-      showToast(res.message);
-      await loadData();
-      onRefreshSpots();
-    } catch (err: any) {
-      alert(`Restore failed: ${err.message}`);
-    }
+    setConfirmDialog({
+      title: '⚠️ Restore Database Snapshot?',
+      message: `Are you sure you want to restore snapshot "${filename}"?`,
+      danger: true,
+      icon: '🔄',
+      confirmText: 'Restore Database Snapshot',
+      warningBadge: 'Current database spots and users will be replaced by this backup snapshot.',
+      onConfirm: async () => {
+        try {
+          const res = await api.restoreAdminBackup(filename);
+          showToast(res.message);
+          await loadData();
+          onRefreshSpots();
+        } catch (err: any) {
+          showToast(`Restore failed: ${err.message}`);
+        }
+      },
+    });
   };
 
   // Total revenue calculated
@@ -2070,6 +2157,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </form>
             </div>
           </div>
+        )}
+        {/* Universal Custom Warning / Confirmation Modal */}
+        {confirmDialog && (
+          <ConfirmModal
+            isOpen={true}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText={confirmDialog.confirmText}
+            cancelText={confirmDialog.cancelText || 'Cancel'}
+            danger={confirmDialog.danger}
+            warningBadge={confirmDialog.warningBadge}
+            icon={confirmDialog.icon}
+            isLoading={isConfirmLoading}
+            onCancel={() => {
+              if (!isConfirmLoading) setConfirmDialog(null);
+            }}
+            onConfirm={async () => {
+              setIsConfirmLoading(true);
+              try {
+                await confirmDialog.onConfirm();
+              } finally {
+                setIsConfirmLoading(false);
+                setConfirmDialog(null);
+              }
+            }}
+          />
         )}
       </div>
     </div>

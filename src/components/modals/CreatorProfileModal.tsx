@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Spot, User, FollowStatus, FollowRequestItem } from '../../types';
 import { api } from '../../services/api';
 import { validateInstagramUsername } from '../../utils/instagramUsername';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface CreatorProfileModalProps {
   username: string | null;
@@ -38,6 +39,13 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
   const [activeTab, setActiveTab] = useState<'posts' | 'stories'>('posts');
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -208,7 +216,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
         localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
       } catch { }
     } catch (e: any) {
-      alert(e.message || 'Failed to unfollow user');
+      showToast(e.message || 'Failed to unfollow user');
     }
   };
 
@@ -233,7 +241,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
         } catch { }
       }
     } catch (e: any) {
-      alert(e.message || 'Failed to follow user');
+      showToast(e.message || 'Failed to follow user');
     }
   };
   const handleToggleFollow = async () => {
@@ -301,7 +309,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
       setFollowersCount(res.followersCount);
     } catch (e: any) {
-      alert(e.message || 'Failed to accept request');
+      showToast(e.message || 'Failed to accept request');
     } finally {
       setRequestsLoading(false);
     }
@@ -314,7 +322,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       await api.declineFollowRequest(requestId, profileData.user.username, authToken || undefined);
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (e: any) {
-      alert(e.message || 'Failed to decline request');
+      showToast(e.message || 'Failed to decline request');
     }
   };
 
@@ -326,7 +334,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       setNetworkUsers(prev => prev.filter(u => u.id !== followerId));
       setFollowersCount(res.followersCount);
     } catch (e: any) {
-      alert(e.message || 'Failed to remove follower');
+      showToast(e.message || 'Failed to remove follower');
     }
   };
 
@@ -356,12 +364,12 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (PNG, JPG, WebP)');
+      showToast('Please select an image file (PNG, JPG, WebP)');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image file is too large (max 10MB)');
+      showToast('Image file is too large (max 10MB)');
       return;
     }
 
@@ -374,7 +382,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           const uploadRes = await api.uploadImage(base64, file.name);
           setEditAvatarUrl(uploadRes.imageUrl);
         } catch (err: any) {
-          alert(err.message || 'Failed to upload photo');
+          showToast(err.message || 'Failed to upload photo');
         } finally {
           setAvatarUploading(false);
         }
@@ -394,11 +402,11 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     if (editUsername && editUsername.toLowerCase() !== profileData?.user?.username?.toLowerCase()) {
       const val = validateInstagramUsername(editUsername);
       if (!val.isValid) {
-        alert(val.error);
+        showToast(val.error || 'Invalid Instagram username format.');
         return;
       }
       if (usernameCheck.available === false) {
-        alert(usernameCheck.error || 'This username is not available.');
+        showToast(usernameCheck.error || 'This username is not available.');
         return;
       }
     }
@@ -430,7 +438,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       }
       setIsEditing(false);
     } catch (err: any) {
-      alert(err.message || 'Failed to update profile');
+      showToast(err.message || 'Failed to update profile');
     } finally {
       setSavingEdit(false);
     }
@@ -513,10 +521,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         type="button"
                         onClick={() => {
                           setShowSettingsMenu(false);
-                          if (confirm('Are you sure you want to log out?')) {
-                            onClose();
-                            onLogout();
-                          }
+                          setShowLogoutConfirm(true);
                         }}
                         className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-white/10 mt-1 pt-1.5"
                       >
@@ -1292,6 +1297,31 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 )}
               </div>
             </div>
+          </div>
+        )}
+        {/* Logout Custom Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showLogoutConfirm}
+          title="Log Out of SpotPop?"
+          message="You will need to sign in again to claim new spots, customize your wall presence, or post comments."
+          confirmText="Log Out"
+          cancelText="Stay Signed In"
+          icon="🚪"
+          danger={true}
+          warningBadge="Your claimed spots will remain permanently preserved on the canvas."
+          onCancel={() => setShowLogoutConfirm(false)}
+          onConfirm={() => {
+            setShowLogoutConfirm(false);
+            onClose();
+            onLogout?.();
+          }}
+        />
+
+        {/* Custom In-Modal Toast Banner */}
+        {toastMessage && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[150] px-4 py-2.5 rounded-2xl bg-black/90 border border-[#FF2E93]/40 text-white text-xs font-semibold shadow-2xl backdrop-blur-xl flex items-center gap-2 animate-fade-in">
+            <span className="text-sm">🛡️</span>
+            <span>{toastMessage}</span>
           </div>
         )}
       </div>

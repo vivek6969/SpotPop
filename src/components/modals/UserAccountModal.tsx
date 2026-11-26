@@ -3,6 +3,7 @@ import { User, Spot } from '../../types';
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
 import { validateInstagramUsername } from '../../utils/instagramUsername';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface UserAccountModalProps {
   isOpen: boolean;
@@ -114,6 +115,23 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   // Deletion confirmation dialog
   const [spotToDelete, setSpotToDelete] = useState<Spot | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    try {
+      await api.deleteMyAccount();
+      setShowDeleteAccountConfirm(false);
+      onLogout();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete account');
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -501,18 +519,39 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 )}
               </div>
 
-              {/* Sign out */}
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">
-                  Signed in as @{currentUser.username}
-                </span>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs transition-colors cursor-pointer"
-                >
-                  Sign Out
-                </button>
+              {/* Account Actions & Danger Zone */}
+              <div className="pt-3 border-t border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    Signed in as @{currentUser.username}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs transition-colors cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                      <span>⚠️</span>
+                      <span>Danger Zone</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Permanently delete account & all owned canvas spots
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteAccountConfirm(true)}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Delete Account
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -793,48 +832,52 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal Dialog */}
-      {spotToDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-sm rounded-3xl bg-[#171A29] border border-rose-500/30 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <span className="text-2xl">🗑️</span>
-              <h4 className="font-outfit font-bold text-base text-white">Delete This Pop?</h4>
-            </div>
+      {/* Delete Spot Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!spotToDelete}
+        title="Delete This Pop?"
+        message={spotToDelete ? `Are you sure you want to permanently delete "${spotToDelete.content.headline || spotToDelete.creatorName}"? This will permanently remove the Pop and free up its space on the canvas.` : ''}
+        confirmText="Yes, Delete Pop"
+        cancelText="Cancel"
+        danger={true}
+        warningBadge="Permanent action. The spot and all its content will be removed."
+        icon="🗑️"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setSpotToDelete(null)}
+      />
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-white">&quot;{spotToDelete.content.headline || spotToDelete.creatorName}&quot;</strong>?
-              This will permanently remove the Pop and free up its space on the canvas. This action cannot be undone.
-            </p>
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Log Out of SpotPop?"
+        message={`Are you sure you want to log out from @${currentUser?.username}? You can log back in anytime.`}
+        confirmText="Log Out"
+        cancelText="Cancel"
+        danger={false}
+        icon="🚪"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onLogout();
+          onClose();
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
 
-            <div className="flex items-center gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => setSpotToDelete(null)}
-                disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
-              >
-                {isDeleting ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Yes, Delete Pop</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Account Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteAccountConfirm}
+        title="Delete Your Account Permanently?"
+        message={`Are you sure you want to permanently delete your account (@${currentUser?.username})?`}
+        confirmText="Yes, Delete Everything"
+        cancelText="Cancel"
+        danger={true}
+        warningBadge="⚠️ PERMANENT DANGER: All your published Spots on the canvas, likes, comments, and profile data will be permanently wiped immediately. This cannot be undone."
+        icon="💥"
+        isLoading={isDeletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteAccountConfirm(false)}
+      />
       {/* Network Modal Sheet (Followers / Following) */}
       {networkModalType && (
         <div
@@ -900,7 +943,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                             setNetworkUsers(prev => prev.filter(x => x.id !== u.id));
                             setNetworkCounts(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
                           } catch (e: any) {
-                            alert(e.message || 'Failed to remove follower');
+                            setError(e.message || 'Failed to remove follower');
                           }
                         }}
                         className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/10 text-[10px] font-semibold transition-all cursor-pointer"
@@ -927,7 +970,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                               localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
                             } catch { }
                           } catch (e: any) {
-                            alert(e.message || 'Failed to unfollow user');
+                            setError(e.message || 'Failed to unfollow user');
                           }
                         }}
                         className="px-3 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-white/15 hover:border-rose-500/40 text-[10px] font-semibold transition-all cursor-pointer group flex items-center gap-1"
