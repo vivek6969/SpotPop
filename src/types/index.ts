@@ -391,6 +391,7 @@ export interface User {
   category?: string;
   isPrivate?: boolean;
   role: 'user' | 'admin';
+  passwordHash?: string;
   createdAt: string;
   ownedSpotIds: string[];
   followersCount?: number;

@@ -75,8 +75,16 @@ export function App() {
         }
       }
 
-      if (spotParam && data.spots) {
-        const found = data.spots.find(s => s.id === spotParam || s.slug === spotParam);
+      let resolvedSpotKey = spotParam;
+      if (!resolvedSpotKey) {
+        const spotPathMatch = window.location.pathname.match(/^\/(?:spot\/)?(sp_[a-zA-Z0-9_]+|[a-zA-Z0-9-]+)/);
+        if (spotPathMatch && !spotPathMatch[1].startsWith('@') && !['api', 'assets', 'uploads', 'dist'].includes(spotPathMatch[1])) {
+          resolvedSpotKey = spotPathMatch[1];
+        }
+      }
+
+      if (resolvedSpotKey && data.spots) {
+        const found = data.spots.find(s => s.id === resolvedSpotKey || s.slug === resolvedSpotKey);
         if (found) {
           setSelectedSpot(found);
           setHighlightedSpotId(found.id);
@@ -332,6 +340,10 @@ export function App() {
           }
         }}
         onOpenAdmin={() => setIsAdminOpen(true)}
+        onHomeClick={() => {
+          setSelectedSpot(null);
+          setTargetFocus({ x: 0, y: 0, zoom: 0.85, timestamp: Date.now() });
+        }}
       />
 
       {/* Floating Canvas Explore Filter Bar */}

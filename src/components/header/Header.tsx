@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenActivity: () => void;
   onOpenAccount: () => void;
   onOpenAdmin: () => void;
+  onHomeClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenActivity,
   onOpenAccount,
   onOpenAdmin,
+  onHomeClick,
 }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none pt-safe">
@@ -29,7 +31,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo with Icon & Text */}
           <div
             className="flex items-center cursor-pointer select-none py-1 hover:scale-105 active:scale-95 transition-transform"
-            onClick={() => window.location.href = '/'}
+            onClick={() => {
+              if (onHomeClick) {
+                onHomeClick();
+              } else if (window.location.search || window.location.pathname !== '/') {
+                window.location.href = '/';
+              }
+            }}
             title="SpotPop Home"
           >
             <SpotPopLogo variant="full" size={32} />

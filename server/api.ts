@@ -1,4 +1,5 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import crypto from 'crypto';
 import { db } from './database.ts';
 import { createRazorpayOrder, verifyPaymentSignature } from './razorpay.ts';
 import type { ProductTier, Spot, Order, User, ModerationReport } from '../src/types/index.ts';
@@ -8,6 +9,25 @@ import { audioService } from './audioService.ts';
 import { validateInstagramUsername } from '../src/utils/instagramUsername.ts';
 
 export const apiRouter = Router();
+
+// Password hashing & constant-time verification using native Node.js crypto
+export function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+export function verifyPassword(password: string, storedHash: string): boolean {
+  try {
+    const [salt, key] = storedHash.split(':');
+    if (!salt || !key) return false;
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey);
+  } catch {
+    return false;
+  }
+}
 
 // Simple in-memory session token mapping
 const SESSIONS = new Map<string, string>(); // token -> userId
@@ -19,6 +39,17 @@ function getAuthenticatedUser(req: Request): User | null {
   const userId = SESSIONS.get(token);
   if (!userId) return null;
   return db.getUserById(userId) || null;
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = getAuthenticatedUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required. Please sign in as administrator.' });
+  }
+  if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Administrator privileges required.' });
+  }
+  next();
 }
 
 function getViewerIdentifier(req: Request): string | undefined {
@@ -1106,7 +1137,8 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
       email: cleanEmail,
       username: cleanUsername,
       displayName: displayName.trim(),
-      role: cleanEmail.includes('admin') ? 'admin' : 'user',
+      role: 'user',
+      passwordHash: password ? hashPassword(password) : undefined,
       createdAt: new Date().toISOString(),
       ownedSpotIds: [],
     };
@@ -1159,11 +1191,22 @@ apiRouter.post('/auth/login', (req: Request, res: Response) => {
         email: userEmail,
         username: cleanUsername || `user${Math.floor(Math.random() * 9000 + 1000)}`,
         displayName: cleanUsername ? (cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1)) : 'Spot Creator',
-        role: userEmail.includes('admin') ? 'admin' : 'user',
+        role: 'user',
+        passwordHash: password ? hashPassword(password) : undefined,
         createdAt: new Date().toISOString(),
         ownedSpotIds: [],
       };
       db.addUser(user);
+    } else {
+      // Validate credentials if user has a passwordHash
+      if (user.passwordHash) {
+        if (!password || !verifyPassword(password, user.passwordHash)) {
+          return res.status(401).json({ error: 'Incorrect password. Please check your credentials.' });
+        }
+      } else if (password) {
+        // Safe first-time adoption: set password for legacy seed accounts
+        user.passwordHash = hashPassword(password);
+      }
     }
 
     // Associate spots with creator name matching this user
@@ -1607,7 +1650,7 @@ apiRouter.post('/upload-audio', async (req: Request, res: Response) => {
 });
 
 // Admin endpoint: safely delete orphaned audio not referenced by any published Big Pop
-apiRouter.delete('/admin/clean-orphaned-audio', (req: Request, res: Response) => {
+apiRouter.delete('/admin/clean-orphaned-audio', requireAdmin, (req: Request, res: Response) => {
   try {
     const spots = db.getSpots();
     const activeKeys = new Set<string>();
@@ -1625,7 +1668,7 @@ apiRouter.delete('/admin/clean-orphaned-audio', (req: Request, res: Response) =>
 });
 
 // Admin Storage & Cost Intelligence Report
-apiRouter.get('/admin/storage-stats', (req: Request, res: Response) => {
+apiRouter.get('/admin/storage-stats', requireAdmin, (req: Request, res: Response) => {
   try {
     const report = imageService.getStorageReport();
     res.json(report);
@@ -1662,7 +1705,7 @@ apiRouter.post('/reports', (req: Request, res: Response) => {
 
 // =================== ADMIN MANAGEMENT ===================
 
-apiRouter.get('/admin/metrics', (req: Request, res: Response) => {
+apiRouter.get('/admin/metrics', requireAdmin, (req: Request, res: Response) => {
   try {
     const stats = db.getStats();
     const orders = db.getOrders();
@@ -1689,7 +1732,7 @@ apiRouter.get('/admin/metrics', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/spots', (req: Request, res: Response) => {
+apiRouter.get('/admin/spots', requireAdmin, (req: Request, res: Response) => {
   try {
     const spots = db.getAllSpotsForAdmin();
     res.json({ spots });
@@ -1698,7 +1741,7 @@ apiRouter.get('/admin/spots', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/admin/spots/:id/moderate', (req: Request, res: Response) => {
+apiRouter.post('/admin/spots/:id/moderate', requireAdmin, (req: Request, res: Response) => {
   try {
     const { status, moderationStatus } = req.body;
     const updated = db.updateSpot(req.params.id, {
@@ -1716,7 +1759,7 @@ apiRouter.post('/admin/spots/:id/moderate', (req: Request, res: Response) => {
 });
 
 // Single spot delete
-apiRouter.delete('/admin/spots/:id', (req: Request, res: Response) => {
+apiRouter.delete('/admin/spots/:id', requireAdmin, (req: Request, res: Response) => {
   try {
     const deleted = db.deleteSpot(req.params.id);
     if (!deleted) {
@@ -1730,7 +1773,7 @@ apiRouter.delete('/admin/spots/:id', (req: Request, res: Response) => {
 });
 
 // Multiple spots batch delete
-apiRouter.post('/admin/spots/batch-delete', (req: Request, res: Response) => {
+apiRouter.post('/admin/spots/batch-delete', requireAdmin, (req: Request, res: Response) => {
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
@@ -1747,7 +1790,7 @@ apiRouter.post('/admin/spots/batch-delete', (req: Request, res: Response) => {
 });
 
 // Delete all spots
-apiRouter.post('/admin/spots/delete-all', (_req: Request, res: Response) => {
+apiRouter.post('/admin/spots/delete-all', requireAdmin, (_req: Request, res: Response) => {
   try {
     const count = db.deleteAllSpots();
     res.json({ success: true, deletedCount: count });
@@ -1757,7 +1800,7 @@ apiRouter.post('/admin/spots/delete-all', (_req: Request, res: Response) => {
 });
 
 // Add new spot directly from admin
-apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
+apiRouter.post('/admin/spots/create', requireAdmin, (req: Request, res: Response) => {
   try {
     const { tier = 'mini_pop', creatorName = 'SpotPop Admin', shape = 'sticky', background = '#FFF8E7', headline = 'Admin Spot', text = '', imageUrl } = req.body;
     const product = PRODUCTS[tier as ProductTier] || PRODUCTS.mini_pop;
@@ -1813,7 +1856,7 @@ apiRouter.post('/admin/spots/create', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/reports', (req: Request, res: Response) => {
+apiRouter.get('/admin/reports', requireAdmin, (req: Request, res: Response) => {
   try {
     const reports = db.getReports();
     res.json({ reports });
@@ -1822,7 +1865,7 @@ apiRouter.get('/admin/reports', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/admin/reports/:id/resolve', (req: Request, res: Response) => {
+apiRouter.post('/admin/reports/:id/resolve', requireAdmin, (req: Request, res: Response) => {
   try {
     const { action } = req.body; // 'dismiss' or 'hide_spot'
     const report = db.getReports().find(r => r.id === req.params.id);
@@ -1845,7 +1888,7 @@ apiRouter.post('/admin/reports/:id/resolve', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/orders', (req: Request, res: Response) => {
+apiRouter.get('/admin/orders', requireAdmin, (req: Request, res: Response) => {
   try {
     const orders = db.getOrders();
     res.json({ orders });
@@ -1854,7 +1897,7 @@ apiRouter.get('/admin/orders', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/users', (req: Request, res: Response) => {
+apiRouter.get('/admin/users', requireAdmin, (req: Request, res: Response) => {
   try {
     const users = db.getUsers();
     res.json({ users });

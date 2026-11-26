@@ -59,6 +59,34 @@ async function startServer() {
     immutable: true,
   }));
 
+  // Automatically create a rolling snapshot backup of database on boot
+  try {
+    const backupFile = db.createBackup();
+    if (backupFile) console.log(`[BackupManager] Automatic database snapshot created: ${path.basename(backupFile)}`);
+  } catch (e) {
+    console.warn('[BackupManager] Snapshot warning:', e);
+  }
+
+  // Security Headers: X-Content-Type-Options, Frame protection, Referrer Policy
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
+    next();
+  });
+
+  // Operational Health Check Endpoint for Container Liveness & SRE Monitoring
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      uptimeSeconds: Math.floor(process.uptime()),
+      memoryUsageMB: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+      databaseSpots: db.getSpots().length,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Body parser with 20MB limit for image uploads
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -122,6 +150,34 @@ async function startServer() {
       for (const ip of networkIps) {
         console.log(`   • Network: http://${ip}:${PORT} (Open on your phone)`);
       }
+    });
+
+    // Graceful Shutdown & Uncaught Exception Handlers
+    const gracefulShutdown = (signal: string) => {
+      console.log(`\n[Process] Received ${signal}. Starting graceful shutdown...`);
+      try {
+        db.save();
+        console.log('[Process] Database flushed to disk.');
+      } catch (e) {
+        console.error('[Process] Error saving db on shutdown:', e);
+      }
+      httpServer.close(() => {
+        console.log('[Process] HTTP server closed cleanly. Exiting.');
+        process.exit(0);
+      });
+      setTimeout(() => {
+        console.error('[Process] Forcefully exiting after 5s timeout.');
+        process.exit(1);
+      }, 5000).unref();
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('uncaughtException', (err) => {
+      console.error('[Process] Uncaught Exception:', err);
+    });
+    process.on('unhandledRejection', (reason) => {
+      console.error('[Process] Unhandled Rejection:', reason);
     });
   }
 

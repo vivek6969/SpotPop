@@ -632,13 +632,13 @@ export const api = {
 
   // Admin
   async getAdminMetrics(): Promise<any> {
-    const res = await fetch(`${API_BASE}/admin/metrics`);
+    const res = await fetch(`${API_BASE}/admin/metrics`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load admin metrics');
     return res.json();
   },
 
   async getAdminSpots(): Promise<{ spots: Spot[] }> {
-    const res = await fetch(`${API_BASE}/admin/spots`);
+    const res = await fetch(`${API_BASE}/admin/spots`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load spots');
     return res.json();
   },
@@ -646,7 +646,7 @@ export const api = {
   async moderateSpot(id: string, updates: { status?: string; moderationStatus?: string }): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/spots/${id}/moderate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     });
     if (!res.ok) throw new Error('Failed to update spot');
@@ -656,6 +656,7 @@ export const api = {
   async deleteAdminSpot(id: string): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/spots/${id}`, {
       method: 'DELETE',
+      headers: getClientHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete spot');
     return res.json();
@@ -664,7 +665,7 @@ export const api = {
   async deleteAdminSpotsBatch(ids: string[]): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/spots/batch-delete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),
     });
     if (!res.ok) throw new Error('Failed to delete selected spots');
@@ -674,6 +675,7 @@ export const api = {
   async deleteAllAdminSpots(): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/spots/delete-all`, {
       method: 'POST',
+      headers: getClientHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete all spots');
     return res.json();
@@ -682,7 +684,7 @@ export const api = {
   async createAdminSpot(data: any): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/spots/create`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to create admin spot');
@@ -690,7 +692,7 @@ export const api = {
   },
 
   async getAdminReports(): Promise<{ reports: ModerationReport[] }> {
-    const res = await fetch(`${API_BASE}/admin/reports`);
+    const res = await fetch(`${API_BASE}/admin/reports`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load reports');
     return res.json();
   },
@@ -698,7 +700,7 @@ export const api = {
   async resolveReport(id: string, action: 'dismiss' | 'hide_spot'): Promise<any> {
     const res = await fetch(`${API_BASE}/admin/reports/${id}/resolve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     });
     if (!res.ok) throw new Error('Failed to resolve report');
@@ -706,13 +708,13 @@ export const api = {
   },
 
   async getAdminOrders(): Promise<{ orders: Order[] }> {
-    const res = await fetch(`${API_BASE}/admin/orders`);
+    const res = await fetch(`${API_BASE}/admin/orders`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load orders');
     return res.json();
   },
 
   async getAdminUsers(): Promise<{ users: User[] }> {
-    const res = await fetch(`${API_BASE}/admin/users`);
+    const res = await fetch(`${API_BASE}/admin/users`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load users');
     return res.json();
   },
@@ -731,7 +733,7 @@ export const api = {
     estimatedMonthlyCostUSD: number;
     storageProviderName: string;
   }> {
-    const res = await fetch(`${API_BASE}/admin/storage-stats`);
+    const res = await fetch(`${API_BASE}/admin/storage-stats`, { headers: getClientHeaders() });
     if (!res.ok) throw new Error('Failed to load storage report');
     return res.json();
   },

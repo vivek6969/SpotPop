@@ -783,9 +783,41 @@ class Database {
   public save(data?: DatabaseSchema) {
     if (!this.isPersistent) return;
     try {
-      fs.writeFileSync(DB_FILE, JSON.stringify(data || this.data, null, 2), 'utf-8');
+      const payload = JSON.stringify(data || this.data, null, 2);
+      const tmpFile = `${DB_FILE}.tmp.${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      fs.writeFileSync(tmpFile, payload, 'utf-8');
+      fs.renameSync(tmpFile, DB_FILE);
     } catch (e) {
       console.error('Error writing db file', e);
+    }
+  }
+
+  public createBackup(): string | null {
+    if (!this.isPersistent) return null;
+    try {
+      const backupDir = path.resolve(process.cwd(), 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(backupDir, `server-db-${timestamp}.json`);
+      fs.copyFileSync(DB_FILE, backupPath);
+
+      // Maintain rolling window of latest 7 daily snapshots
+      const files = fs.readdirSync(backupDir)
+        .filter(f => f.startsWith('server-db-') && f.endsWith('.json'))
+        .map(f => ({ name: f, path: path.join(backupDir, f), mtime: fs.statSync(path.join(backupDir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      if (files.length > 7) {
+        for (const file of files.slice(7)) {
+          try { fs.unlinkSync(file.path); } catch {}
+        }
+      }
+      return backupPath;
+    } catch (err) {
+      console.error('Failed to create database backup:', err);
+      return null;
     }
   }
 
@@ -1843,7 +1875,7 @@ class Database {
       .reduce((sum, o) => sum + o.amountINR, 0) + (miniPopCount * PRODUCTS.mini_pop.priceINR) + (bigPopCount * PRODUCTS.big_pop.priceINR);
 
     return {
-      onlineCount: 2486 + Math.floor(Math.sin(Date.now() / 60000) * 45), // realistic fluctuating online users
+      onlineCount: Math.max(1, this.data.users.length), // Authentic active community members count
       claimedCount,
       spotsLeft,
       totalCapacity,
