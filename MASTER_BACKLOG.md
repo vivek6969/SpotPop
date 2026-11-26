@@ -544,3 +544,20 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 
 
 
+
+
+---
+
+### [TASK-042]: Production Readiness, Atomic Database Writes, Admin Auth Hardening, and Automated Rolling Backups
+- **Priority**: P0 (Production Reliability, SRE & Data Integrity)
+- **Assigned Agent**: senior-engineer & security-engineer & qa-engineer
+- **Description**: Hardened backend persistence, SRE failure handling, and security invariants:
+  1. **Atomic Database Writes**: Upgraded `Database.save()` to write to a temporary file (`.tmp.${Date.now()}`) and atomically rename over `server-db.json`, preventing 0-byte file corruption during unexpected container crashes.
+  2. **Automated Rolling Backups**: Added `Database.createBackup()` maintaining a rolling window of the last 7 daily timestamped JSON snapshots in `backups/`.
+  3. **Admin Route Protection & scrypt Password Hashing**: Enforced `requireAdmin` middleware across all 13 `/api/admin/*` endpoints requiring valid Bearer tokens and `user.role === 'admin'`. Replaced plain-text authentication with native Node.js `crypto.scryptSync` and `crypto.timingSafeEqual` password hashing and verification.
+  4. **Health Check & Graceful Shutdown**: Added `/api/health` monitoring endpoint (uptime, memory RSS, spots count) and graceful `SIGTERM`/`SIGINT` database flushing handlers in `server.ts`.
+  5. **HTTP Security Headers**: Enforced `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`.
+  6. **Zero Mock Stats**: Removed artificial sine-wave online count in `Database.getStats()`; verified community stats report strictly authentic counts.
+- **Status**: Completed
+- **Test Evidence**: 108/108 automated tests passing across 17 suites (`tests/production-qa-reliability.test.ts`), clean production build in 1.00s, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
