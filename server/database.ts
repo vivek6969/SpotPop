@@ -694,6 +694,7 @@ class Database {
   private spatialIndex: SpatialIndex = new SpatialIndex(500);
 
   public isPersistent: boolean = true;
+  public lastDeletedSpotIds: string[] = [];
 
   constructor(isPersistent: boolean = true) {
     this.isPersistent = isPersistent;
@@ -1395,27 +1396,148 @@ class Database {
 
   deleteUser(id: string): boolean {
     const idx = this.data.users.findIndex(u => u.id === id);
-    if (idx === -1) return false;
-    this.data.users.splice(idx, 1);
-    // Also remove from follows graph
+    if (idx === -1) {
+      this.lastDeletedSpotIds = [];
+      return false;
+    }
+    const user = this.data.users[idx];
+
+    // Find all spots owned by this user
+    const username = (user.username || '').toLowerCase();
+    const ownedSpotIdSet = new Set<string>(user.ownedSpotIds || []);
+
+    const userSpots = this.data.spots.filter(
+      s => s.ownerId === id ||
+           s.ownerId === user.id ||
+           ownedSpotIdSet.has(s.id) ||
+           (s.creatorName && s.creatorName.toLowerCase() === username)
+    );
+    const deletedSpotIds = userSpots.map(s => s.id);
+    this.lastDeletedSpotIds = deletedSpotIds;
+
+    // 1. Cascade delete spots from spots array and spatial index
+    if (deletedSpotIds.length > 0) {
+      const deletedSpotIdsSet = new Set(deletedSpotIds);
+      this.data.spots = this.data.spots.filter(s => !deletedSpotIdsSet.has(s.id));
+      for (const spotId of deletedSpotIds) {
+        this.spatialIndex.remove(spotId);
+      }
+
+      // 2. Clean up comments on deleted spots
+      if (this.data.comments) {
+        this.data.comments = this.data.comments.filter(c => !deletedSpotIdsSet.has(c.spotId));
+      }
+
+      // 3. Clean up connectedSpotIds in other spots
+      for (const remainingSpot of this.data.spots) {
+        if (remainingSpot.connectedSpotIds && remainingSpot.connectedSpotIds.length > 0) {
+          remainingSpot.connectedSpotIds = remainingSpot.connectedSpotIds.filter(cid => !deletedSpotIdsSet.has(cid));
+        }
+      }
+
+      // 4. Clean up reports on deleted spots
+      if (this.data.reports) {
+        this.data.reports = this.data.reports.filter(r => !deletedSpotIdsSet.has(r.spotId));
+      }
+    }
+
+    // 5. Clean up comments authored by this user
+    if (this.data.comments) {
+      this.data.comments = this.data.comments.filter(
+        c => (c as any).authorId !== id &&
+             (c as any).authorId !== user.id &&
+             (!c.authorName || c.authorName.toLowerCase() !== username)
+      );
+    }
+
+    // 6. Clean up follows graph & follow requests
     if (this.data.follows) {
       this.data.follows = this.data.follows.filter(f => f.followerId !== id && f.followingId !== id);
     }
+    if ((this.data as any).followRequests) {
+      (this.data as any).followRequests = (this.data as any).followRequests.filter(
+        (r: any) => r.requesterId !== id && r.targetId !== id
+      );
+    }
+
+    // 7. Remove user
+    this.data.users.splice(idx, 1);
+
+    // 8. Purge unreferenced media from disk
+    this.cleanupUnreferencedMedia();
+
+    // 9. Persist
     this.save();
     return true;
   }
 
   deleteUsers(ids: string[]): number {
     const idSet = new Set(ids);
-    const initialLen = this.data.users.length;
-    this.data.users = this.data.users.filter(u => !idSet.has(u.id));
+    const usersToDelete = this.data.users.filter(u => idSet.has(u.id));
+    if (usersToDelete.length === 0) {
+      this.lastDeletedSpotIds = [];
+      return 0;
+    }
+
+    const usernameSet = new Set(usersToDelete.map(u => (u.username || '').toLowerCase()));
+    const ownedSpotIdSet = new Set<string>();
+    usersToDelete.forEach(u => {
+      u.ownedSpotIds?.forEach(sid => ownedSpotIdSet.add(sid));
+    });
+
+    // Find all spots owned by any of these users
+    const spotsToDelete = this.data.spots.filter(
+      s => (s.ownerId && idSet.has(s.ownerId)) ||
+           ownedSpotIdSet.has(s.id) ||
+           (s.creatorName && usernameSet.has(s.creatorName.toLowerCase()))
+    );
+    const deletedSpotIds = spotsToDelete.map(s => s.id);
+    this.lastDeletedSpotIds = deletedSpotIds;
+
+    if (deletedSpotIds.length > 0) {
+      const deletedSpotIdsSet = new Set(deletedSpotIds);
+      this.data.spots = this.data.spots.filter(s => !deletedSpotIdsSet.has(s.id));
+      for (const spotId of deletedSpotIds) {
+        this.spatialIndex.remove(spotId);
+      }
+
+      if (this.data.comments) {
+        this.data.comments = this.data.comments.filter(c => !deletedSpotIdsSet.has(c.spotId));
+      }
+
+      for (const remainingSpot of this.data.spots) {
+        if (remainingSpot.connectedSpotIds && remainingSpot.connectedSpotIds.length > 0) {
+          remainingSpot.connectedSpotIds = remainingSpot.connectedSpotIds.filter(cid => !deletedSpotIdsSet.has(cid));
+        }
+      }
+
+      if (this.data.reports) {
+        this.data.reports = this.data.reports.filter(r => !deletedSpotIdsSet.has(r.spotId));
+      }
+    }
+
+    if (this.data.comments) {
+      this.data.comments = this.data.comments.filter(
+        c => (!(c as any).authorId || !idSet.has((c as any).authorId)) &&
+             (!c.authorName || !usernameSet.has(c.authorName.toLowerCase()))
+      );
+    }
+
     if (this.data.follows) {
       this.data.follows = this.data.follows.filter(f => !idSet.has(f.followerId) && !idSet.has(f.followingId));
     }
-    const deletedCount = initialLen - this.data.users.length;
-    if (deletedCount > 0) {
-      this.save();
+    if ((this.data as any).followRequests) {
+      (this.data as any).followRequests = (this.data as any).followRequests.filter(
+        (r: any) => !idSet.has(r.requesterId) && !idSet.has(r.targetId)
+      );
     }
+
+    const initialLen = this.data.users.length;
+    this.data.users = this.data.users.filter(u => !idSet.has(u.id));
+    const deletedCount = initialLen - this.data.users.length;
+
+    this.cleanupUnreferencedMedia();
+    this.save();
     return deletedCount;
   }
 

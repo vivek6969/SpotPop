@@ -758,7 +758,7 @@ export const api = {
     return res.json();
   },
 
-  async deleteAdminUser(id: string): Promise<{ success: boolean }> {
+  async deleteAdminUser(id: string): Promise<{ success: boolean; deletedSpotIds?: string[] }> {
     const res = await fetch(`${API_BASE}/admin/users/${id}`, {
       method: 'DELETE',
       headers: getClientHeaders(),
@@ -770,7 +770,19 @@ export const api = {
     return res.json();
   },
 
-  async deleteAdminUsersBatch(ids: string[]): Promise<{ success: boolean; deletedCount: number }> {
+  async deleteMyAccount(): Promise<{ success: boolean; message: string; deletedSpotIds?: string[] }> {
+    const res = await fetch(`${API_BASE}/users/me`, {
+      method: 'DELETE',
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete account');
+    }
+    return res.json();
+  },
+
+  async deleteAdminUsersBatch(ids: string[]): Promise<{ success: boolean; deletedCount: number; deletedSpotIds?: string[] }> {
     const res = await fetch(`${API_BASE}/admin/users/batch-delete`, {
       method: 'POST',
       headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },

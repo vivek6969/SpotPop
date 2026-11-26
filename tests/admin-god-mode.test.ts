@@ -85,15 +85,79 @@ describe('Advanced God-Mode Admin Architecture & Data Operations', () => {
     assert.ok(db.getUserById('usr_delete_1'));
     assert.ok(db.getUserById('usr_delete_2'));
 
-    // Single delete
+    // Attach spots to both users to verify cascade deletion
+    const spot1: Spot = {
+      id: 'sp_user1_spot',
+      ownerId: 'usr_delete_1',
+      creatorName: 'deleteone',
+      slug: 'del1-spot',
+      tier: 'mini_pop',
+      x: 10,
+      y: 10,
+      width: 170,
+      height: 170,
+      rotation: 0,
+      shape: 'sticky',
+      background: '#FEF08A',
+      content: {
+        headline: 'User 1 Spot',
+        fontFamily: 'Caveat',
+        fontSize: 22,
+        textColor: '#1E293B',
+        alignment: 'center',
+        stickers: [],
+        frameStyle: 'pin',
+      },
+      viewsCount: 0,
+      sharesCount: 0,
+      status: 'published',
+      moderationStatus: 'approved',
+      createdAt: new Date().toISOString(),
+    };
+    const spot2: Spot = {
+      id: 'sp_user2_spot',
+      ownerId: 'usr_delete_2',
+      creatorName: 'deletetwo',
+      slug: 'del2-spot',
+      tier: 'big_pop',
+      x: 50,
+      y: 50,
+      width: 170,
+      height: 210,
+      rotation: 0,
+      shape: 'polaroid',
+      background: '#FFFFFF',
+      content: {
+        headline: 'User 2 Spot',
+        fontFamily: 'Caveat',
+        fontSize: 22,
+        textColor: '#1E293B',
+        alignment: 'center',
+        stickers: [],
+        frameStyle: 'tape',
+      },
+      viewsCount: 0,
+      sharesCount: 0,
+      status: 'published',
+      moderationStatus: 'approved',
+      createdAt: new Date().toISOString(),
+    };
+    db.addSpot(spot1);
+    db.addSpot(spot2);
+    assert.ok(db.getSpotById('sp_user1_spot'));
+    assert.ok(db.getSpotById('sp_user2_spot'));
+
+    // Single delete: User 1 and all their spots must be cascade-deleted
     const singleDeleted = db.deleteUser('usr_delete_1');
     assert.equal(singleDeleted, true);
     assert.equal(db.getUserById('usr_delete_1'), undefined);
+    assert.equal(db.getSpotById('sp_user1_spot'), undefined); // Spot must be cascade-deleted!
 
-    // Batch delete
+    // Batch delete: User 2 and all their spots must be cascade-deleted
     const count = db.deleteUsers(['usr_delete_2']);
     assert.equal(count, 1);
     assert.equal(db.getUserById('usr_delete_2'), undefined);
+    assert.equal(db.getSpotById('sp_user2_spot'), undefined); // Spot must be cascade-deleted!
   });
 
   it('guarantees God-Mode spot editing allows repositioning, tier shifting, and full content mutations', () => {

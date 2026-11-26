@@ -46,7 +46,24 @@
 
 ---
 
-### [BUG-004]: Creator Studio Empty Black Panel When Switching Tabs or Rendering Themes
+### [BUG-005]: Account Deletion Failed to Cascade-Delete Owned Spots and Associated Content
+- **Severity**: P0 (Data Integrity & Privacy Violation)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**:
+  `deleteUser(id)` and `deleteUsers(ids)` in `server/database.ts` only removed records from `this.data.users` and `this.data.follows`. They never deleted the user's spots from `this.data.spots` or `spatialIndex`, never removed comments, never cleaned up cross-spot `connectedSpotIds`, never purged orphaned media, and never emitted SSE `spot_deleted` events to update live canvas clients. As a result, when an account was deleted in Admin God-Mode, all their spots lingered on the canvas and in the database.
+- **Fix Applied**:
+  1. Updated `deleteUser` and `deleteUsers` in `server/database.ts` to perform full cascade deletion:
+     - Detects all spots owned by the deleted user(s) (`ownerId`, `user.id`, `ownedSpotIds`, `creatorName`).
+     - Removes spots from `this.data.spots` and clears them from `spatialIndex`.
+     - Deletes all comments on the deleted spots and comments authored by the user.
+     - Strips deleted spot IDs from `connectedSpotIds` across all remaining canvas spots.
+     - Purges reports and orphaned media files.
+     - Persists database atomically.
+  2. Updated `DELETE /api/admin/users/:id` and `POST /api/admin/users/batch-delete` in `server/api.ts` to broadcast real-time SSE `spot_deleted` events for every cascade-deleted spot.
+  3. Added `DELETE /api/users/me` endpoint in `server/api.ts` and `api.deleteMyAccount()` in `src/services/api.ts` for full self-service user erasure.
+  4. Added regression test in `tests/admin-god-mode.test.ts` verifying that deleting a user immediately cascade-deletes all their spots from `db.getSpots()`.
+
 - **Severity**: P1 (Major UI Blocker)
 - **Status**: Resolved
 - **Assigned Agent**: senior-engineer

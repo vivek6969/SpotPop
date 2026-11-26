@@ -2008,7 +2008,7 @@ apiRouter.put('/admin/users/:id', requireAdmin, (req: Request, res: Response) =>
   }
 });
 
-// Delete user as Admin
+// Delete user as Admin (with full spot cascade & SSE broadcast)
 apiRouter.delete('/admin/users/:id', requireAdmin, (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -2019,13 +2019,17 @@ apiRouter.delete('/admin/users/:id', requireAdmin, (req: Request, res: Response)
     if (!success) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ success: true });
+    const deletedSpotIds = db.lastDeletedSpotIds || [];
+    for (const spotId of deletedSpotIds) {
+      broadcastSpotEvent('spot_deleted', { id: spotId, stats: db.getStats() });
+    }
+    res.json({ success: true, deletedSpotIds });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Batch delete users as Admin
+// Batch delete users as Admin (with full spot cascade & SSE broadcast)
 apiRouter.post('/admin/users/batch-delete', requireAdmin, (req: Request, res: Response) => {
   try {
     const { ids } = req.body;
@@ -2034,7 +2038,35 @@ apiRouter.post('/admin/users/batch-delete', requireAdmin, (req: Request, res: Re
     }
     const safeIds = ids.filter(id => id !== 'usr_admin');
     const deletedCount = db.deleteUsers(safeIds);
-    res.json({ success: true, deletedCount });
+    const deletedSpotIds = db.lastDeletedSpotIds || [];
+    for (const spotId of deletedSpotIds) {
+      broadcastSpotEvent('spot_deleted', { id: spotId, stats: db.getStats() });
+    }
+    res.json({ success: true, deletedCount, deletedSpotIds });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User deletes their own account (GDPR complete data & spot erasure)
+apiRouter.delete('/users/me', (req: Request, res: Response) => {
+  try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (user.id === 'usr_admin') {
+      return res.status(403).json({ error: 'Primary administrator account cannot be deleted' });
+    }
+    const success = db.deleteUser(user.id);
+    if (!success) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const deletedSpotIds = db.lastDeletedSpotIds || [];
+    for (const spotId of deletedSpotIds) {
+      broadcastSpotEvent('spot_deleted', { id: spotId, stats: db.getStats() });
+    }
+    res.json({ success: true, message: 'Account and all associated spots permanently deleted', deletedSpotIds });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
