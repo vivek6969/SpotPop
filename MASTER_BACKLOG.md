@@ -370,7 +370,23 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 
 ---
 
-### [TASK-039]: Purge Unwanted "Reels" Clapperboard and Story Highlights Filler Circles
+### [TASK-040]: Restore Full-Screen Feed Renamed to "Stories" Across Dock & Profile
+- **Priority**: P0
+- **Assigned Agent**: senior-engineer
+- **Description**: Restored the full-screen swipeable feed feature in accordance with user requirements, renaming the feature from "Reels" to "Stories" / "Pop Stories":
+  1. **Bottom Navigation Dock**: Added the 4th item back between Create (+) and Profile as `Stories`, complete with an animated story card icon.
+  2. **CreatorProfileModal**: Restored the tabs bar with `[▦ POSTS]` and `[▶ STORIES]`. Clicking a story spot opens the full-screen Stories viewer for that creator.
+  3. **App Level**: Wired `isStoriesOpen`, `onOpenStories`, and `<PopStoriesModal>` in `src/App.tsx`.
+  4. **Terminology**: Replaced all user-facing instances of "Reels" with "Stories" / "Pop Stories".
+- **Acceptance Criteria**:
+  - Given the bottom navigation dock, When viewing the dock, Then 5 icons are present: Home, Search, Create (+), Stories, and Profile.
+  - Given the user clicks the Stories button, When clicked, Then the full-screen vertical swipeable Stories feed opens with ambient glow, music/audio playback, comments, likes, and teleportation to canvas.
+  - Given a creator profile, When viewing the profile, Then `▦ POSTS` and `▶ STORIES` tabs are available to filter and launch stories.
+- **Status**: Completed
+- **Test Evidence**: 120/120 automated tests passing across 19 suites (`npx tsx --test tests/*.test.ts`), production build verified in 1.47s.
+- **Review Result**: Empirical audit sign-off by CTO / Senior Engineer.
+
+### [TASK-039]: Purge Erroneous "Reels" Terminology and Filler Circles
 - **Priority**: P0 (Product Scope & UI Authenticity)
 - **Assigned Agent**: ui-ux-engineer & product-manager & senior-engineer
 - **Description**: Removed erroneous "Reels" feature and fake Instagram story highlights ("affordable", "Spotter", "exciting offer", "+ New") that did not belong to SpotPop:
@@ -505,7 +521,23 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 
 ---
 
-### [TASK-039]: Purge Unwanted "Reels" Clapperboard and Story Highlights Filler Circles
+### [TASK-040]: Restore Full-Screen Feed Renamed to "Stories" Across Dock & Profile
+- **Priority**: P0
+- **Assigned Agent**: senior-engineer
+- **Description**: Restored the full-screen swipeable feed feature in accordance with user requirements, renaming the feature from "Reels" to "Stories" / "Pop Stories":
+  1. **Bottom Navigation Dock**: Added the 4th item back between Create (+) and Profile as `Stories`, complete with an animated story card icon.
+  2. **CreatorProfileModal**: Restored the tabs bar with `[▦ POSTS]` and `[▶ STORIES]`. Clicking a story spot opens the full-screen Stories viewer for that creator.
+  3. **App Level**: Wired `isStoriesOpen`, `onOpenStories`, and `<PopStoriesModal>` in `src/App.tsx`.
+  4. **Terminology**: Replaced all user-facing instances of "Reels" with "Stories" / "Pop Stories".
+- **Acceptance Criteria**:
+  - Given the bottom navigation dock, When viewing the dock, Then 5 icons are present: Home, Search, Create (+), Stories, and Profile.
+  - Given the user clicks the Stories button, When clicked, Then the full-screen vertical swipeable Stories feed opens with ambient glow, music/audio playback, comments, likes, and teleportation to canvas.
+  - Given a creator profile, When viewing the profile, Then `▦ POSTS` and `▶ STORIES` tabs are available to filter and launch stories.
+- **Status**: Completed
+- **Test Evidence**: 120/120 automated tests passing across 19 suites (`npx tsx --test tests/*.test.ts`), production build verified in 1.47s.
+- **Review Result**: Empirical audit sign-off by CTO / Senior Engineer.
+
+### [TASK-039]: Purge Erroneous "Reels" Terminology and Filler Circles
 - **Priority**: P0 (Product Scope & UI Authenticity)
 - **Assigned Agent**: ui-ux-engineer & product-manager & senior-engineer
 - **Description**: Removed erroneous "Reels" feature and fake Instagram story highlights ("affordable", "Spotter", "exciting offer", "+ New") that did not belong to SpotPop:
