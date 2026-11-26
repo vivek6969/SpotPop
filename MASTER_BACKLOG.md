@@ -561,3 +561,22 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 108/108 automated tests passing across 17 suites (`tests/production-qa-reliability.test.ts`), clean production build in 1.00s, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
+
+
+---
+
+### [TASK-043]: Advanced God-Mode Admin Command Center (Full CRUD, Search, Sort & Multi-Entity Filtering)
+- **Priority**: P0 (Supreme Administrative Control & Observability)
+- **Assigned Agent**: senior-engineer & ui-ux-engineer & qa-engineer
+- **Description**: Re-architected SpotPop's administrative panel into a comprehensive, high-performance God-Mode Command Center:
+  1. **User Management Engine**: Full CRUD for user accounts (`POST /admin/users`, `PUT /admin/users/:id`, `DELETE /admin/users/:id`, `POST /admin/users/batch-delete`). Administrators can create accounts with custom roles (`admin` | `user`), bio, websiteUrl, private account settings, and scrypt password hashing; edit any existing user; promote/demote roles; reset passwords; and execute single or multi-select batch deletions.
+  2. **God-Mode Spot Control**: Added `PUT /admin/spots/:id` and `POST /admin/spots/:id/reposition` empowering admins to mutate any spot attribute (coordinates X/Y, rotation, tier, shape, background color, border, title, headline, text, imageUrl, status, visibility, allowComments) directly without checkout.
+  3. **Multi-Entity Search, Sort & Filtering**:
+     - **Users**: Search by username/email/display/id; filter by role (`admin`, `user`) and privacy (`public`, `private`); sort by Newest, Oldest, Username, Display Name, Most Owned Spots.
+     - **Spots**: Search by headline/creator/slug/ID; filter by Tier (`mini_pop`, `big_pop`), Shape (`polaroid`, `sticky`, `frameless`, etc.), Status (`published`, `hidden`), Moderation (`approved`, `flagged`), and Visibility; sort by Newest, Oldest, Likes, Views, Comments, X-coord.
+     - **Orders**: Search by ID/user/payment; filter by Status (`paid`, `pending`, `failed`, `refunded`); sort by Date and Amount.
+     - **Comments**: Full comments audit log with search and single-click permanent removal.
+  4. **Storage & Instant Snapshot Backups**: View storage metrics, deduplication savings, clean orphaned audio, trigger on-demand snapshot backups (`POST /admin/backups/create`), and restore database snapshots with single-click verification.
+- **Status**: Completed
+- **Test Evidence**: 115/115 automated tests passing across 18 suites (`tests/admin-god-mode.test.ts`), clean production build in 1.08s, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.

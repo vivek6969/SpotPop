@@ -719,6 +719,159 @@ export const api = {
     return res.json();
   },
 
+  // Advanced Admin User Management
+  async createAdminUser(data: Partial<User> & { password?: string }): Promise<{ success: boolean; user: User }> {
+    const res = await fetch(`${API_BASE}/admin/users`, {
+      method: 'POST',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to create user');
+    }
+    return res.json();
+  },
+
+  async updateAdminUser(id: string, updates: Partial<User> & { password?: string }): Promise<{ success: boolean; user: User }> {
+    const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update user');
+    }
+    return res.json();
+  },
+
+  async deleteAdminUser(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete user');
+    }
+    return res.json();
+  },
+
+  async deleteAdminUsersBatch(ids: string[]): Promise<{ success: boolean; deletedCount: number }> {
+    const res = await fetch(`${API_BASE}/admin/users/batch-delete`, {
+      method: 'POST',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete selected users');
+    }
+    return res.json();
+  },
+
+  // Advanced Admin Spot God-Mode
+  async updateAdminSpot(id: string, updates: Partial<Spot>): Promise<{ success: boolean; spot: Spot }> {
+    const res = await fetch(`${API_BASE}/admin/spots/${id}`, {
+      method: 'PUT',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update spot');
+    }
+    return res.json();
+  },
+
+  async repositionAdminSpot(id: string, coords: { x: number; y: number; rotation?: number }): Promise<{ success: boolean; spot: Spot }> {
+    const res = await fetch(`${API_BASE}/admin/spots/${id}/reposition`, {
+      method: 'POST',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(coords),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to reposition spot');
+    }
+    return res.json();
+  },
+
+  // Advanced Admin Orders Management
+  async updateAdminOrder(id: string, updates: Partial<Order>): Promise<{ success: boolean; order: Order }> {
+    const res = await fetch(`${API_BASE}/admin/orders/${id}`, {
+      method: 'PUT',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update order');
+    }
+    return res.json();
+  },
+
+  async deleteAdminOrder(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/admin/orders/${id}`, {
+      method: 'DELETE',
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete order');
+    }
+    return res.json();
+  },
+
+  // Advanced Admin Comments Management
+  async getAdminComments(): Promise<{ comments: (Comment & { spotTitle?: string })[] }> {
+    const res = await fetch(`${API_BASE}/admin/comments`, { headers: getClientHeaders() });
+    if (!res.ok) throw new Error('Failed to load comments');
+    return res.json();
+  },
+
+  async deleteAdminComment(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/admin/comments/${id}`, {
+      method: 'DELETE',
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to delete comment');
+    return res.json();
+  },
+
+  // Advanced Admin Backups Management
+  async getAdminBackups(): Promise<{ backups: { filename: string; sizeBytes: number; createdAt: string }[] }> {
+    const res = await fetch(`${API_BASE}/admin/backups`, { headers: getClientHeaders() });
+    if (!res.ok) throw new Error('Failed to load backups');
+    return res.json();
+  },
+
+  async createAdminBackup(): Promise<{ success: boolean; filename: string }> {
+    const res = await fetch(`${API_BASE}/admin/backups/create`, {
+      method: 'POST',
+      headers: getClientHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to create backup');
+    return res.json();
+  },
+
+  async restoreAdminBackup(filename: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/admin/backups/restore`, {
+      method: 'POST',
+      headers: { ...getClientHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename }),
+    });
+    if (!res.ok) throw new Error('Failed to restore backup');
+    return res.json();
+  },
+
+  async getAdminActivities(): Promise<{ activities: any[] }> {
+    const res = await fetch(`${API_BASE}/admin/activities`, { headers: getClientHeaders() });
+    if (!res.ok) throw new Error('Failed to load activities');
+    return res.json();
+  },
+
   async getStorageStats(): Promise<{
     totalUploads: number;
     uniqueAssets: number;

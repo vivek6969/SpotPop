@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
+import path from 'path';
 import { db } from './database.ts';
 import { createRazorpayOrder, verifyPaymentSignature } from './razorpay.ts';
 import type { ProductTier, Spot, Order, User, ModerationReport } from '../src/types/index.ts';
@@ -1901,6 +1902,299 @@ apiRouter.get('/admin/users', requireAdmin, (req: Request, res: Response) => {
   try {
     const users = db.getUsers();
     res.json({ users });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================== ADVANCED GOD-MODE ADMIN ENDPOINTS ===================
+
+// Create user as Admin
+apiRouter.post('/admin/users', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { email, username, displayName, role = 'user', bio, website, password, isPrivate = false, avatarUrl } = req.body;
+    if (!email || !username) {
+      return res.status(400).json({ error: 'Email and username are required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (db.getUserByEmail(cleanEmail)) {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+    if (db.getUserByUsername(cleanUsername)) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+
+    const newUser: User = {
+      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      email: cleanEmail,
+      username: cleanUsername,
+      displayName: (displayName || username).trim(),
+      role: role === 'admin' ? 'admin' : 'user',
+      avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${cleanUsername}`,
+      bio: (bio || '').trim(),
+      websiteUrl: (website || '').trim(),
+      isPrivate: Boolean(isPrivate),
+      createdAt: new Date().toISOString(),
+      ownedSpotIds: [],
+      passwordHash: password ? hashPassword(password) : undefined,
+    };
+
+    db.addUser(newUser);
+    res.json({ success: true, user: newUser });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update user as Admin
+apiRouter.put('/admin/users/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = db.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { email, username, displayName, role, bio, website, isPrivate, password, avatarUrl } = req.body;
+    const updates: Partial<User> = {};
+
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existing = db.getUserByEmail(cleanEmail);
+      if (existing && existing.id !== id) {
+        return res.status(409).json({ error: 'Email already in use by another account' });
+      }
+      updates.email = cleanEmail;
+    }
+
+    if (username) {
+      const cleanUsername = username.trim().toLowerCase();
+      const existing = db.getUserByUsername(cleanUsername);
+      if (existing && existing.id !== id) {
+        return res.status(409).json({ error: 'Username already in use by another account' });
+      }
+      updates.username = cleanUsername;
+    }
+
+    if (displayName !== undefined) updates.displayName = displayName.trim();
+    if (role !== undefined) updates.role = role === 'admin' ? 'admin' : 'user';
+    if (bio !== undefined) updates.bio = bio.trim();
+    if (website !== undefined) updates.websiteUrl = website.trim();
+    if (isPrivate !== undefined) updates.isPrivate = Boolean(isPrivate);
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+    if (password) updates.passwordHash = hashPassword(password);
+
+    const updated = db.updateUser(id, updates);
+    res.json({ success: true, user: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete user as Admin
+apiRouter.delete('/admin/users/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (id === 'usr_admin') {
+      return res.status(403).json({ error: 'Cannot delete primary root administrator account' });
+    }
+    const success = db.deleteUser(id);
+    if (!success) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch delete users as Admin
+apiRouter.post('/admin/users/batch-delete', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'IDs array required' });
+    }
+    const safeIds = ids.filter(id => id !== 'usr_admin');
+    const deletedCount = db.deleteUsers(safeIds);
+    res.json({ success: true, deletedCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// God-Mode Edit Spot: Update any spot property (coordinates, rotation, content, styling, status)
+apiRouter.put('/admin/spots/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existing = db.getSpotById(id) || db.getAllSpotsForAdmin().find(s => s.id === id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Spot not found' });
+    }
+
+    const {
+      title,
+      creatorName,
+      ownerId,
+      tier,
+      shape,
+      background,
+      borderColor,
+      x,
+      y,
+      rotation,
+      status,
+      moderationStatus,
+      visibility,
+      allowComments,
+      content,
+    } = req.body;
+
+    const updates: Partial<Spot> = {};
+    if (title !== undefined) updates.title = title;
+    if (creatorName !== undefined) updates.creatorName = creatorName;
+    if (ownerId !== undefined) updates.ownerId = ownerId;
+    if (tier !== undefined) updates.tier = tier;
+    if (shape !== undefined) updates.shape = shape;
+    if (background !== undefined) updates.background = background;
+    if (borderColor !== undefined) updates.borderColor = borderColor;
+    if (typeof x === 'number') updates.x = x;
+    if (typeof y === 'number') updates.y = y;
+    if (typeof rotation === 'number') updates.rotation = rotation;
+    if (status !== undefined) updates.status = status;
+    if (moderationStatus !== undefined) updates.moderationStatus = moderationStatus;
+    if (visibility !== undefined) updates.visibility = visibility;
+    if (allowComments !== undefined) updates.allowComments = allowComments;
+
+    if (content) {
+      updates.content = {
+        ...existing.content,
+        ...content,
+      };
+    }
+
+    const updated = db.updateSpot(id, updates);
+    if (!updated) {
+      return res.status(404).json({ error: 'Failed to update spot' });
+    }
+
+    broadcastSpotEvent('spot_updated', { spot: updated });
+    res.json({ success: true, spot: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Reposition Spot
+apiRouter.post('/admin/spots/:id/reposition', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { x, y, rotation } = req.body;
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      return res.status(400).json({ error: 'x and y numeric coordinates required' });
+    }
+    const updated = db.updateSpot(id, {
+      x,
+      y,
+      rotation: typeof rotation === 'number' ? rotation : 0,
+    });
+    if (!updated) return res.status(404).json({ error: 'Spot not found' });
+    broadcastSpotEvent('spot_updated', { spot: updated });
+    res.json({ success: true, spot: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Order as Admin
+apiRouter.put('/admin/orders/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const updates: Partial<Order> = {};
+    if (status) updates.status = status;
+
+    const updated = db.updateOrder(id, updates);
+    if (!updated) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true, order: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Order as Admin
+apiRouter.delete('/admin/orders/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const success = db.deleteOrder(id);
+    if (!success) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Comments Admin Management
+apiRouter.get('/admin/comments', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    const comments = db.getAllComments();
+    res.json({ comments });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.delete('/admin/comments/:id', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const success = db.deleteComment(id);
+    if (!success) return res.status(404).json({ error: 'Comment not found' });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Database Backups Admin Management
+apiRouter.get('/admin/backups', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    const backups = db.getBackupsList();
+    res.json({ backups });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/admin/backups/create', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    const backupPath = db.createBackup();
+    if (!backupPath) return res.status(500).json({ error: 'Failed to create backup' });
+    res.json({ success: true, path: backupPath, filename: path.basename(backupPath) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/admin/backups/restore', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { filename } = req.body;
+    if (!filename) return res.status(400).json({ error: 'Backup filename required' });
+    const success = db.restoreBackup(filename);
+    if (!success) return res.status(500).json({ error: 'Failed to restore backup snapshot' });
+    res.json({ success: true, message: `Successfully restored database snapshot ${filename}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// System Activity Log
+apiRouter.get('/admin/activities', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    const activities = db.getActivity();
+    res.json({ activities });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

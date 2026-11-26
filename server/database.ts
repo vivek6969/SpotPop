@@ -821,6 +821,44 @@ class Database {
     }
   }
 
+  public getBackupsList(): { filename: string; sizeBytes: number; createdAt: string }[] {
+    try {
+      const backupDir = path.resolve(process.cwd(), 'backups');
+      if (!fs.existsSync(backupDir)) return [];
+      const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json'));
+      return files.map(file => {
+        const filePath = path.join(backupDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: file,
+          sizeBytes: stats.size,
+          createdAt: stats.mtime.toISOString(),
+        };
+      }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch {
+      return [];
+    }
+  }
+
+  public restoreBackup(filename: string): boolean {
+    try {
+      const backupDir = path.resolve(process.cwd(), 'backups');
+      const safeFilename = path.basename(filename);
+      const targetPath = path.join(backupDir, safeFilename);
+      if (!fs.existsSync(targetPath)) return false;
+      const raw = fs.readFileSync(targetPath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.spots)) {
+        return false;
+      }
+      this.data = parsed;
+      this.save();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Spots
   getSpots(viewerIdOrName?: string): Spot[] {
     const rawViewer = (viewerIdOrName || '').trim().toLowerCase();
@@ -1137,6 +1175,29 @@ class Database {
     return null;
   }
 
+  getAllComments(): (Comment & { spotTitle?: string })[] {
+    const comments = this.data.comments || [];
+    const spotMap = new Map(this.data.spots.map(s => [s.id, s.content.headline || s.title || s.creatorName]));
+    return comments.map(c => ({
+      ...c,
+      spotTitle: spotMap.get(c.spotId) || 'Untitled Spot',
+    }));
+  }
+
+  deleteComment(commentId: string): boolean {
+    this.data.comments = this.data.comments || [];
+    const idx = this.data.comments.findIndex(c => c.id === commentId);
+    if (idx === -1) return false;
+    const comment = this.data.comments[idx];
+    this.data.comments.splice(idx, 1);
+    const spot = this.data.spots.find(s => s.id === comment.spotId);
+    if (spot && spot.commentsCount && spot.commentsCount > 0) {
+      spot.commentsCount -= 1;
+    }
+    this.save();
+    return true;
+  }
+
   // Users
   getUsers(): User[] {
     return this.data.users;
@@ -1192,6 +1253,32 @@ class Database {
 
     this.save();
     return this.data.users[idx];
+  }
+
+  deleteUser(id: string): boolean {
+    const idx = this.data.users.findIndex(u => u.id === id);
+    if (idx === -1) return false;
+    this.data.users.splice(idx, 1);
+    // Also remove from follows graph
+    if (this.data.follows) {
+      this.data.follows = this.data.follows.filter(f => f.followerId !== id && f.followingId !== id);
+    }
+    this.save();
+    return true;
+  }
+
+  deleteUsers(ids: string[]): number {
+    const idSet = new Set(ids);
+    const initialLen = this.data.users.length;
+    this.data.users = this.data.users.filter(u => !idSet.has(u.id));
+    if (this.data.follows) {
+      this.data.follows = this.data.follows.filter(f => !idSet.has(f.followerId) && !idSet.has(f.followingId));
+    }
+    const deletedCount = initialLen - this.data.users.length;
+    if (deletedCount > 0) {
+      this.save();
+    }
+    return deletedCount;
   }
 
   // Follows & Social Graph
@@ -1614,6 +1701,14 @@ class Database {
     this.data.orders[idx] = { ...this.data.orders[idx], ...updates };
     this.save();
     return this.data.orders[idx];
+  }
+
+  deleteOrder(id: string): boolean {
+    const idx = this.data.orders.findIndex(o => o.id === id);
+    if (idx === -1) return false;
+    this.data.orders.splice(idx, 1);
+    this.save();
+    return true;
   }
 
   // Reports
