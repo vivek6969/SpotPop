@@ -46,8 +46,21 @@
 
 ---
 
-### [BUG-QA-003]: Drawing Studio Accessible to Mini Pop Users
-- **Severity**: P1 (Commercial Tier Leakage)
+### [BUG-004]: Creator Studio Empty Black Panel When Switching Tabs or Rendering Themes
+- **Severity**: P1 (Major UI Blocker)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**:
+  1. Circular dependency between `CreateSpotModal.tsx` and child tab components (`ThemesTab`, `FramesTab`, `DrawStudioTab`, etc.) caused runtime `undefined` references during HMR and module resolution.
+  2. In `CreateSpotModal.tsx`, `renderTabContent` guarded every tab with `!isDrawingMode ? (...) : null`. When lingering drawing state or switching between drawing and other tabs occurred, tabs returned `null` instead of rendering their content.
+  3. `ThemesTab` lacked null safety when handling undefined or non-hex `currentDraft.backgroundColor`.
+  4. Absence of React ErrorBoundary around the tab renderer caused unhandled child render failures to unmount the entire right panel into an empty black box.
+- **Fix Applied**:
+  1. Extracted all shared constants into isolated `src/components/modals/editor/constants.ts` and updated all 6 editor tabs to eliminate circular dependencies.
+  2. Updated `renderTabContent` to render tabs unconditionally without brittle `!isDrawingMode` gates, with safe fallback.
+  3. Added null safety in `ThemesTab` for `currentDraft.backgroundColor` and `THEMED_BACKGROUNDS`.
+  4. Wrapped both desktop and mobile tab renderers with `EditorErrorBoundary` containing automated recovery reload. Verified across 120 automated test suites.
+
 - **Status**: Resolved
 - **Assigned Agent**: senior-engineer
 - **Root Cause**: In `CreateSpotModal.tsx`, `Draw` and `Adjust` tools were rendered for Mini Pop in mobile tool dock and desktop toolbar.

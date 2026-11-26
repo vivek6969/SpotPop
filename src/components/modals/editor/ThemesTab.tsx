@@ -1,6 +1,6 @@
 import React from 'react';
-import { PlanDraft, BackgroundOption } from './types';
-import { THEMED_BACKGROUNDS } from '../CreateSpotModal';
+import { PlanDraft } from './types';
+import { THEMED_BACKGROUNDS, BackgroundOption } from './constants';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface ThemesTabProps {
@@ -16,7 +16,8 @@ export const ThemesTab: React.FC<ThemesTabProps> = ({
   selectedBgCategory,
   setSelectedBgCategory,
 }) => {
-  const filteredBgs = THEMED_BACKGROUNDS.filter(
+  const currentBg = currentDraft?.backgroundColor || '#FEF08A';
+  const filteredBgs = (THEMED_BACKGROUNDS || []).filter(
     (b) => selectedBgCategory === 'all' || b.category === selectedBgCategory
   );
 
@@ -37,11 +38,11 @@ export const ThemesTab: React.FC<ThemesTabProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-slate-300">
-            {currentDraft.backgroundColor === 'transparent' ? 'Transparent' : currentDraft.backgroundColor}
+            {currentBg === 'transparent' ? 'Transparent' : currentBg}
           </span>
           <input
             type="color"
-            value={currentDraft.backgroundColor.startsWith('#') ? currentDraft.backgroundColor : '#FFFFFF'}
+            value={currentBg.startsWith('#') ? currentBg : '#FFFFFF'}
             onChange={(e) => updateDraft({ backgroundColor: e.target.value })}
             className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
           />

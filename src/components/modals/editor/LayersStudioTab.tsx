@@ -1,7 +1,7 @@
 import React from 'react';
 import { PlanDraft } from './types';
 import { SpotLayer, BlendMode } from '../../../types';
-import { BLEND_MODES } from '../CreateSpotModal';
+import { BLEND_MODES } from './constants';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface LayersStudioTabProps {

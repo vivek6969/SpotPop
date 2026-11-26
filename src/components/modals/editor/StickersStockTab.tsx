@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlanDraft } from './types';
-import { STICKER_CATEGORIES } from '../CreateSpotModal';
+import { STICKER_CATEGORIES } from './constants';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 import { matchesStickerSearch } from '../../../utils/stickerKeywords';
 

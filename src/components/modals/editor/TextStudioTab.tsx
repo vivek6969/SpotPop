@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlanDraft } from './types';
-import { ALL_FONTS } from '../CreateSpotModal';
+import { ALL_FONTS } from './constants';
 import { CAPTION_PRESETS, loadGoogleFont, speakText } from '../../../utils/photoFilters';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 
@@ -514,8 +514,9 @@ export const TextStudioTab: React.FC<TextStudioTabProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto no-scrollbar p-0.5">
               {ALL_FONTS.filter((f) => {
                 if (selectedFontCategory === 'All') return true;
-                if (selectedFontCategory === 'Handwriting' && (f.category === 'Handwritten' || f.category === 'Handwriting')) return true;
-                if (selectedFontCategory === 'Elegant' && (f.category === 'Serif' || f.category === 'Elegant')) return true;
+                const catStr = f.category as string;
+                if (selectedFontCategory === 'Handwriting' && (catStr === 'Handwritten' || catStr === 'Handwriting')) return true;
+                if (selectedFontCategory === 'Elegant' && (catStr === 'Serif' || catStr === 'Elegant')) return true;
                 return f.category === selectedFontCategory;
               }).map((font) => {
                 const isSelected =

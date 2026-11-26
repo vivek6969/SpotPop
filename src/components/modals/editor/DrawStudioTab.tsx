@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlanDraft, BrushStyle } from './types';
-import { BRUSH_STYLES } from '../CreateSpotModal';
+import { BRUSH_STYLES } from './constants';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface DrawStudioTabProps {

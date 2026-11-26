@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PlanDraft, ShapeOption } from './types';
 import { ProductTier, FrameStyle } from '../../../types';
-import { AVAILABLE_SHAPES, ALL_FRAME_ACCENTS, FrameAccentItem } from '../CreateSpotModal';
+import { AVAILABLE_SHAPES, ALL_FRAME_ACCENTS, FrameAccentItem } from './constants';
 import { HorizontalScroll } from '../../common/HorizontalScroll';
 
 interface FramesTabProps {
