@@ -49,8 +49,17 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
   const [showFriendPopover, setShowFriendPopover] = useState(false);
 
   // Location auto-suggestions
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+
+  // Description cursor-aware auto-suggestions (@ and #)
+  const [descTrigger, setDescTrigger] = useState<'@' | '#' | null>(null);
+  const [descToken, setDescToken] = useState('');
+  const [descCursorIndex, setDescCursorIndex] = useState(0);
+
+  // Title cursor-aware auto-suggestions (@ and #)
+  const [titleTrigger, setTitleTrigger] = useState<'@' | '#' | null>(null);
+  const [titleToken, setTitleToken] = useState('');
+  const [titleCursorIndex, setTitleCursorIndex] = useState(0);
 
   // Connected spots auto-suggestions
   const [availableSpots, setAvailableSpots] = useState<Spot[]>([]);
@@ -62,18 +71,6 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
       setAvailableSpots(res.spots || []);
     }).catch(() => {});
   }, []);
-
-  // Location suggestions fetch
-  useEffect(() => {
-    const loc = (currentDraft.location || '').trim();
-    if (loc.length > 1) {
-      api.getSuggestions(loc, 'locations', 5).then((data) => {
-        setLocationSuggestions((data.locations || []).map((l) => l.name));
-      }).catch(() => {});
-    } else {
-      setLocationSuggestions([]);
-    }
-  }, [currentDraft.location]);
 
   const handleTagToggle = (tag: string) => {
     const formatted = tag.startsWith('#') ? tag : `#${tag}`;
@@ -122,6 +119,62 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
     }
   };
 
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    updateDraft({ description: val });
+    const cursor = e.target.selectionStart || 0;
+    setDescCursorIndex(cursor);
+
+    const before = val.slice(0, cursor);
+    const match = before.match(/([@#][a-zA-Z0-9_]*)$/);
+    if (match) {
+      const t = match[1];
+      setDescTrigger(t[0] as '@' | '#');
+      setDescToken(t);
+    } else {
+      setDescTrigger(null);
+      setDescToken('');
+    }
+  };
+
+  const handleSelectDescSuggestion = (completed: string) => {
+    const desc = currentDraft.description || '';
+    const before = desc.slice(0, descCursorIndex);
+    const after = desc.slice(descCursorIndex);
+    const updatedBefore = before.replace(/([@#][a-zA-Z0-9_]*)$/, completed);
+    updateDraft({ description: updatedBefore + after });
+    setDescTrigger(null);
+    setDescToken('');
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    updateDraft({ title: val });
+    const cursor = e.target.selectionStart || 0;
+    setTitleCursorIndex(cursor);
+
+    const before = val.slice(0, cursor);
+    const match = before.match(/([@#][a-zA-Z0-9_]*)$/);
+    if (match) {
+      const t = match[1];
+      setTitleTrigger(t[0] as '@' | '#');
+      setTitleToken(t);
+    } else {
+      setTitleTrigger(null);
+      setTitleToken('');
+    }
+  };
+
+  const handleSelectTitleSuggestion = (completed: string) => {
+    const title = currentDraft.title || '';
+    const before = title.slice(0, titleCursorIndex);
+    const after = title.slice(titleCursorIndex);
+    const updatedBefore = before.replace(/([@#][a-zA-Z0-9_]*)$/, completed);
+    updateDraft({ title: updatedBefore + after });
+    setTitleTrigger(null);
+    setTitleToken('');
+  };
+
   return (
     <div className="space-y-4 p-1 animate-fade-in text-left">
       <div>
@@ -132,7 +185,7 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
       </div>
 
       {/* 1. Optional Title */}
-      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-[#FF2E93] transition-colors">
+      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-[#FF2E93] transition-colors relative">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-white flex items-center gap-1.5">
             <span>🏷️</span>
@@ -142,18 +195,30 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
             {(currentDraft.title || '').length}/60
           </span>
         </div>
-        <input
-          type="text"
-          maxLength={60}
-          value={currentDraft.title || ''}
-          onChange={(e) => updateDraft({ title: e.target.value })}
-          placeholder="e.g. Sunset in Paris, College Farewell, Coffee Vibes..."
-          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-medium placeholder:text-slate-500 focus:outline-none focus:border-[#FF2E93]"
-        />
+        <div className="relative">
+          {titleTrigger && (
+            <MentionHashtagPopover
+              trigger={titleTrigger}
+              token={titleToken}
+              onSelect={handleSelectTitleSuggestion}
+              onClose={() => setTitleTrigger(null)}
+              position="bottom"
+              className="w-full"
+            />
+          )}
+          <input
+            type="text"
+            maxLength={60}
+            value={currentDraft.title || ''}
+            onChange={handleTitleChange}
+            placeholder="e.g. Sunset in Paris, College Farewell, Coffee Vibes..."
+            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-medium placeholder:text-slate-500 focus:outline-none focus:border-[#FF2E93]"
+          />
+        </div>
       </div>
 
       {/* 2. Optional Description / Caption */}
-      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-cyan-400 transition-colors">
+      <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 focus-within:border-cyan-400 transition-colors relative">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-white flex items-center gap-1.5">
             <span>📝</span>
@@ -163,14 +228,26 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
             {(currentDraft.description || '').length}/300
           </span>
         </div>
-        <textarea
-          rows={2}
-          maxLength={300}
-          value={currentDraft.description || ''}
-          onChange={(e) => updateDraft({ description: e.target.value })}
-          placeholder="Write a caption, memory, or story behind this Pop..."
-          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-normal placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 resize-none"
-        />
+        <div className="relative">
+          {descTrigger && (
+            <MentionHashtagPopover
+              trigger={descTrigger}
+              token={descToken}
+              onSelect={handleSelectDescSuggestion}
+              onClose={() => setDescTrigger(null)}
+              position="bottom"
+              className="w-full"
+            />
+          )}
+          <textarea
+            rows={2}
+            maxLength={300}
+            value={currentDraft.description || ''}
+            onChange={handleDescriptionChange}
+            placeholder="Write a caption, memory, or story behind this Pop..."
+            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-normal placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 resize-none"
+          />
+        </div>
       </div>
 
       {/* 3. Optional Location with Live Suggestions */}
@@ -191,6 +268,19 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
           )}
         </div>
         <div className="relative">
+          {showLocationDropdown && (
+            <MentionHashtagPopover
+              trigger="location"
+              token={currentDraft.location || ''}
+              onSelect={(loc) => {
+                updateDraft({ location: loc });
+                setShowLocationDropdown(false);
+              }}
+              onClose={() => setShowLocationDropdown(false)}
+              position="bottom"
+              className="w-full"
+            />
+          )}
           <input
             type="text"
             maxLength={60}
@@ -200,39 +290,9 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
               updateDraft({ location: e.target.value });
               setShowLocationDropdown(true);
             }}
-            placeholder="Type a city or place (e.g. Paris, France · Mumbai)..."
+            placeholder="e.g. Paris, France · Central Park, NYC · Mumbai"
             className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-medium placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
           />
-
-          {/* Location Auto-Suggestions Dropdown */}
-          {showLocationDropdown && locationSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-[#101426] border border-amber-400/40 rounded-xl shadow-xl overflow-hidden p-1 space-y-0.5">
-              <div className="px-2 py-1 text-[9px] uppercase font-bold text-amber-300 border-b border-white/10 flex items-center justify-between">
-                <span>📍 Suggested Locations</span>
-                <button
-                  type="button"
-                  onClick={() => setShowLocationDropdown(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-              {locationSuggestions.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => {
-                    updateDraft({ location: loc });
-                    setShowLocationDropdown(false);
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-amber-400/20 hover:text-white transition-colors cursor-pointer flex items-center gap-2"
-                >
-                  <span>📍</span>
-                  <span>{loc}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Quick Location Pills */}
@@ -273,41 +333,33 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
 
         {/* Tag input with auto-suggestions popover */}
         <div className="relative">
-          {showTagPopover && tagInput.trim() && (
+          {showTagPopover && (
             <MentionHashtagPopover
               trigger="#"
               token={tagInput.startsWith('#') ? tagInput : `#${tagInput}`}
               onSelect={(completed) => handleAddTag(completed)}
               onClose={() => setShowTagPopover(false)}
-              position="top"
+              position="bottom"
+              className="w-full"
             />
           )}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => {
-                setTagInput(e.target.value);
-                setShowTagPopover(Boolean(e.target.value.trim()));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault();
-                  handleAddTag(tagInput);
-                }
-              }}
-              placeholder="Type # to search & auto-suggest (e.g. #art, #travel)..."
-              className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-mono placeholder:text-slate-500 focus:outline-none focus:border-purple-400"
-            />
-            <button
-              type="button"
-              onClick={() => handleAddTag(tagInput)}
-              disabled={!tagInput.trim()}
-              className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold transition-colors cursor-pointer"
-            >
-              Add
-            </button>
-          </div>
+          <input
+            type="text"
+            value={tagInput}
+            onFocus={() => setShowTagPopover(true)}
+            onChange={(e) => {
+              setTagInput(e.target.value);
+              setShowTagPopover(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                e.preventDefault();
+                handleAddTag(tagInput);
+              }
+            }}
+            placeholder="#travel #photography #music #love"
+            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-mono placeholder:text-slate-500 focus:outline-none focus:border-purple-400"
+          />
         </div>
 
         {/* Active Tag Chips with Remove (✕) */}
@@ -368,41 +420,33 @@ export const AudienceTab: React.FC<AudienceTabProps> = ({
         </div>
 
         <div className="relative">
-          {showFriendPopover && friendInput.trim() && (
+          {showFriendPopover && (
             <MentionHashtagPopover
               trigger="@"
               token={friendInput.startsWith('@') ? friendInput : `@${friendInput}`}
               onSelect={(completed) => handleAddFriend(completed)}
               onClose={() => setShowFriendPopover(false)}
-              position="top"
+              position="bottom"
+              className="w-full"
             />
           )}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={friendInput}
-              onChange={(e) => {
-                setFriendInput(e.target.value);
-                setShowFriendPopover(Boolean(e.target.value.trim()));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault();
-                  handleAddFriend(friendInput);
-                }
-              }}
-              placeholder="Type @ to search & tag friends (e.g. @vivek, @riya)..."
-              className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-pink-400 font-medium"
-            />
-            <button
-              type="button"
-              onClick={() => handleAddFriend(friendInput)}
-              disabled={!friendInput.trim()}
-              className="px-3 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white text-xs font-bold transition-colors cursor-pointer"
-            >
-              Tag
-            </button>
-          </div>
+          <input
+            type="text"
+            value={friendInput}
+            onFocus={() => setShowFriendPopover(true)}
+            onChange={(e) => {
+              setFriendInput(e.target.value);
+              setShowFriendPopover(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                e.preventDefault();
+                handleAddFriend(friendInput);
+              }
+            }}
+            placeholder="e.g. @jay @sarah @vivek"
+            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-pink-400 font-medium"
+          />
         </div>
 
         {/* Active Tagged Friends Chips */}

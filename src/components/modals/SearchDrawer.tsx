@@ -105,9 +105,7 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
       try {
         const [data, suggData] = await Promise.all([
           api.search(query, filter),
-          query.trim()
-            ? api.getSuggestions(query, 'all', 8).catch(() => ({ users: [], hashtags: [], locations: [], spots: [] }))
-            : Promise.resolve({ users: [], hashtags: [], locations: [], spots: [] }),
+          api.getSuggestions(query.trim() || '', 'all', 8).catch(() => ({ users: [], hashtags: [], locations: [], spots: [] })),
         ]);
         if (!cancelled) {
           setSpots(data.spots || data.results || []);

@@ -15,14 +15,30 @@ export interface HashtagSuggestion {
   count: number;
 }
 
+export interface LocationSuggestion {
+  name: string;
+  spotCount: number;
+}
+
 interface MentionHashtagPopoverProps {
-  token: string; // The token being typed, e.g. "@vi" or "#art"
-  trigger: '@' | '#';
+  token: string; // The token being typed, e.g. "@vi", "#art", or "Mumbai"
+  trigger: '@' | '#' | 'location';
   onSelect: (completedText: string) => void;
   onClose: () => void;
   position?: 'top' | 'bottom';
   className?: string;
 }
+
+const DEFAULT_POPULAR_LOCATIONS: LocationSuggestion[] = [
+  { name: 'Mumbai, India', spotCount: 1 },
+  { name: 'Delhi, India', spotCount: 1 },
+  { name: 'Bengaluru, India', spotCount: 1 },
+  { name: 'Goa, India', spotCount: 1 },
+  { name: 'Paris, France', spotCount: 1 },
+  { name: 'New York, USA', spotCount: 1 },
+  { name: 'Tokyo, Japan', spotCount: 1 },
+  { name: 'London, UK', spotCount: 1 },
+];
 
 export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
   token,
@@ -34,6 +50,7 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
 }) => {
   const [users, setUsers] = useState<UserSuggestion[]>([]);
   const [hashtags, setHashtags] = useState<HashtagSuggestion[]>([]);
+  const [locations, setLocations] = useState<LocationSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,22 +62,36 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const type = trigger === '@' ? 'users' : 'hashtags';
-        const data = await api.getSuggestions(token, type, 6);
-        if (!cancelled) {
-          if (trigger === '@') {
-            setUsers(data.users || []);
-          } else {
-            setHashtags(data.hashtags || []);
+        if (trigger === 'location') {
+          const clean = (token || '').trim();
+          const data = await api.getSuggestions(clean, 'locations', 6);
+          if (!cancelled) {
+            const locList = (data.locations && data.locations.length > 0)
+              ? data.locations
+              : DEFAULT_POPULAR_LOCATIONS.filter((l) =>
+                  !clean || l.name.toLowerCase().includes(clean.toLowerCase())
+                );
+            setLocations(locList);
+            setSelectedIndex(0);
           }
-          setSelectedIndex(0);
+        } else {
+          const type = trigger === '@' ? 'users' : 'hashtags';
+          const data = await api.getSuggestions(token, type, 6);
+          if (!cancelled) {
+            if (trigger === '@') {
+              setUsers(data.users || []);
+            } else {
+              setHashtags(data.hashtags || []);
+            }
+            setSelectedIndex(0);
+          }
         }
       } catch (err) {
         if (!cancelled) console.warn('[MentionHashtag] Suggestion fetch error', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 80);
+    }, 60);
 
     return () => {
       cancelled = true;
@@ -71,7 +102,8 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const itemsCount = trigger === '@' ? users.length : hashtags.length;
+      const itemsCount =
+        trigger === '@' ? users.length : trigger === '#' ? hashtags.length : locations.length;
       if (itemsCount === 0) return;
 
       if (e.key === 'ArrowDown') {
@@ -87,6 +119,8 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
         } else if (trigger === '#' && hashtags[selectedIndex]) {
           const t = hashtags[selectedIndex].tag;
           onSelect(`${t.startsWith('#') ? t : `#${t}`} `);
+        } else if (trigger === 'location' && locations[selectedIndex]) {
+          onSelect(locations[selectedIndex].name);
         }
       } else if (e.key === 'Escape') {
         onClose();
@@ -95,9 +129,10 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [trigger, users, hashtags, selectedIndex, onSelect, onClose]);
+  }, [trigger, users, hashtags, locations, selectedIndex, onSelect, onClose]);
 
-  const hasItems = trigger === '@' ? users.length > 0 : hashtags.length > 0;
+  const hasItems =
+    trigger === '@' ? users.length > 0 : trigger === '#' ? hashtags.length > 0 : locations.length > 0;
   if (!hasItems && !loading) return null;
 
   return (
@@ -108,7 +143,13 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
       } ${className}`}
     >
       <div className="px-2 py-1 text-[10px] uppercase font-bold text-slate-400 border-b border-white/10 flex items-center justify-between">
-        <span>{trigger === '@' ? '👥 Mention User' : '#️⃣ Suggest Hashtag'}</span>
+        <span>
+          {trigger === '@'
+            ? '👥 Mention User'
+            : trigger === '#'
+            ? '#️⃣ Suggest Hashtag'
+            : '📍 Suggest Location'}
+        </span>
         {loading && <span className="animate-spin text-pink-400">⚡</span>}
       </div>
 
@@ -158,6 +199,28 @@ export const MentionHashtagPopover: React.FC<MentionHashtagPopoverProps> = ({
               <span className="text-[9px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded-md shrink-0">
                 {h.count} pop{h.count === 1 ? '' : 's'}
               </span>
+            </button>
+          ))}
+
+        {trigger === 'location' &&
+          locations.map((loc, idx) => (
+            <button
+              key={loc.name}
+              type="button"
+              onClick={() => onSelect(loc.name)}
+              className={`w-full text-left px-2.5 py-1.5 rounded-xl flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                selectedIndex === idx ? 'bg-amber-400/25 text-white' : 'hover:bg-white/10 text-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-amber-400">📍</span>
+                <span className="text-xs font-medium text-slate-200 truncate">{loc.name}</span>
+              </div>
+              {loc.spotCount > 0 && (
+                <span className="text-[9px] font-mono text-amber-300 bg-amber-400/10 px-1.5 py-0.5 rounded-md shrink-0">
+                  {loc.spotCount} pops
+                </span>
+              )}
             </button>
           ))}
       </div>
