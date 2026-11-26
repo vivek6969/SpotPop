@@ -14,7 +14,8 @@
         "sp_1795180264573_0uv8",
         "sp_1795501734612_28vf",
         "sp_1795596197108_grla"
-      ]
+      ],
+      "passwordHash": "3aa7972cdb77677f5eaf26588b346723:54eca5d2ec65959c89df656e46fd6b53011a9b445ae1c07eacc1074d4e772e71d3d2f58fb937451862de9cfb616cf0cf323f7a88d8bbb6ecf3dcce31c1afed45"
     },
     {
       "id": "usr_vivek",
@@ -5541,6 +5542,15 @@
       "tier": "mini_pop",
       "message": "Rohit 9dy0z started following @Priya 9dy0z! ✨",
       "timestamp": "2026-11-25T10:59:49.287Z"
+    },
+    {
+      "id": "act_1795690468348",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "v_1795503119733_mfmo",
+      "tier": "mini_pop",
+      "message": "v_1795503119733_mfmo started following @Spotter! ✨",
+      "timestamp": "2026-11-26T10:54:28.348Z"
     }
   ],
   "systemSettings": {

@@ -13,7 +13,7 @@ function getClientHeaders(): Record<string, string> {
       localStorage.setItem('spotpop_viewer_id', viewerId);
     }
     headers['x-viewer-id'] = viewerId;
-  } catch (_) {}
+  } catch (_) { }
   return headers;
 }
 
