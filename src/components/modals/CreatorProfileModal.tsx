@@ -159,7 +159,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     if (isSelf && profileData?.user?.username) {
       api.getFollowRequests(profileData.user.username, authToken || undefined)
         .then(res => setPendingRequests(res.requests || []))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [isSelf, profileData?.user?.username]);
 
@@ -179,7 +179,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
         const set = saved ? new Set(JSON.parse(saved)) : new Set();
         set.delete(targetUsername);
         localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-      } catch {}
+      } catch { }
       // Refresh profile to reflect locked state if target account is private
       fetchProfile();
     } catch {
@@ -203,7 +203,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
         const set = saved ? new Set(JSON.parse(saved)) : new Set();
         set.delete(targetUsername);
         localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-      } catch {}
+      } catch { }
     } catch (e: any) {
       alert(e.message || 'Failed to unfollow user');
     }
@@ -227,7 +227,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           const set = saved ? new Set(JSON.parse(saved)) : new Set();
           set.add(targetUsername);
           localStorage.setItem('spotpop_followed_creators', JSON.stringify(Array.from(set)));
-        } catch {}
+        } catch { }
       }
     } catch (e: any) {
       alert(e.message || 'Failed to follow user');
@@ -338,13 +338,13 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           url,
         });
         return;
-      } catch {}
+      } catch { }
     }
     try {
       await navigator.clipboard.writeText(url);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2200);
-    } catch {}
+    } catch { }
   };
 
   // Photo file select & upload
@@ -678,13 +678,12 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         }
                       }}
                       disabled={followLoading}
-                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all text-center cursor-pointer shadow-sm flex items-center justify-center gap-1.5 ${
-                        followStatus === 'accepted'
-                          ? 'bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-400 border border-white/20 hover:border-rose-500/40 group'
-                          : followStatus === 'pending'
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all text-center cursor-pointer shadow-sm flex items-center justify-center gap-1.5 ${followStatus === 'accepted'
+                        ? 'bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-400 border border-white/20 hover:border-rose-500/40 group'
+                        : followStatus === 'pending'
                           ? 'bg-white/15 hover:bg-white/25 text-amber-300 border border-amber-400/40'
                           : 'bg-[#0095F6] hover:bg-[#1877F2] text-white active:scale-98'
-                      }`}
+                        }`}
                       title={followStatus === 'accepted' ? 'Click to unfollow' : undefined}
                     >
                       {followLoading ? (
@@ -901,14 +900,12 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditIsPrivate(!editIsPrivate)}
-                      className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                        editIsPrivate ? 'bg-[#0095F6]' : 'bg-white/20'
-                      }`}
+                      className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${editIsPrivate ? 'bg-[#0095F6]' : 'bg-white/20'
+                        }`}
                     >
                       <span
-                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                          editIsPrivate ? 'right-0.5' : 'left-0.5'
-                        }`}
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${editIsPrivate ? 'right-0.5' : 'left-0.5'
+                          }`}
                       />
                     </button>
                   </div>
@@ -958,11 +955,10 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                       <button
                         onClick={handleToggleFollow}
                         disabled={followLoading}
-                        className={`px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer ${
-                          followStatus === 'pending'
-                            ? 'bg-white/15 text-amber-300 border border-amber-400/30'
-                            : 'bg-[#0095F6] hover:bg-[#1877F2] text-white'
-                        }`}
+                        className={`px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer ${followStatus === 'pending'
+                          ? 'bg-white/15 text-amber-300 border border-amber-400/30'
+                          : 'bg-[#0095F6] hover:bg-[#1877F2] text-white'
+                          }`}
                       >
                         {followStatus === 'pending' ? 'Requested ⏳' : '+ Follow to Unlock'}
                       </button>

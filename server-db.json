@@ -1096,6 +1096,62 @@
       "createdAt": "2026-11-25T10:59:49.284Z",
       "ownedSpotIds": [],
       "followingCount": 1
+    },
+    {
+      "id": "usr_alice_4oaey",
+      "email": "alice_4oaey@example.com",
+      "username": "alice_4oaey",
+      "displayName": "Alice 4oaey",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.053Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_bob_4oaey",
+      "email": "bob_4oaey@example.com",
+      "username": "bob_4oaey",
+      "displayName": "Bob 4oaey",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.062Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_sara_ht2i1",
+      "email": "sara_ht2i1@example.com",
+      "username": "sara_ht2i1",
+      "displayName": "Sara ht2i1",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.081Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_dave_ht2i1",
+      "email": "dave_ht2i1@example.com",
+      "username": "dave_ht2i1",
+      "displayName": "Dave ht2i1",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.088Z",
+      "ownedSpotIds": []
+    },
+    {
+      "id": "usr_priya_v5g18",
+      "email": "priya_v5g18@example.com",
+      "username": "priya_v5g18",
+      "displayName": "Priya v5g18",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.099Z",
+      "ownedSpotIds": [],
+      "followersCount": 1
+    },
+    {
+      "id": "usr_rohit_v5g18",
+      "email": "rohit_v5g18@example.com",
+      "username": "rohit_v5g18",
+      "displayName": "Rohit v5g18",
+      "role": "user",
+      "createdAt": "2026-11-26T06:40:31.101Z",
+      "ownedSpotIds": [],
+      "followingCount": 1
     }
   ],
   "spots": [
@@ -2229,6 +2285,226 @@
       "sharesCount": 0,
       "connectedSpotIds": [
         "sp_priya_9dy0z"
+      ]
+    },
+    {
+      "id": "sp_alice_4oaey",
+      "x": 100,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "alice_4oaey",
+      "ownerId": "usr_alice_4oaey",
+      "title": "Alice's Birthday Party",
+      "description": "Celebrating 25th birthday with friends!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "birthday",
+        "party",
+        "friends"
+      ],
+      "taggedUsers": [
+        "bob_4oaey",
+        "charlie_chef"
+      ],
+      "content": {
+        "headline": "Alice's Birthday",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape",
+        "connectedSpotIds": []
+      },
+      "createdAt": "2026-11-26T06:40:31.055Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 10,
+      "sharesCount": 2,
+      "connectedSpotIds": []
+    },
+    {
+      "id": "sp_bob_4oaey",
+      "x": 300,
+      "y": 100,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "bob_4oaey",
+      "ownerId": "usr_bob_4oaey",
+      "title": "Bob's Gift to Alice",
+      "description": "The surprise cake we got for Alice!",
+      "location": "Goa Beach Resort",
+      "tags": [
+        "cake",
+        "surprise",
+        "friends"
+      ],
+      "content": {
+        "headline": "Surprise Cake!",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape",
+        "connectedSpotIds": []
+      },
+      "createdAt": "2026-11-26T06:40:31.066Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 5,
+      "sharesCount": 1,
+      "connectedSpotIds": []
+    },
+    {
+      "id": "sp_sara_ht2i1",
+      "x": 10,
+      "y": 10,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "sara_ht2i1",
+      "ownerId": "usr_sara_ht2i1",
+      "title": "Solo Pop",
+      "content": {
+        "headline": "Solo Song",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape"
+      },
+      "createdAt": "2026-11-26T06:40:31.083Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_dave_ht2i1",
+      "x": 50,
+      "y": 50,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#BAE6FD",
+      "creatorName": "dave_ht2i1",
+      "ownerId": "usr_dave_ht2i1",
+      "title": "Dance Pop",
+      "content": {
+        "headline": "Dance Routine",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape"
+      },
+      "createdAt": "2026-11-26T06:40:31.090Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0
+    },
+    {
+      "id": "sp_priya_v5g18",
+      "x": 200,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#FEF08A",
+      "creatorName": "priya_v5g18",
+      "ownerId": "usr_priya_v5g18",
+      "title": "Priya's Exhibition",
+      "content": {
+        "headline": "Art Fair",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape",
+        "connectedSpotIds": [
+          "sp_rohit_v5g18"
+        ]
+      },
+      "createdAt": "2026-11-26T06:40:31.110Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0,
+      "connectedSpotIds": [
+        "sp_rohit_v5g18"
+      ]
+    },
+    {
+      "id": "sp_rohit_v5g18",
+      "x": 250,
+      "y": 200,
+      "width": 170,
+      "height": 170,
+      "tier": "mini_pop",
+      "slug": "test-spot",
+      "rotation": 0,
+      "shape": "sticky",
+      "background": "#E9D5FF",
+      "creatorName": "rohit_v5g18",
+      "ownerId": "usr_rohit_v5g18",
+      "title": "At the exhibition with Priya!",
+      "content": {
+        "headline": "Awesome Show",
+        "text": "",
+        "author": "",
+        "textColor": "#000",
+        "fontFamily": "Caveat",
+        "fontSize": 24,
+        "alignment": "center",
+        "stickers": [],
+        "frameStyle": "tape",
+        "connectedSpotIds": [
+          "sp_priya_v5g18"
+        ]
+      },
+      "createdAt": "2026-11-26T06:40:31.115Z",
+      "status": "published",
+      "moderationStatus": "approved",
+      "viewsCount": 0,
+      "sharesCount": 0,
+      "connectedSpotIds": [
+        "sp_priya_v5g18"
       ]
     }
   ],
@@ -7397,6 +7673,69 @@
       "tier": "mini_pop",
       "message": "rohit_9dy0z claimed a Mini Pop on SpotPop!",
       "timestamp": "2026-11-25T10:59:49.297Z"
+    },
+    {
+      "id": "act_1795675231056_sad7",
+      "type": "claimed",
+      "spotId": "sp_alice_4oaey",
+      "creatorName": "alice_4oaey",
+      "tier": "mini_pop",
+      "message": "alice_4oaey claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.056Z"
+    },
+    {
+      "id": "act_1795675231066_bniw",
+      "type": "claimed",
+      "spotId": "sp_bob_4oaey",
+      "creatorName": "bob_4oaey",
+      "tier": "mini_pop",
+      "message": "bob_4oaey claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.066Z"
+    },
+    {
+      "id": "act_1795675231083_snyb",
+      "type": "claimed",
+      "spotId": "sp_sara_ht2i1",
+      "creatorName": "sara_ht2i1",
+      "tier": "mini_pop",
+      "message": "sara_ht2i1 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.083Z"
+    },
+    {
+      "id": "act_1795675231090_zsio",
+      "type": "claimed",
+      "spotId": "sp_dave_ht2i1",
+      "creatorName": "dave_ht2i1",
+      "tier": "mini_pop",
+      "message": "dave_ht2i1 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.090Z"
+    },
+    {
+      "id": "act_1795675231105",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Rohit v5g18",
+      "tier": "mini_pop",
+      "message": "Rohit v5g18 started following @Priya v5g18! ✨",
+      "timestamp": "2026-11-26T06:40:31.105Z"
+    },
+    {
+      "id": "act_1795675231110_jtdr",
+      "type": "claimed",
+      "spotId": "sp_priya_v5g18",
+      "creatorName": "priya_v5g18",
+      "tier": "mini_pop",
+      "message": "priya_v5g18 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.110Z"
+    },
+    {
+      "id": "act_1795675231115_20ld",
+      "type": "claimed",
+      "spotId": "sp_rohit_v5g18",
+      "creatorName": "rohit_v5g18",
+      "tier": "mini_pop",
+      "message": "rohit_v5g18 claimed a Mini Pop on SpotPop!",
+      "timestamp": "2026-11-26T06:40:31.115Z"
     }
   ],
   "systemSettings": {
@@ -7561,6 +7900,14 @@
       "status": "accepted",
       "createdAt": "2026-11-25T10:59:49.287Z",
       "acceptedAt": "2026-11-25T10:59:49.287Z"
+    },
+    {
+      "id": "flw_1795675231105_adhw",
+      "followerId": "usr_rohit_v5g18",
+      "followingId": "usr_priya_v5g18",
+      "status": "accepted",
+      "createdAt": "2026-11-26T06:40:31.105Z",
+      "acceptedAt": "2026-11-26T06:40:31.105Z"
     }
   ]
 }

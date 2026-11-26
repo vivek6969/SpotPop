@@ -397,6 +397,20 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 
 ---
 
+### [TASK-040]: Integration of "Pop Details & Discovery" Tab in Studio Desktop Navigation Bar
+- **Priority**: P0 (Feature Discoverability & Studio Navigation)
+- **Assigned Agent**: ui-ux-engineer & senior-engineer
+- **Description**: Added a dedicated `📝 Details` tab button to the desktop tool navigation strip in `CreateSpotModal.tsx` directly alongside `Text`, `Stickers`, `Frames`, and `Background`. Clicking `📝 Details` immediately displays the complete `Pop Details & Discovery` section: optional Pop Title, Description & Story, Location with one-tap city suggestions, Hashtags & Topics, Friends Tagging, Connected Pops, and Audience Visibility settings.
+- **Status**: Completed
+- **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
+- **Review Result**: Approved by CTO.
+
+
+
+
+
+---
+
 ### [TASK-031]: Universal Unfollow Capabilities across Following Lists, Profile Sheet, and Spot Modal
 - **Priority**: P0 (User Freedom & Social Graph Autonomy)
 - **Assigned Agent**: senior-engineer & ui-ux-engineer
@@ -510,6 +524,12 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Status**: Completed
 - **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
+
+
+
+
+
+
 
 
 

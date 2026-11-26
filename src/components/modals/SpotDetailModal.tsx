@@ -153,7 +153,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       const set = saved ? new Set<string>(JSON.parse(saved)) : new Set<string>();
       setFollowedUsernames(set);
       setIsFollowing(set.has(spot.creatorName));
-    } catch {}
+    } catch { }
   }, [spot.creatorName]);
 
   const isSpotLocked = Boolean(spot.isLocked && !isOwner && !isFollowing && !unlockedLocally);
@@ -249,7 +249,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       if (nextLiked) set.add(spot.id);
       else set.delete(spot.id);
       localStorage.setItem('spotpop_liked_spots', JSON.stringify(Array.from(set)));
-    } catch {}
+    } catch { }
 
     if (nextLiked) {
       confetti({
@@ -440,7 +440,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
       ))}
 
       <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-[#12141F] border border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto animate-fade-in">
-        
+
         {/* Top Header */}
         <div className="px-4 sm:px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40 backdrop-blur-md">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -877,11 +877,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleLike}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer ${
-                    isLiked
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-md shadow-rose-500/20'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10 border border-white/10'
-                  }`}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer ${isLiked
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-md shadow-rose-500/20'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 border border-white/10'
+                    }`}
                   title={isLiked ? 'Unlike' : 'Like'}
                 >
                   <svg className={`w-4 h-4 fill-current ${isLiked ? 'text-rose-500' : 'text-white/70'}`} viewBox="0 0 24 24">
@@ -894,11 +893,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsCommentsOpen(prev => !prev)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer ${
-                    isCommentsOpen
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-md shadow-cyan-500/20'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10 border border-white/10'
-                  }`}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer ${isCommentsOpen
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-md shadow-cyan-500/20'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 border border-white/10'
+                    }`}
                   title={isCommentsOpen ? 'Hide Comments' : 'View Comments'}
                 >
                   <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
