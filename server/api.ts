@@ -559,6 +559,20 @@ apiRouter.post('/spots/:id/react', (req: Request, res: Response) => {
 
 // =================== SEARCH & DISCOVERY ===================
 
+// Universal auto-suggestions for @mentions, #hashtags, locations, and spots
+apiRouter.get('/suggestions', (req: Request, res: Response) => {
+  try {
+    const rawQ = ((req.query.q as string) || '').trim();
+    const type = ((req.query.type as string) || 'all').toLowerCase();
+    const limit = Math.min(25, Math.max(1, parseInt((req.query.limit as string) || '8', 10)));
+
+    const result = db.getSuggestions(rawQ, type, limit);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.get('/search', (req: Request, res: Response) => {
   try {
     const q = ((req.query.q as string) || '').toLowerCase().trim();

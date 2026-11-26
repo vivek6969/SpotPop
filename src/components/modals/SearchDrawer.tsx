@@ -41,6 +41,11 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
   const [filter, setFilter] = useState('all');
   const [spots, setSpots] = useState<Spot[]>([]);
   const [creators, setCreators] = useState<CreatorResult[]>([]);
+  const [suggestions, setSuggestions] = useState<{
+    users: Array<{ id: string; username: string; displayName: string; avatarUrl?: string; spotCount: number }>;
+    hashtags: Array<{ tag: string; count: number }>;
+    locations: Array<{ name: string; spotCount: number }>;
+  }>({ users: [], hashtags: [], locations: [] });
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
@@ -98,10 +103,20 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const data = await api.search(query, filter);
+        const [data, suggData] = await Promise.all([
+          api.search(query, filter),
+          query.trim()
+            ? api.getSuggestions(query, 'all', 8).catch(() => ({ users: [], hashtags: [], locations: [], spots: [] }))
+            : Promise.resolve({ users: [], hashtags: [], locations: [], spots: [] }),
+        ]);
         if (!cancelled) {
           setSpots(data.spots || data.results || []);
           setCreators(data.creators || []);
+          setSuggestions({
+            users: suggData.users || [],
+            hashtags: suggData.hashtags || [],
+            locations: suggData.locations || [],
+          });
           setSelectedIndex(-1);
         }
       } catch (err) {
@@ -227,6 +242,67 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+          {/* Live Auto-Suggestions for @mentions, #hashtags, and locations */}
+          {query.trim() && (suggestions.hashtags.length > 0 || suggestions.users.length > 0 || suggestions.locations.length > 0) && (
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>⚡ Instant Auto-Suggestions</span>
+                <span className="text-[9px] text-pink-400 font-normal">Tap to filter</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {/* User Mentions Suggestions */}
+                {suggestions.users.slice(0, 4).map((u) => (
+                  <button
+                    key={u.username}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectCreator) {
+                        onSelectCreator(u.username);
+                        onClose();
+                      } else {
+                        setQuery(`@${u.username}`);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs text-pink-200 transition-colors cursor-pointer"
+                  >
+                    <img
+                      src={u.avatarUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${u.username}`}
+                      alt={u.username}
+                      className="w-4 h-4 rounded-full object-cover"
+                    />
+                    <span className="font-bold">@{u.username}</span>
+                  </button>
+                ))}
+
+                {/* Hashtags Suggestions */}
+                {suggestions.hashtags.slice(0, 5).map((h) => (
+                  <button
+                    key={h.tag}
+                    type="button"
+                    onClick={() => setQuery(h.tag)}
+                    className="px-2.5 py-1 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-mono font-bold text-purple-200 transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span>{h.tag.startsWith('#') ? h.tag : `#${h.tag}`}</span>
+                    <span className="text-[9px] text-purple-400 opacity-75">({h.count})</span>
+                  </button>
+                ))}
+
+                {/* Locations Suggestions */}
+                {suggestions.locations.slice(0, 3).map((loc) => (
+                  <button
+                    key={loc.name}
+                    type="button"
+                    onClick={() => setQuery(loc.name)}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs text-amber-200 transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span>📍</span>
+                    <span>{loc.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Quick Suggestions & Recent Searches when query is empty */}
           {!query && (
             <div className="space-y-4">

@@ -1199,6 +1199,144 @@ class Database {
   }
 
   // Users
+  getSuggestions(query: string, type: string = 'all', limit: number = 8): {
+    users: Array<{ id: string; username: string; displayName: string; avatarUrl?: string; isPrivate?: boolean; spotCount: number }>;
+    hashtags: Array<{ tag: string; count: number }>;
+    locations: Array<{ name: string; spotCount: number }>;
+    spots: Array<{ id: string; headline: string; title?: string; creatorName: string; imageUrl?: string; tier: string }>;
+  } {
+    const raw = (query || '').trim();
+    const isAtMention = raw.startsWith('@');
+    const isHashtag = raw.startsWith('#');
+    const clean = raw.replace(/^[@#]/, '').toLowerCase();
+
+    // 1. Users matching
+    const shouldIncludeUsers = type === 'all' || type === 'users' || isAtMention;
+    let matchingUsers: Array<{ id: string; username: string; displayName: string; avatarUrl?: string; isPrivate?: boolean; spotCount: number }> = [];
+
+    if (shouldIncludeUsers) {
+      const spotsCountMap = new Map<string, number>();
+      for (const s of this.data.spots) {
+        if (s.status === 'hidden') continue;
+        if (s.ownerId) spotsCountMap.set(s.ownerId, (spotsCountMap.get(s.ownerId) || 0) + 1);
+        if (s.creatorName) {
+          const cKey = s.creatorName.toLowerCase();
+          spotsCountMap.set(cKey, (spotsCountMap.get(cKey) || 0) + 1);
+        }
+      }
+
+      matchingUsers = this.data.users
+        .filter(u => {
+          if (!clean) return true;
+          return u.username.toLowerCase().includes(clean) || (u.displayName || '').toLowerCase().includes(clean);
+        })
+        .map(u => ({
+          id: u.id,
+          username: u.username,
+          displayName: u.displayName || u.username,
+          avatarUrl: u.avatarUrl,
+          isPrivate: u.isPrivate,
+          spotCount: spotsCountMap.get(u.id) || spotsCountMap.get(u.username.toLowerCase()) || 0,
+        }))
+        .sort((a, b) => b.spotCount - a.spotCount)
+        .slice(0, limit);
+    }
+
+    // 2. Hashtags matching
+    const shouldIncludeHashtags = type === 'all' || type === 'hashtags' || isHashtag;
+    let matchingHashtags: Array<{ tag: string; count: number }> = [];
+
+    if (shouldIncludeHashtags) {
+      const tagCounts = new Map<string, number>();
+      const DEFAULT_POPULAR_TAGS = ['#art', '#photography', '#travel', '#love', '#friends', '#memories', '#music', '#summer', '#vibes', '#cool', '#spotpop', '#canvas', '#creative', '#nature', '#sunset', '#party', '#birthday'];
+      for (const tag of DEFAULT_POPULAR_TAGS) {
+        tagCounts.set(tag.toLowerCase(), 1);
+      }
+
+      for (const s of this.data.spots) {
+        if (s.status === 'hidden') continue;
+        const allTags = [...(s.tags || []), ...(s.content?.tags || [])];
+        for (const t of allTags) {
+          const norm = (t.startsWith('#') ? t : `#${t}`).toLowerCase();
+          tagCounts.set(norm, (tagCounts.get(norm) || 0) + 1);
+        }
+      }
+
+      matchingHashtags = Array.from(tagCounts.entries())
+        .map(([tag, count]) => ({ tag, count }))
+        .filter(item => {
+          if (!clean) return true;
+          return item.tag.toLowerCase().includes(clean);
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+    }
+
+    // 3. Locations matching
+    const shouldIncludeLocations = type === 'all' || type === 'locations';
+    let matchingLocations: Array<{ name: string; spotCount: number }> = [];
+
+    if (shouldIncludeLocations && !isAtMention && !isHashtag) {
+      const locCounts = new Map<string, number>();
+      const POPULAR_LOCATIONS = [
+        'Mumbai, India', 'Delhi, India', 'Bengaluru, India', 'Goa, India',
+        'Paris, France', 'New York, USA', 'Tokyo, Japan', 'London, UK',
+        'Berlin, Germany', 'Sydney, Australia', 'Dubai, UAE', 'Toronto, Canada'
+      ];
+      for (const loc of POPULAR_LOCATIONS) {
+        locCounts.set(loc, 1);
+      }
+
+      for (const s of this.data.spots) {
+        if (s.status === 'hidden') continue;
+        const loc = s.location || s.content?.location;
+        if (loc) {
+          locCounts.set(loc, (locCounts.get(loc) || 0) + 1);
+        }
+      }
+
+      matchingLocations = Array.from(locCounts.entries())
+        .map(([name, spotCount]) => ({ name, spotCount }))
+        .filter(item => {
+          if (!clean) return true;
+          return item.name.toLowerCase().includes(clean);
+        })
+        .sort((a, b) => b.spotCount - a.spotCount)
+        .slice(0, limit);
+    }
+
+    // 4. Spots matching
+    const shouldIncludeSpots = (type === 'all' || type === 'spots') && !isAtMention && !isHashtag;
+    let matchingSpots: Array<{ id: string; headline: string; title?: string; creatorName: string; imageUrl?: string; tier: string }> = [];
+
+    if (shouldIncludeSpots && clean) {
+      matchingSpots = this.data.spots
+        .filter(s => {
+          if (s.status === 'hidden' || s.moderationStatus !== 'approved') return false;
+          const headline = (s.content?.headline || '').toLowerCase();
+          const title = (s.title || s.content?.title || '').toLowerCase();
+          const creator = (s.creatorName || '').toLowerCase();
+          return headline.includes(clean) || title.includes(clean) || creator.includes(clean);
+        })
+        .slice(0, limit)
+        .map(s => ({
+          id: s.id,
+          headline: s.content?.headline || s.title || s.creatorName,
+          title: s.title || s.content?.title,
+          creatorName: s.creatorName,
+          imageUrl: s.content?.imageUrl,
+          tier: s.tier,
+        }));
+    }
+
+    return {
+      users: matchingUsers,
+      hashtags: matchingHashtags,
+      locations: matchingLocations,
+      spots: matchingSpots,
+    };
+  }
+
   getUsers(): User[] {
     return this.data.users;
   }

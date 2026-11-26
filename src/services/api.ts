@@ -151,6 +151,18 @@ export const api = {
     return res.json();
   },
 
+  async getSuggestions(query: string, type: 'all' | 'users' | 'hashtags' | 'locations' | 'spots' = 'all', limit: number = 8): Promise<{
+    users: Array<{ id: string; username: string; displayName: string; avatarUrl?: string; isPrivate?: boolean; spotCount: number }>;
+    hashtags: Array<{ tag: string; count: number }>;
+    locations: Array<{ name: string; spotCount: number }>;
+    spots: Array<{ id: string; headline: string; title?: string; creatorName: string; imageUrl?: string; tier: string }>;
+  }> {
+    const params = new URLSearchParams({ q: query, type, limit: limit.toString() });
+    const res = await fetch(`${API_BASE}/suggestions?${params}`);
+    if (!res.ok) throw new Error('Failed to fetch suggestions');
+    return res.json();
+  },
+
   async getExploreSpots(params: {
     sort?: string;
     tier?: string;

@@ -4,6 +4,7 @@ import { Spot, User, Comment } from '../../types';
 import { api } from '../../services/api';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotAudioPlayer } from '../audio/SpotAudioPlayer';
+import { MentionHashtagPopover } from '../common/MentionHashtagPopover';
 
 const QUICK_REACTIONS = ['🔥', '❤️', '👏', '😂', '😮', '🚀', '💯'];
 
@@ -303,6 +304,41 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const [commentsList, setCommentsList] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentInput, setCommentInput] = useState('');
+  const [activeMentionTrigger, setActiveMentionTrigger] = useState<'@' | '#' | null>(null);
+  const [activeMentionToken, setActiveMentionToken] = useState('');
+  const [mentionStartIndex, setMentionStartIndex] = useState<number>(-1);
+
+  const handleCommentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setCommentInput(val);
+
+    const cursorPos = e.target.selectionStart || val.length;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const lastWordMatch = textBeforeCursor.match(/([@#][a-zA-Z0-9_]*)$/);
+
+    if (lastWordMatch) {
+      const matchText = lastWordMatch[1];
+      const trig = matchText[0] as '@' | '#';
+      setActiveMentionTrigger(trig);
+      setActiveMentionToken(matchText);
+      setMentionStartIndex(cursorPos - matchText.length);
+    } else {
+      setActiveMentionTrigger(null);
+      setActiveMentionToken('');
+      setMentionStartIndex(-1);
+    }
+  };
+
+  const handleSelectMentionSuggestion = (completedText: string) => {
+    if (mentionStartIndex < 0) return;
+    const before = commentInput.slice(0, mentionStartIndex);
+    const after = commentInput.slice(mentionStartIndex + activeMentionToken.length);
+    const nextVal = `${before}${completedText}${after}`;
+    setCommentInput(nextVal);
+    setActiveMentionTrigger(null);
+    setActiveMentionToken('');
+    setMentionStartIndex(-1);
+  };
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentCount, setCommentCount] = useState<number>(spot.commentsCount || 0);
@@ -1149,15 +1185,26 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
                   Comments are disabled for this Pop
                 </div>
               ) : (
-                <form onSubmit={handlePostComment} className="flex items-center gap-2 pt-1">
-                  <input
-                    type="text"
-                    value={commentInput}
-                    onChange={(e) => setCommentInput(e.target.value)}
-                    placeholder={replyingTo ? `Reply to @${replyingTo.authorName}...` : 'Add a comment, @mention, #tag...'}
-                    maxLength={280}
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
-                  />
+                <form onSubmit={handlePostComment} className="flex items-center gap-2 pt-1 relative">
+                  <div className="relative flex-1">
+                    {activeMentionTrigger && (
+                      <MentionHashtagPopover
+                        trigger={activeMentionTrigger}
+                        token={activeMentionToken}
+                        onSelect={handleSelectMentionSuggestion}
+                        onClose={() => setActiveMentionTrigger(null)}
+                        position="top"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={commentInput}
+                      onChange={handleCommentInputChange}
+                      placeholder={replyingTo ? `Reply to @${replyingTo.authorName}...` : 'Add a comment, @mention, #tag...'}
+                      maxLength={280}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={!commentInput.trim() || isSubmittingComment}
