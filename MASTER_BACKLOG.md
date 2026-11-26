@@ -391,19 +391,20 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
 
-
-
-
-
 ---
 
-### [TASK-040]: Integration of "Pop Details & Discovery" Tab in Studio Desktop Navigation Bar
-- **Priority**: P0 (Feature Discoverability & Studio Navigation)
-- **Assigned Agent**: ui-ux-engineer & senior-engineer
-- **Description**: Added a dedicated `📝 Details` tab button to the desktop tool navigation strip in `CreateSpotModal.tsx` directly alongside `Text`, `Stickers`, `Frames`, and `Background`. Clicking `📝 Details` immediately displays the complete `Pop Details & Discovery` section: optional Pop Title, Description & Story, Location with one-tap city suggestions, Hashtags & Topics, Friends Tagging, Connected Pops, and Audience Visibility settings.
+### [TASK-041]: Purge Test Mock Spots from Live Database and Enforce Zero-Persistence Test Isolation
+- **Priority**: P0 (Data Integrity & Canvas State Purity)
+- **Assigned Agent**: senior-engineer & qa-engineer
+- **Description**: Resolved issue where automated test runs polluted `server-db.json` with mock spots ("Alice's Birthday", "Surprise Cake!", "Awesome Show", etc.) visible on the user's live canvas:
+  1. Completely purged all 24 mock test spots, 59 mock users, 48 mock activities, and 8 mock follows from `server-db.json`, restoring the database strictly to the user's authentic pops (`sp_1795596197108_grla`, `sp_1795599635135_axmz`, `sp_1795600221519_bjp3`).
+  2. Enhanced `Database` in `server/database.ts` with `isPersistent: boolean = true`. When `isPersistent === false`, `load()` initializes isolated in-memory seed copies without touching `server-db.json`, and `save()` is a strict no-op.
+  3. Configured `tests/connected-pops.test.ts` to instantiate `new Database(false)`.
+  4. Terminated legacy dev server processes to prevent memory-cached mock spots from flushing to disk upon restart.
 - **Status**: Completed
-- **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
+- **Test Evidence**: All 103 automated tests pass in 968ms; verified `server-db.json` remains strictly at 3 authentic spots before and after running test suite.
 - **Review Result**: Approved by CTO.
+
 
 
 
@@ -525,10 +526,19 @@ This backlog is maintained autonomously by the **CTO / Main Orchestrator**. Task
 - **Test Evidence**: 103/103 automated tests passing, clean production build in 811ms, 0 TypeScript compiler errors.
 - **Review Result**: Approved by CTO.
 
+---
 
-
-
-
+### [TASK-041]: Purge Test Mock Spots from Live Database and Enforce Zero-Persistence Test Isolation
+- **Priority**: P0 (Data Integrity & Canvas State Purity)
+- **Assigned Agent**: senior-engineer & qa-engineer
+- **Description**: Resolved issue where automated test runs polluted `server-db.json` with mock spots ("Alice's Birthday", "Surprise Cake!", "Awesome Show", etc.) visible on the user's live canvas:
+  1. Completely purged all 24 mock test spots, 59 mock users, 48 mock activities, and 8 mock follows from `server-db.json`, restoring the database strictly to the user's authentic pops (`sp_1795596197108_grla`, `sp_1795599635135_axmz`, `sp_1795600221519_bjp3`).
+  2. Enhanced `Database` in `server/database.ts` with `isPersistent: boolean = true`. When `isPersistent === false`, `load()` initializes isolated in-memory seed copies without touching `server-db.json`, and `save()` is a strict no-op.
+  3. Configured `tests/connected-pops.test.ts` to instantiate `new Database(false)`.
+  4. Terminated legacy dev server processes to prevent memory-cached mock spots from flushing to disk upon restart.
+- **Status**: Completed
+- **Test Evidence**: All 103 automated tests pass in 968ms; verified `server-db.json` remains strictly at 3 authentic spots before and after running test suite.
+- **Review Result**: Approved by CTO.
 
 
 

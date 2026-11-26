@@ -5,7 +5,7 @@ import { User, Spot } from '../src/types';
 
 describe('Connected Pops (Memory Threads) & Permission Engine', () => {
   it('allows owner, tagged friend, or follower to connect pops bidirectionally', () => {
-    const db = new Database();
+    const db = new Database(false);
     const nonce = Math.random().toString(36).substring(2, 7);
 
     // Create Creator A and Pop A
@@ -119,7 +119,7 @@ describe('Connected Pops (Memory Threads) & Permission Engine', () => {
   });
 
   it('rejects connection by unrelated random user', () => {
-    const db = new Database();
+    const db = new Database(false);
     const nonce = Math.random().toString(36).substring(2, 7);
 
     const creatorA: User = {
@@ -200,7 +200,7 @@ describe('Connected Pops (Memory Threads) & Permission Engine', () => {
   });
 
   it('allows follower of creator to connect pops', () => {
-    const db = new Database();
+    const db = new Database(false);
     const nonce = Math.random().toString(36).substring(2, 7);
 
     const creatorA: User = {

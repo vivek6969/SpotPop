@@ -693,7 +693,10 @@ class Database {
   private data: DatabaseSchema;
   private spatialIndex: SpatialIndex = new SpatialIndex(500);
 
-  constructor() {
+  public isPersistent: boolean = true;
+
+  constructor(isPersistent: boolean = true) {
+    this.isPersistent = isPersistent;
     this.data = this.load();
     this.rebuildSpatialIndex();
   }
@@ -704,6 +707,24 @@ class Database {
   }
 
   private load(): DatabaseSchema {
+    if (!this.isPersistent) {
+      return {
+        users: JSON.parse(JSON.stringify(INITIAL_USERS)),
+        spots: JSON.parse(JSON.stringify(INITIAL_SPOTS)),
+        orders: [],
+        reports: [],
+        activity: JSON.parse(JSON.stringify(INITIAL_ACTIVITY)),
+        comments: [],
+        follows: [],
+        systemSettings: {
+          maintenanceMode: false,
+          allowNewClaims: true,
+          testPaymentMode: true,
+          maxCanvasSize: 10000,
+          initialOffsetClaims: 234700,
+        },
+      };
+    }
     try {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
@@ -760,6 +781,7 @@ class Database {
   }
 
   public save(data?: DatabaseSchema) {
+    if (!this.isPersistent) return;
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(data || this.data, null, 2), 'utf-8');
     } catch (e) {
