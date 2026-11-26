@@ -46,15 +46,18 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({
       setActivities(list);
 
       // If user is logged in, fetch pending follow requests
+      let pendingCount = 0;
       if (currentUser?.username) {
         try {
           const reqRes = await api.getFollowRequests(currentUser.username, authToken || undefined);
-          setPendingRequests(reqRes.requests || []);
+          const reqs = reqRes.requests || [];
+          setPendingRequests(reqs);
+          pendingCount = reqs.length;
         } catch {}
       }
 
-      // Calculate unread count
-      const unread = list.filter(a => new Date(a.timestamp).getTime() > lastReadTimestamp).length;
+      // Calculate unread count (including pending friend requests)
+      const unread = list.filter(a => new Date(a.timestamp).getTime() > lastReadTimestamp).length + pendingCount;
       if (onUpdateUnreadCount) {
         onUpdateUnreadCount(unread);
       }

@@ -863,6 +863,10 @@ class Database {
   // Spots
   getSpots(viewerIdOrName?: string): Spot[] {
     const rawViewer = (viewerIdOrName || '').trim().toLowerCase();
+    const viewerUser = rawViewer ? (this.getUserById(rawViewer) || this.getUserByUsername(rawViewer)) : null;
+    const viewerId = viewerUser?.id.toLowerCase() || rawViewer;
+    const viewerUsername = viewerUser?.username.toLowerCase() || rawViewer;
+
     return this.data.spots
       .filter(s => s.status !== 'hidden')
       .filter(s => {
@@ -870,31 +874,46 @@ class Database {
         if (s.visibility === 'private') {
           if (!rawViewer) return false;
           const isOwner =
-            s.ownerId?.toLowerCase() === rawViewer ||
-            s.creatorName.toLowerCase() === rawViewer;
+            (s.ownerId && s.ownerId.toLowerCase() === viewerId) ||
+            s.creatorName.toLowerCase() === viewerUsername ||
+            s.creatorName.toLowerCase() === viewerId;
           return isOwner;
+        }
+
+        // If friends only, NEVER show when logged out! Only show to owner or friends/followers
+        if (s.visibility === 'friends_only') {
+          if (!rawViewer) return false;
+          return true;
         }
         return true;
       })
       .map(s => {
-        const creatorUser = s.ownerId ? this.getUserById(s.ownerId) : this.getUserByUsername(s.creatorName);
+        const ownerUser = s.ownerId ? this.getUserById(s.ownerId) : null;
+        const resolvedCreator = (s.creatorName && s.creatorName !== 'Spotter')
+          ? s.creatorName
+          : (ownerUser?.username || s.creatorName || 'Spotter');
+
+        const creatorUser = s.ownerId ? ownerUser : this.getUserByUsername(resolvedCreator);
         const isPrivateCreator = creatorUser?.isPrivate ?? false;
 
         // If friends only or creator is private, check if viewer follows creator (accepted status) or is owner
         if (s.visibility === 'friends_only' || isPrivateCreator) {
           if (!rawViewer) {
-            return { ...s, isLocked: true };
+            return { ...s, creatorName: resolvedCreator, isLocked: true };
           }
           const isOwner =
-            s.ownerId?.toLowerCase() === rawViewer ||
-            s.creatorName.toLowerCase() === rawViewer;
-          if (isOwner) return { ...s, isLocked: false };
+            (s.ownerId && s.ownerId.toLowerCase() === viewerId) ||
+            resolvedCreator.toLowerCase() === viewerUsername ||
+            resolvedCreator.toLowerCase() === viewerId;
+          if (isOwner) return { ...s, creatorName: resolvedCreator, isLocked: false };
           const isFollowing =
-            this.isUserFollowing(rawViewer, s.creatorName) ||
-            (s.ownerId ? this.isUserFollowing(rawViewer, s.ownerId) : false);
-          return { ...s, isLocked: !isFollowing };
+            this.isUserFollowing(viewerId, resolvedCreator) ||
+            this.isUserFollowing(viewerUsername, resolvedCreator) ||
+            (s.ownerId ? (this.isUserFollowing(viewerId, s.ownerId) || this.isUserFollowing(viewerUsername, s.ownerId)) : false) ||
+            this.isUserFollowing(resolvedCreator, viewerUsername);
+          return { ...s, creatorName: resolvedCreator, isLocked: !isFollowing };
         }
-        return s;
+        return { ...s, creatorName: resolvedCreator };
       });
   }
 
@@ -1040,27 +1059,49 @@ class Database {
   queryViewport(minX: number, minY: number, maxX: number, maxY: number, limit: number = 2000, viewerIdOrName?: string): Spot[] {
     const rawSpots = this.spatialIndex.queryBBox(minX, minY, maxX, maxY, limit);
     const rawViewer = (viewerIdOrName || '').trim().toLowerCase();
+    const viewerUser = rawViewer ? (this.getUserById(rawViewer) || this.getUserByUsername(rawViewer)) : null;
+    const viewerId = viewerUser?.id.toLowerCase() || rawViewer;
+    const viewerUsername = viewerUser?.username.toLowerCase() || rawViewer;
+
     return rawSpots
       .filter(s => s.status !== 'hidden')
       .filter(s => {
         if (s.visibility === 'private') {
           if (!rawViewer) return false;
-          return s.ownerId?.toLowerCase() === rawViewer || s.creatorName.toLowerCase() === rawViewer;
+          return (s.ownerId && s.ownerId.toLowerCase() === viewerId) ||
+                 s.creatorName.toLowerCase() === viewerUsername ||
+                 s.creatorName.toLowerCase() === viewerId;
+        }
+
+        // If friends only, NEVER show when logged out!
+        if (s.visibility === 'friends_only') {
+          if (!rawViewer) return false;
+          return true;
         }
         return true;
       })
       .map(s => {
-        const creatorUser = s.ownerId ? this.getUserById(s.ownerId) : this.getUserByUsername(s.creatorName);
+        const ownerUser = s.ownerId ? this.getUserById(s.ownerId) : null;
+        const resolvedCreator = (s.creatorName && s.creatorName !== 'Spotter')
+          ? s.creatorName
+          : (ownerUser?.username || s.creatorName || 'Spotter');
+
+        const creatorUser = s.ownerId ? ownerUser : this.getUserByUsername(resolvedCreator);
         const isPrivateCreator = creatorUser?.isPrivate ?? false;
 
         if (s.visibility === 'friends_only' || isPrivateCreator) {
-          if (!rawViewer) return { ...s, isLocked: true };
-          const isOwner = s.ownerId?.toLowerCase() === rawViewer || s.creatorName.toLowerCase() === rawViewer;
-          if (isOwner) return { ...s, isLocked: false };
-          const isFollowing = this.isUserFollowing(rawViewer, s.creatorName) || (s.ownerId ? this.isUserFollowing(rawViewer, s.ownerId) : false);
-          return { ...s, isLocked: !isFollowing };
+          if (!rawViewer) return { ...s, creatorName: resolvedCreator, isLocked: true };
+          const isOwner = (s.ownerId && s.ownerId.toLowerCase() === viewerId) ||
+                          resolvedCreator.toLowerCase() === viewerUsername ||
+                          resolvedCreator.toLowerCase() === viewerId;
+          if (isOwner) return { ...s, creatorName: resolvedCreator, isLocked: false };
+          const isFollowing = this.isUserFollowing(viewerId, resolvedCreator) ||
+                              this.isUserFollowing(viewerUsername, resolvedCreator) ||
+                              (s.ownerId ? (this.isUserFollowing(viewerId, s.ownerId) || this.isUserFollowing(viewerUsername, s.ownerId)) : false) ||
+                              this.isUserFollowing(resolvedCreator, viewerUsername);
+          return { ...s, creatorName: resolvedCreator, isLocked: !isFollowing };
         }
-        return s;
+        return { ...s, creatorName: resolvedCreator };
       });
   }
 
@@ -1557,6 +1598,10 @@ class Database {
     isRequested: boolean;
     followersCount: number;
     followingCount: number;
+    followerUsername?: string;
+    followerDisplayName?: string;
+    followerAvatar?: string;
+    targetUsername?: string;
   } {
     this.data.follows = this.data.follows || [];
     const followerId = this.normalizeUserKey(followerInput);
@@ -1652,6 +1697,10 @@ class Database {
       isRequested: followStatus === 'pending',
       followersCount: counts.followersCount,
       followingCount: counts.followingCount,
+      followerUsername: fUser?.username || followerInput,
+      followerDisplayName: fUser?.displayName || followerInput,
+      followerAvatar: fUser?.avatarUrl,
+      targetUsername: tUser?.username || targetInput,
     };
   }
 
@@ -1778,6 +1827,8 @@ class Database {
     success: boolean;
     followerName: string;
     followerId: string;
+    followerUsername?: string;
+    targetUsername?: string;
     followersCount: number;
     followingCount: number;
   } | null {
@@ -1823,6 +1874,8 @@ class Database {
       success: true,
       followerName,
       followerId: relation.followerId,
+      followerUsername: followerUser?.username || relation.followerId,
+      targetUsername: targetUser?.username || targetInput,
       followersCount: counts.followersCount,
       followingCount: counts.followingCount,
     };

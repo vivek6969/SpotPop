@@ -1,13 +1,14 @@
 import React from 'react';
 import { ProductTier, User } from '../../types';
 
-export type NavTab = 'home' | 'search' | 'create' | 'stories' | 'reels' | 'profile';
+export type NavTab = 'home' | 'search' | 'friends' | 'create' | 'stories' | 'reels' | 'profile';
 
 interface BottomDockProps {
   activeTab?: NavTab;
   onTabChange?: (tab: NavTab) => void;
   onStartCreate: (tier?: ProductTier) => void;
   onOpenSearch?: () => void;
+  onOpenFriends?: () => void;
   onOpenStories?: () => void;
   onOpenReels?: () => void; // backwards-compatible alias
   onOpenAccount?: () => void;
@@ -15,6 +16,7 @@ interface BottomDockProps {
   selectedTier?: ProductTier;
   onChangeSelectedTier?: (tier: ProductTier) => void;
   currentUser?: User | null;
+  pendingRequestsCount?: number;
 }
 
 export const BottomDock: React.FC<BottomDockProps> = ({
@@ -22,12 +24,14 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   onStartCreate,
   onOpenSearch,
+  onOpenFriends,
   onOpenStories,
   onOpenReels,
   onOpenAccount,
   onHomeClick,
   selectedTier = 'big_pop',
   currentUser,
+  pendingRequestsCount = 0,
 }) => {
   const handleHome = () => {
     onTabChange?.('home');
@@ -37,6 +41,11 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   const handleSearch = () => {
     onTabChange?.('search');
     onOpenSearch?.();
+  };
+
+  const handleFriends = () => {
+    onTabChange?.('friends');
+    onOpenFriends?.();
   };
 
   const handleCreate = () => {
@@ -105,7 +114,30 @@ export const BottomDock: React.FC<BottomDockProps> = ({
             <span className={`w-1 h-1 rounded-full bg-white mt-1 transition-opacity ${activeTab === 'search' ? 'opacity-100' : 'opacity-0'}`} />
           </button>
 
-          {/* 3. Center Create (+) Button - Instagram Post Icon */}
+          {/* 3. Friends Button */}
+          <button
+            type="button"
+            onClick={handleFriends}
+            className={`relative flex flex-col items-center justify-center w-12 h-11 rounded-full transition-all cursor-pointer ${
+              activeTab === 'friends'
+                ? 'text-[#00F0FF] scale-105'
+                : 'text-slate-400 hover:text-white active:scale-90'
+            }`}
+            title="Friends & Connections"
+            aria-label="Friends"
+          >
+            <div className="relative">
+              <span className="text-xl leading-none">👥</span>
+              {pendingRequestsCount > 0 && (
+                <span className="absolute -top-1 -right-2 min-w-3.5 h-3.5 px-0.5 rounded-full bg-[#FF2E93] text-white text-[8px] font-black flex items-center justify-center animate-pulse">
+                  {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                </span>
+              )}
+            </div>
+            <span className={`w-1 h-1 rounded-full bg-[#00F0FF] mt-1 transition-opacity ${activeTab === 'friends' ? 'opacity-100' : 'opacity-0'}`} />
+          </button>
+
+          {/* 4. Center Create (+) Button - Instagram Post Icon */}
           <button
             type="button"
             onClick={handleCreate}

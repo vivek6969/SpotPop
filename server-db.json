@@ -79,6 +79,42 @@
       "ownedSpotIds": [
         "sp_1795693477264_9zzq"
       ]
+    },
+    {
+      "id": "usr_mira_c",
+      "username": "Mira_C",
+      "displayName": "Mira_C",
+      "isPrivate": true,
+      "bio": "Visual artist & pop creator 🌸 Friends-only pops. Follow to unlock!",
+      "role": "user",
+      "createdAt": "2026-11-26T13:07:03.689Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
+    },
+    {
+      "id": "usr_neotokio",
+      "username": "NeoTokio",
+      "displayName": "NeoTokio",
+      "isPrivate": true,
+      "bio": "Cyberpunk beats & midnight aesthetics 🌃",
+      "role": "user",
+      "createdAt": "2026-11-26T13:07:03.689Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
+    },
+    {
+      "id": "usr_simran_b",
+      "username": "Simran_B",
+      "displayName": "Simran_B",
+      "isPrivate": true,
+      "bio": "Design & coffee notes ☕ Follow to unlock!",
+      "role": "user",
+      "createdAt": "2026-11-26T13:07:03.689Z",
+      "ownedSpotIds": [],
+      "followersCount": 0,
+      "followingCount": 0
     }
   ],
   "spots": [
@@ -295,8 +331,8 @@
     {
       "id": "sp_1795693566535_a5cc",
       "ownerId": "usr_1795693308038_edq8",
-      "creatorName": "Spotter",
-      "slug": "spotter-mv6d",
+      "creatorName": "user1",
+      "slug": "user1-mv6d",
       "tier": "mini_pop",
       "title": "FUCK YOU",
       "tags": [],
@@ -316,7 +352,7 @@
         "connectedSpotIds": [],
         "headline": "FUCK YOU",
         "text": "",
-        "author": "",
+        "author": "user1",
         "textColor": "#1E293B",
         "fontFamily": "Caveat",
         "fontSize": 22,
@@ -5568,6 +5604,87 @@
       "tier": "mini_pop",
       "message": "user1 started following @user2! ✨",
       "timestamp": "2026-11-26T11:49:48.626Z"
+    },
+    {
+      "id": "act_1795698423711",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 2",
+      "tier": "mini_pop",
+      "message": "Test User 2 started following @Test User 1! ✨",
+      "timestamp": "2026-11-26T13:07:03.711Z"
+    },
+    {
+      "id": "act_1795698423720",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 3",
+      "tier": "mini_pop",
+      "message": "Test User 3 requested to follow @Test User 1. 📩",
+      "timestamp": "2026-11-26T13:07:03.720Z"
+    },
+    {
+      "id": "act_1795698423729",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 1",
+      "tier": "mini_pop",
+      "message": "@Test User 1 accepted Test User 3's follow request! ✨",
+      "timestamp": "2026-11-26T13:07:03.729Z"
+    },
+    {
+      "id": "act_1795698435039",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 2",
+      "tier": "mini_pop",
+      "message": "Test User 2 requested to follow @Test User 1. 📩",
+      "timestamp": "2026-11-26T13:07:15.039Z"
+    },
+    {
+      "id": "act_1795698435058",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 3",
+      "tier": "mini_pop",
+      "message": "Test User 3 requested to follow @Test User 1. 📩",
+      "timestamp": "2026-11-26T13:07:15.058Z"
+    },
+    {
+      "id": "act_1795698435070",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 1",
+      "tier": "mini_pop",
+      "message": "@Test User 1 accepted Test User 3's follow request! ✨",
+      "timestamp": "2026-11-26T13:07:15.070Z"
+    },
+    {
+      "id": "act_1795698504061",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 2",
+      "tier": "mini_pop",
+      "message": "Test User 2 started following @Test User 1! ✨",
+      "timestamp": "2026-11-26T13:08:24.061Z"
+    },
+    {
+      "id": "act_1795698504077",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 3",
+      "tier": "mini_pop",
+      "message": "Test User 3 requested to follow @Test User 1. 📩",
+      "timestamp": "2026-11-26T13:08:24.077Z"
+    },
+    {
+      "id": "act_1795698504089",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 1",
+      "tier": "mini_pop",
+      "message": "@Test User 1 accepted Test User 3's follow request! ✨",
+      "timestamp": "2026-11-26T13:08:24.089Z"
     }
   ],
   "systemSettings": {

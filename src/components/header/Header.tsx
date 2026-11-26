@@ -6,7 +6,9 @@ interface HeaderProps {
   stats?: CanvasStats | null;
   currentUser?: User | null;
   unreadActivityCount?: number;
+  pendingRequestsCount?: number;
   onOpenSearch: () => void;
+  onOpenFriends?: () => void;
   onOpenActivity: () => void;
   onOpenAccount: () => void;
   onOpenAdmin: () => void;
@@ -17,7 +19,9 @@ export const Header: React.FC<HeaderProps> = ({
   stats,
   currentUser,
   unreadActivityCount = 0,
+  pendingRequestsCount = 0,
   onOpenSearch,
+  onOpenFriends,
   onOpenActivity,
   onOpenAccount,
   onOpenAdmin,
@@ -48,13 +52,28 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Search Trigger */}
             <button
               onClick={onOpenSearch}
-              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-slate-200 hover:text-white flex items-center justify-center transition-all"
+              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-slate-200 hover:text-white flex items-center justify-center transition-all cursor-pointer"
               title="Search spots, creators and tags"
               aria-label="Search"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+            </button>
+
+            {/* Dedicated Friends Trigger */}
+            <button
+              onClick={onOpenFriends}
+              className="relative w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-slate-200 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Friends & Connections"
+              aria-label="Friends"
+            >
+              <span className="text-base">👥</span>
+              {pendingRequestsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#00F0FF] text-black text-[9px] font-black flex items-center justify-center animate-pulse shadow-sm">
+                  {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                </span>
+              )}
             </button>
 
             {/* Activity Bell Trigger */}

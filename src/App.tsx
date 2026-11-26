@@ -13,6 +13,7 @@ import { ActivityDrawer } from './components/modals/ActivityDrawer';
 import { CreatorProfileModal } from './components/modals/CreatorProfileModal';
 import { UserAccountModal } from './components/modals/UserAccountModal';
 import { AdminPanelModal } from './components/modals/AdminPanelModal';
+import { FriendsModal } from './components/modals/FriendsModal';
 import { PolicyModal } from './components/modals/PolicyModal';
 import { PopReelsModal as PopStoriesModal } from './components/reels/PopReelsModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
@@ -44,6 +45,9 @@ export function App() {
   const [shareKitSpot, setShareKitSpot] = useState<Spot | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+  const [pendingFriendRequestsCount, setPendingFriendRequestsCount] = useState<number>(0);
+  const [liveNotificationToast, setLiveNotificationToast] = useState<{ message: string; id: string } | null>(null);
   const [selectedCreatorUsername, setSelectedCreatorUsername] = useState<string | null>(null);
   const [unreadActivityCount, setUnreadActivityCount] = useState<number>(0);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -108,10 +112,24 @@ export function App() {
     if (savedToken) {
       setAuthToken(savedToken);
       api.getMe(savedToken)
-        .then(res => setCurrentUser(res.user))
+        .then(res => {
+          setCurrentUser(res.user);
+          loadCanvasData();
+        })
         .catch(() => localStorage.removeItem('spotpop_token'));
     }
   }, [loadCanvasData]);
+
+  // Sync incoming friend requests count for notification badge
+  useEffect(() => {
+    if (currentUser?.username) {
+      api.getFollowRequests(currentUser.username, authToken || undefined)
+        .then(res => setPendingFriendRequestsCount((res.requests || []).length))
+        .catch(() => setPendingFriendRequestsCount(0));
+    } else {
+      setPendingFriendRequestsCount(0);
+    }
+  }, [currentUser?.username, authToken]);
 
   // Real-time live synchronization (Server-Sent Events + smart background polling)
   useEffect(() => {
@@ -174,6 +192,33 @@ export function App() {
           }
         });
 
+        eventSource.addEventListener('user_follow_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (currentUser && (
+              data.targetUsername?.toLowerCase() === currentUser.username.toLowerCase() ||
+              data.targetUsername?.toLowerCase() === currentUser.id.toLowerCase()
+            )) {
+              const name = data.followerDisplayName || data.followerUsername || 'Someone';
+              const isReq = data.isRequested || data.followStatus === 'pending';
+              const toastMsg = isReq
+                ? `@${name} sent you a friend request!`
+                : `@${name} started following you!`;
+
+              setLiveNotificationToast({ message: toastMsg, id: `${Date.now()}` });
+              setTimeout(() => setLiveNotificationToast(null), 5000);
+
+              if (isReq) {
+                setPendingFriendRequestsCount(prev => prev + 1);
+              }
+              setUnreadActivityCount(prev => prev + 1);
+              loadCanvasData();
+            }
+          } catch (err) {
+            console.warn('[LiveSync] Error parsing user_follow_updated event:', err);
+          }
+        });
+
         eventSource.onerror = () => {
           // EventSource automatically retries reconnection
         };
@@ -211,6 +256,7 @@ export function App() {
     setAuthToken(token);
     localStorage.setItem('spotpop_token', token);
     setIsAccountOpen(false);
+    loadCanvasData();
   };
 
   const handleLogout = () => {
@@ -218,6 +264,7 @@ export function App() {
     setAuthToken(null);
     localStorage.removeItem('spotpop_token');
     setIsAccountOpen(false);
+    loadCanvasData();
   };
 
   // Flying Camera Helper with dynamic pulsing neon highlight
@@ -333,7 +380,9 @@ export function App() {
         stats={stats}
         currentUser={currentUser}
         unreadActivityCount={unreadActivityCount}
+        pendingRequestsCount={pendingFriendRequestsCount}
         onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenFriends={() => setIsFriendsOpen(true)}
         onOpenActivity={() => setIsActivityOpen(true)}
         onOpenAccount={() => {
           if (currentUser) {
@@ -354,17 +403,19 @@ export function App() {
 
       {/* Navigation Dock */}
       <BottomDock
-        activeTab={isStoriesOpen ? 'stories' : isSearchOpen ? 'search' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
+        activeTab={isStoriesOpen ? 'stories' : isSearchOpen ? 'search' : isFriendsOpen ? 'friends' : (isAccountOpen || (currentUser && selectedCreatorUsername === currentUser.username)) ? 'profile' : 'home'}
         onTabChange={(tab) => {
           if (tab === 'home') {
             setIsStoriesOpen(false);
             setIsSearchOpen(false);
+            setIsFriendsOpen(false);
             setIsAccountOpen(false);
             setSelectedCreatorUsername(null);
           }
         }}
         onStartCreate={handleStartCreate}
         onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenFriends={() => setIsFriendsOpen(true)}
         onOpenStories={() => {
           setStoriesInitialSpotId(null);
           setIsStoriesOpen(true);
@@ -378,12 +429,14 @@ export function App() {
         }}
         onHomeClick={() => {
           setIsStoriesOpen(false);
+          setIsFriendsOpen(false);
           setSelectedCreatorUsername(null);
           setTargetFocus({ x: 0, y: 0, zoom: 0.9, timestamp: Date.now() });
         }}
         selectedTier={selectedTier}
         onChangeSelectedTier={setSelectedTier}
         currentUser={currentUser}
+        pendingRequestsCount={pendingFriendRequestsCount}
       />
 
       {/* Footer Branding (Logo + Text) & Policy Links */}
@@ -443,6 +496,7 @@ export function App() {
           onSuccess={handleSpotSaved}
           editSpot={editingSpot}
           authToken={authToken}
+          currentUser={currentUser}
         />
       )}
 
@@ -550,6 +604,43 @@ export function App() {
         onRefreshSpots={loadCanvasData}
         onSelectSpot={flyToSpot}
       />
+
+      {/* Friends & Connections Modal */}
+      <FriendsModal
+        isOpen={isFriendsOpen}
+        onClose={() => setIsFriendsOpen(false)}
+        currentUser={currentUser}
+        authToken={authToken}
+        allSpots={spots}
+        onSelectSpot={flyToSpot}
+        onOpenCreatorProfile={(username) => setSelectedCreatorUsername(username)}
+        onRequireLogin={() => setIsAccountOpen(true)}
+        onFollowChange={() => {
+          loadCanvasData();
+        }}
+        onRefreshSpots={loadCanvasData}
+      />
+
+      {/* Live Friend & Follow Real-Time Notification Toast */}
+      {liveNotificationToast && (
+        <div className="fixed top-18 right-4 sm:right-6 z-[100] max-w-sm p-4 rounded-2xl bg-gradient-to-r from-[#171A29] to-[#0E101B] border border-cyan-400/40 text-white shadow-2xl shadow-cyan-950/60 flex items-center gap-3 animate-fade-in backdrop-blur-md">
+          <span className="text-2xl shrink-0">📬</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">Friend Alert</div>
+            <div className="text-xs font-semibold text-white truncate">{liveNotificationToast.message}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setLiveNotificationToast(null);
+              setIsFriendsOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#0095F6] to-[#00F0FF] text-black text-xs font-bold shadow-md hover:opacity-95 transition-all cursor-pointer"
+          >
+            View
+          </button>
+        </div>
+      )}
 
       {/* Transparency Policies Modal */}
       <PolicyModal

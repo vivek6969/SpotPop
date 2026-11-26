@@ -886,8 +886,11 @@ apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
 
     // Broadcast SSE event
     broadcastSpotEvent('user_follow_updated', {
-      targetUsername,
+      targetUsername: (result as any).targetUsername || targetUsername,
       followerId: viewerId,
+      followerUsername: (result as any).followerUsername || authUser?.username || viewerId,
+      followerDisplayName: (result as any).followerDisplayName || authUser?.displayName || viewerId,
+      followerAvatar: (result as any).followerAvatar || authUser?.avatarUrl,
       followStatus: result.followStatus,
       isFollowing: result.isFollowing,
       isRequested: result.isRequested,
@@ -982,8 +985,10 @@ apiRouter.post('/users/follow-requests/:requestId/accept', (req: Request, res: R
     }
 
     broadcastSpotEvent('user_follow_updated', {
-      targetUsername,
+      targetUsername: (result as any).targetUsername || targetUsername,
       followerId: result.followerId,
+      followerUsername: (result as any).followerUsername || result.followerName,
+      followerDisplayName: result.followerName,
       followStatus: 'accepted',
       isFollowing: true,
       isRequested: false,

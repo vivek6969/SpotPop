@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode, SpotAudio } from '../../types';
+import { ProductTier, PRODUCTS, Spot, SpotShape, FrameStyle, StickerItem, SpotLayer, PhotoAdjustments, BlendMode, SpotAudio, User } from '../../types';
 import { api } from '../../services/api';
 import { checkImageSafety } from '../../services/nsfwSafety';
 import { prepareImageForUpload } from '../../services/imageOptimizer';
@@ -34,6 +34,7 @@ interface CreateSpotModalProps {
   onSuccess: (newSpot: Spot) => void;
   editSpot?: Spot | null;
   authToken?: string | null;
+  currentUser?: User | null;
 }
 
 // Re-export editor constants for full backwards-compatibility
@@ -184,6 +185,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
   onSuccess,
   editSpot,
   authToken,
+  currentUser,
 }) => {
   // Modal Step
   const [step, setStep] = useState<'tier' | 'editor' | 'checkout' | 'processing'>('editor');
@@ -273,8 +275,12 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       }
     } else {
       setTier(initialTier);
+      if (currentUser?.username) {
+        setMiniDraft(prev => ({ ...prev, creatorName: prev.creatorName || currentUser.username }));
+        setBigDraft(prev => ({ ...prev, creatorName: prev.creatorName || currentUser.username }));
+      }
     }
-  }, [editSpot, initialTier, isOpen]);
+  }, [editSpot, initialTier, isOpen, currentUser?.username]);
 
   // Active Draft based on tier
   const currentDraft = tier === 'big_pop' ? bigDraft : miniDraft;
@@ -1094,7 +1100,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setStep('processing');
 
     try {
-      const resolvedCreator = currentDraft.creatorName?.trim() || 'Spotter';
+      const resolvedCreator = currentDraft.creatorName?.trim() || currentUser?.username || currentUser?.displayName || 'Spotter';
       const resolvedHeadline = currentDraft.headline ? currentDraft.headline.trim() : '';
       const isPioneerAuthor = editSpot?.content?.author?.toLowerCase().includes('spot pioneer');
       const resolvedAuthor = editSpot?.content?.author && !isPioneerAuthor ? editSpot.content.author : '';
