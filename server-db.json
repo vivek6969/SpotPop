@@ -32,7 +32,9 @@
       "ownedSpotIds": [
         "sp_1795693566535_a5cc"
       ],
-      "passwordHash": "f7f7453a8c1cb9cdab1983fd42e4fa84:cd6c8134311bec6416b2490584973a367d38c3b1f7c24109767ea9cb13c45390c24d88e609b51c09e0681f09b3ea0d873ffe327af4427aacaf046ca194af09c0"
+      "passwordHash": "f7f7453a8c1cb9cdab1983fd42e4fa84:cd6c8134311bec6416b2490584973a367d38c3b1f7c24109767ea9cb13c45390c24d88e609b51c09e0681f09b3ea0d873ffe327af4427aacaf046ca194af09c0",
+      "followersCount": 2,
+      "followingCount": 1
     },
     {
       "id": "usr_1795693325857_2gq1",
@@ -48,7 +50,9 @@
       "ownedSpotIds": [
         "sp_1795693520265_vzi4"
       ],
-      "passwordHash": "b839967f0ebca563d16dbe2a1c9a72bb:d9dea08849770d28135b7788e5e70fc88529fcd170291f840fba7a9fdee419a4f72e7b53300339b6568b3be94588056ed8cf2e87f17b42c678e45adc5291d4e7"
+      "passwordHash": "b839967f0ebca563d16dbe2a1c9a72bb:d9dea08849770d28135b7788e5e70fc88529fcd170291f840fba7a9fdee419a4f72e7b53300339b6568b3be94588056ed8cf2e87f17b42c678e45adc5291d4e7",
+      "followingCount": 1,
+      "followersCount": 1
     },
     {
       "id": "usr_1795693355095_ejb8",
@@ -368,7 +372,7 @@
       },
       "createdAt": "2026-11-26T11:46:06.535Z",
       "status": "published",
-      "visibility": "private",
+      "visibility": "friends_only",
       "allowComments": true,
       "moderationStatus": "approved",
       "viewsCount": 1,
@@ -5537,6 +5541,33 @@
       "tier": "mini_pop",
       "message": "Spotter claimed a Mini Pop on SpotPop!",
       "timestamp": "2026-11-26T11:46:06.535Z"
+    },
+    {
+      "id": "act_1795693638435",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "v_1795503119733_mfmo",
+      "tier": "mini_pop",
+      "message": "v_1795503119733_mfmo started following @user1! ✨",
+      "timestamp": "2026-11-26T11:47:18.435Z"
+    },
+    {
+      "id": "act_1795693744600",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "user2",
+      "tier": "mini_pop",
+      "message": "user2 started following @user1! ✨",
+      "timestamp": "2026-11-26T11:49:04.600Z"
+    },
+    {
+      "id": "act_1795693788626",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "user1",
+      "tier": "mini_pop",
+      "message": "user1 started following @user2! ✨",
+      "timestamp": "2026-11-26T11:49:48.626Z"
     }
   ],
   "systemSettings": {
@@ -5617,5 +5648,30 @@
       "replyToId": "cmt_1795599658221_4g5ie"
     }
   ],
-  "follows": []
+  "follows": [
+    {
+      "id": "flw_1795693638435_3yyl",
+      "followerId": "usr_v_1795503119733_mfmo",
+      "followingId": "usr_1795693308038_edq8",
+      "status": "accepted",
+      "createdAt": "2026-11-26T11:47:18.435Z",
+      "acceptedAt": "2026-11-26T11:47:18.435Z"
+    },
+    {
+      "id": "flw_1795693744600_jrte",
+      "followerId": "usr_1795693325857_2gq1",
+      "followingId": "usr_1795693308038_edq8",
+      "status": "accepted",
+      "createdAt": "2026-11-26T11:49:04.600Z",
+      "acceptedAt": "2026-11-26T11:49:04.600Z"
+    },
+    {
+      "id": "flw_1795693788626_3e2l",
+      "followerId": "usr_1795693308038_edq8",
+      "followingId": "usr_1795693325857_2gq1",
+      "status": "accepted",
+      "createdAt": "2026-11-26T11:49:48.626Z",
+      "acceptedAt": "2026-11-26T11:49:48.626Z"
+    }
+  ]
 }

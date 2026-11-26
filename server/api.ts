@@ -1544,7 +1544,7 @@ apiRouter.post('/orders/verify', (req: Request, res: Response) => {
         photoOffsetX: draft.content?.photoOffsetX ?? 0,
         photoOffsetY: draft.content?.photoOffsetY ?? 0,
         stickers: draft.content?.stickers || [],
-        drawingData: order.productId === 'big_pop' ? draft.content?.drawingData : undefined,
+        drawingData: draft.content?.drawingData || undefined,
         drawingOpacity: draft.content?.drawingOpacity ?? 1,
         frameStyle: draft.content?.frameStyle || 'tape',
         badge: 'NEW',

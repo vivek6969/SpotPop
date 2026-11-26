@@ -1105,7 +1105,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
     setTier(newTier);
     setSelectedItemId(null);
     setIsDrawingMode(false);
-    if (newTier === 'mini_pop') {
+    if (newTier === 'mini_pop' && (activeEditorTab === 'photo' || activeEditorTab === 'adjust' || activeEditorTab === 'retouch' || activeEditorTab === 'audio')) {
       setActiveEditorTab('text');
     }
   };
@@ -1613,9 +1613,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
       : []),
     { id: 'text', label: 'Text', icon: '✍️' },
     { id: 'stickers', label: 'Stickers', icon: '💖' },
-    ...(tier === 'big_pop'
-      ? [{ id: 'draw', label: 'Draw', icon: '🖌️', bigPopOnly: true }]
-      : []),
+    { id: 'draw', label: 'Draw', icon: '🖌️' },
     { id: 'frames', label: 'Frames', icon: '🖼️' },
     { id: 'themes', label: 'Background', icon: '🌈' },
     ...(tier === 'big_pop'
@@ -2310,24 +2308,22 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
                     <span>Stickers</span>
                   </button>
 
-                  {tier === 'big_pop' && (
-                    <button
-                      type="button"
-                      data-active={isDrawingMode || activeEditorTab === 'draw'}
-                      onClick={() => {
-                        setActiveEditorTab('draw');
-                        setIsDrawingMode(true);
-                        setSelectedItemId(null);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${isDrawingMode
-                        ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                        }`}
-                    >
-                      <span>🖌️</span>
-                      <span>Draw</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    data-active={isDrawingMode || activeEditorTab === 'draw'}
+                    onClick={() => {
+                      setActiveEditorTab('draw');
+                      setIsDrawingMode(true);
+                      setSelectedItemId(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${isDrawingMode
+                      ? 'bg-gradient-to-r from-[#FF2E93] to-purple-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
+                  >
+                    <span>🖌️</span>
+                    <span>Draw</span>
+                  </button>
 
                   <button
                     type="button"

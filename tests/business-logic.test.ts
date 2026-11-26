@@ -13,7 +13,8 @@ describe('Pricing Calculations & Order Integrity', () => {
     assert.equal(PRODUCTS.mini_pop.width, 170);
     assert.equal(PRODUCTS.mini_pop.height, 170);
     assert.ok(PRODUCTS.mini_pop.restrictions.includes('No photo upload'));
-    assert.ok(PRODUCTS.mini_pop.restrictions.includes('No freehand drawing pen'));
+    assert.ok(PRODUCTS.mini_pop.features.includes('Full freehand drawing & neon pens'));
+    assert.equal(PRODUCTS.mini_pop.restrictions.includes('No freehand drawing pen'), false);
 
     // Big Pop
     assert.equal(PRODUCTS.big_pop.id, 'big_pop');
@@ -203,32 +204,32 @@ describe('Safety Sanitization & Moderation Logic', () => {
     assert.equal(bigContent.audio.url, '/uploads/voice.mp3');
   });
 
-  test('Server spot payload sanitization: imageUrl, drawingData, and audio stripped on Mini Pop', () => {
+  test('Server spot payload sanitization: imageUrl and audio stripped on Mini Pop, drawingData preserved', () => {
     // Verified server/api.ts logic sanitizing by order tier:
     const serverSpotCreation = (tier: ProductTier, draftContent: any) => {
       return {
         headline: draftContent.headline || '',
         imageUrl: tier === 'big_pop' ? draftContent.imageUrl : undefined,
-        drawingData: tier === 'big_pop' ? draftContent.drawingData : undefined,
+        drawingData: draftContent.drawingData || undefined,
         audio: tier === 'big_pop' ? draftContent.audio : undefined,
       };
     };
 
-    const maliciousMiniPayload = {
-      headline: 'Sneaky Mini',
+    const miniPayload = {
+      headline: 'Artistic Mini',
       imageUrl: 'https://spotpop.dev/exploit.jpg',
       drawingData: 'data:image/png;base64,drawing_bytes',
       audio: { url: 'audio.mp3', duration: 5, type: 'voice' },
     };
 
-    const createdSpot = serverSpotCreation('mini_pop', maliciousMiniPayload);
-    // Audio, imageUrl, and drawingData are all stripped for Mini Pop
+    const createdSpot = serverSpotCreation('mini_pop', miniPayload);
+    // Audio and imageUrl are stripped for Mini Pop, drawingData is preserved
     assert.equal(createdSpot.audio, undefined);
     assert.equal(createdSpot.imageUrl, undefined);
-    assert.equal(createdSpot.drawingData, undefined);
+    assert.equal(createdSpot.drawingData, 'data:image/png;base64,drawing_bytes');
 
     // Big Pop retains all multimedia fields
-    const createdBigSpot = serverSpotCreation('big_pop', maliciousMiniPayload);
+    const createdBigSpot = serverSpotCreation('big_pop', miniPayload);
     assert.equal(createdBigSpot.imageUrl, 'https://spotpop.dev/exploit.jpg');
     assert.equal(createdBigSpot.drawingData, 'data:image/png;base64,drawing_bytes');
     assert.ok(createdBigSpot.audio);

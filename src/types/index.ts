@@ -24,6 +24,7 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
     features: [
       'Sticky note or classic mini card',
       'Custom text & personal message',
+      'Full freehand drawing & neon pens',
       'Curated aesthetic fonts',
       'Colourful sticky & themed backgrounds',
       'Tape, pin & washi frame styles',
@@ -33,7 +34,7 @@ export const PRODUCTS: Record<ProductTier, ProductConfig> = {
     ],
     restrictions: [
       'No photo upload',
-      'No freehand drawing pen',
+      'No voice notes',
       'Single card space',
     ],
   },
