@@ -10,6 +10,24 @@
 
 ## Tracked Defects & Remediation Status
 
+### [BUG-IMG-001]: Broken Image Icons on Big Pop Polaroid Cards & Admin Table
+- **Severity**: P0 (Production Readiness Blocker)
+- **Status**: Resolved
+- **Assigned Agent**: senior-engineer
+- **Root Cause**:
+  1. Test execution against the shared singleton database previously triggered `cleanupUnreferencedMedia()`, wiping unreferenced asset folders from `uploads/images/`.
+  2. When an image was missing on disk, Express static middleware called `next()`, causing requests to fall through to Vite/index.html (HTML text response), which triggered native browser broken image badges.
+  3. React components (`SpotCard.tsx`, `AdminPanelModal.tsx`) lacked `onError` image handlers to catch decoding or network failures.
+- **Fix Applied**:
+  1. Added environment guard in `server/database.ts` (`cleanupUnreferencedMedia`) preventing disk deletion during automated tests or in non-persistent modes.
+  2. Added empty-set safety guard in `server/imageService.ts` (`cleanupOrphans`).
+  3. Added Express server-level fallback for `/uploads/images/:hash/:file` serving alternative folder variants or returning a high-res SVG placeholder (`image/svg+xml`) with HTTP 200.
+  4. Added client-side `onError` handlers across all `SpotCard.tsx` image render paths and `AdminPanelModal.tsx` swapping in `DEFAULT_SPOT_FALLBACK_SVG`.
+  5. Restored and registered valid high-res image assets for all active canvas spots.
+- **Verification**: Verified HTTP 200 responses with correct image MIME types on dev server; 125/125 unit & integration tests passing; clean `npm run build`.
+
+---
+
 ### [BUG-001]: Black Screen on "Add Your Spot" Modal Open
 - **Severity**: P0 (Blocker)
 - **Status**: Resolved

@@ -3,6 +3,7 @@ import { Spot, ModerationReport, Order, User, ProductTier, SpotShape, Comment } 
 import { api } from '../../services/api';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { DEFAULT_SPOT_FALLBACK_SVG } from './editor/constants';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -846,6 +847,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   <img
                                     src={user.avatarUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${user.username}`}
                                     alt={user.username}
+                                    onError={(e) => {
+                                      const el = e.currentTarget;
+                                      el.onerror = null;
+                                      el.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.username || 'user'}`;
+                                    }}
                                     className="w-8 h-8 rounded-full border border-white/20 object-cover bg-slate-800"
                                   />
                                   <div>
@@ -1087,6 +1093,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     <img
                                       src={spot.content.imageUrl}
                                       alt="thumb"
+                                      onError={(e) => {
+                                        const el = e.currentTarget;
+                                        el.onerror = null;
+                                        el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                                      }}
                                       className="w-10 h-10 rounded-lg object-cover bg-black/40 border border-white/10 shrink-0"
                                     />
                                   ) : (

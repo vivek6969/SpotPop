@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { SpotShape, FrameStyle, StickerItem, SpotContent, SpotLayer } from '../../types';
 import { getPhotoFilterStyle, getCleanFontFamily } from '../../utils/photoFilters';
+import { DEFAULT_SPOT_FALLBACK_SVG } from '../modals/editor/constants';
 
 export interface SpotCardProps {
   tier?: 'mini_pop' | 'big_pop';
@@ -1377,6 +1378,13 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 alt="Cutout Art"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.dataset.failed) {
+                    el.dataset.failed = 'true';
+                    el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                  }
+                }}
                 className={`max-w-full max-h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
                   }`}
                 style={{
@@ -1419,6 +1427,13 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 alt="Full Bleed Artwork"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.dataset.failed) {
+                    el.dataset.failed = 'true';
+                    el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                  }
+                }}
                 className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
                   }`}
                 style={{
@@ -1493,6 +1508,13 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                   alt={content.headline || creatorName}
                   loading="lazy"
                   decoding="async"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (!el.dataset.failed) {
+                      el.dataset.failed = 'true';
+                      el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                    }
+                  }}
                   className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
                     }`}
                   style={{
@@ -1619,6 +1641,13 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                 alt="Artwork"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.dataset.failed) {
+                    el.dataset.failed = 'true';
+                    el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                  }
+                }}
                 className={`w-full h-full select-none pointer-events-none transition-transform duration-75 ${imageFit === 'contain' ? 'object-contain' : 'object-cover'
                   }`}
                 style={{
@@ -1939,6 +1968,13 @@ const SpotCardComponent: React.FC<SpotCardProps> = ({
                     alt={layer.name || 'Layer Image'}
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (!el.dataset.failed) {
+                        el.dataset.failed = 'true';
+                        el.src = DEFAULT_SPOT_FALLBACK_SVG;
+                      }
+                    }}
                     className={`w-full h-full object-cover select-none pointer-events-none rounded-xs shadow-xs ${layer.clippingMask ? 'rounded-full' : ''
                       }`}
                     style={{

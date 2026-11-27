@@ -1009,6 +1009,16 @@ class Database {
    * and permanently erases them from disk. Also cleans up redundant image files.
    */
   cleanupUnreferencedMedia(): { deletedImages: number; deletedAudio: number; freedBytes: number } {
+    // Safety guard: in automated test runs or non-persistent databases, NEVER purge real media files from disk
+    if (
+      process.env.NODE_ENV === 'test' ||
+      !this.isPersistent ||
+      Boolean(process.env.NODE_TEST_CONTEXT) ||
+      process.env.npm_lifecycle_event === 'test'
+    ) {
+      return { deletedImages: 0, deletedAudio: 0, freedBytes: 0 };
+    }
+
     const activeHashes = new Set<string>();
     const activeAudioKeys = new Set<string>();
 
@@ -1019,6 +1029,8 @@ class Database {
     };
 
     for (const s of this.data.spots) {
+      checkUrl((s as any).imageUrl);
+      checkUrl((s as any).thumbnail);
       checkUrl(s.content?.imageUrl);
       if (Array.isArray(s.content?.layers)) {
         for (const l of s.content.layers) {

@@ -59,6 +59,56 @@ async function startServer() {
     immutable: true,
   }));
 
+  // Resilient fallback for any missing upload image: return a sleek SVG placeholder instead of 404/HTML
+  const FALLBACK_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#181824"/>
+        <stop offset="50%" stop-color="#241a3e"/>
+        <stop offset="100%" stop-color="#121024"/>
+      </linearGradient>
+      <linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FF2E93"/>
+        <stop offset="100%" stop-color="#FF8A00"/>
+      </linearGradient>
+    </defs>
+    <rect width="600" height="600" fill="url(#g)"/>
+    <circle cx="300" cy="270" r="80" fill="url(#neon)" opacity="0.15"/>
+    <rect x="230" y="225" width="140" height="100" rx="14" fill="none" stroke="url(#neon)" stroke-width="5"/>
+    <circle cx="300" cy="275" r="28" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="340" cy="245" r="6" fill="#00F2FE"/>
+    <text x="300" y="380" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" text-anchor="middle" letter-spacing="3">SPOTPOP</text>
+    <text x="300" y="410" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="14" text-anchor="middle">Photo Preview</text>
+  </svg>`;
+
+  app.get('/uploads/images/:hash/:file', (req, res) => {
+    const { hash, file } = req.params;
+    const requestedPath = path.resolve(uploadsPath, 'images', hash, file);
+    if (fs.existsSync(requestedPath)) {
+      return res.sendFile(requestedPath);
+    }
+    // Check if any variant exists in the asset folder
+    const hashDir = path.resolve(uploadsPath, 'images', hash);
+    if (fs.existsSync(hashDir)) {
+      try {
+        const files = fs.readdirSync(hashDir);
+        for (const candidate of ['animated.gif', 'preview.webp', 'highres.webp', 'thumb.webp', 'original.gif', 'original.jpg', 'original.png']) {
+          if (files.includes(candidate)) {
+            const candidatePath = path.join(hashDir, candidate);
+            const mime = candidate.endsWith('.gif') ? 'image/gif' : candidate.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+            res.setHeader('Content-Type', mime);
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            return res.sendFile(candidatePath);
+          }
+        }
+      } catch {}
+    }
+    // If not found at all, return the clean SVG placeholder with HTTP 200 (never broken image)
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.status(200).send(FALLBACK_IMAGE_SVG);
+  });
+
   // Automatically create a rolling snapshot backup of database on boot
   try {
     const backupFile = db.createBackup();

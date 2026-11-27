@@ -5685,6 +5685,33 @@
       "tier": "mini_pop",
       "message": "@Test User 1 accepted Test User 3's follow request! ✨",
       "timestamp": "2026-11-26T13:08:24.089Z"
+    },
+    {
+      "id": "act_1795699667136",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 2",
+      "tier": "mini_pop",
+      "message": "Test User 2 started following @Test User 1! ✨",
+      "timestamp": "2026-11-26T13:27:47.136Z"
+    },
+    {
+      "id": "act_1795699667149",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 3",
+      "tier": "mini_pop",
+      "message": "Test User 3 requested to follow @Test User 1. 📩",
+      "timestamp": "2026-11-26T13:27:47.149Z"
+    },
+    {
+      "id": "act_1795699667161",
+      "type": "shared",
+      "spotId": "network",
+      "creatorName": "Test User 1",
+      "tier": "mini_pop",
+      "message": "@Test User 1 accepted Test User 3's follow request! ✨",
+      "timestamp": "2026-11-26T13:27:47.161Z"
     }
   ],
   "systemSettings": {

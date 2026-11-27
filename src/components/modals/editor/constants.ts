@@ -350,6 +350,10 @@ export const BLEND_MODES: { id: BlendMode; label: string }[] = [
 // Default Photo for Big Pop
 export const DEFAULT_SPOT_PHOTO = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80';
 
+// Universal Resilient Fallback SVG Image (Production-ready, offline, zero-network-dependency)
+export const DEFAULT_SPOT_FALLBACK_SVG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e1e2f"/><stop offset="50%" stop-color="%232d1b4e"/><stop offset="100%" stop-color="%230f0c29"/></linearGradient><linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23FF2E93"/><stop offset="100%" stop-color="%23FF8A00"/></linearGradient></defs><rect width="600" height="600" fill="url(%23g)"/><circle cx="300" cy="270" r="70" fill="url(%23neon)" opacity="0.18"/><rect x="235" y="225" width="130" height="96" rx="14" fill="none" stroke="url(%23neon)" stroke-width="5"/><circle cx="300" cy="273" r="26" fill="none" stroke="%23FFFFFF" stroke-width="4"/><circle cx="338" cy="245" r="6" fill="%2300F2FE"/><text x="300" y="380" fill="%23FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="22" font-weight="700" text-anchor="middle" letter-spacing="3">SPOTPOP</text><text x="300" y="410" fill="%2394A3B8" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="14" text-anchor="middle">Photo Artwork</text></svg>';
+
+
 export const BRUSH_STYLES: { id: BrushStyle; name: string; icon: string; desc: string }[] = [
   { id: 'neon', name: 'Neon Glow', icon: '🌟', desc: 'Glowing electric stroke' },
   { id: 'calligraphy', name: 'Calligraphy', icon: '✒️', desc: 'Angled fountain chisel' },

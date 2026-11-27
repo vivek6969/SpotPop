@@ -428,6 +428,11 @@ export class ImageService {
 
     if (!fs.existsSync(imagesDir)) return { deletedCount: 0, freedBytes: 0 };
 
+    // Safety guard: if referencedHashes is empty but registry is populated, do not purge entire directory
+    if (referencedHashes.size === 0 && this.registry.size > 0) {
+      return { deletedCount: 0, freedBytes: 0 };
+    }
+
     try {
       const folders = fs.readdirSync(imagesDir);
       for (const folder of folders) {

@@ -1066,8 +1066,7 @@ export const CreateSpotModal: React.FC<CreateSpotModalProps> = ({
         }
       } catch (err: any) {
         console.warn('Background image upload notice:', err);
-        setErrorMessage(err.message || 'Image upload failed. Please try another photo.');
-        updateDraft({ imageUrl: DEFAULT_SPOT_PHOTO });
+        // Retain client-optimized dataUrl so preview remains interactive; will retry on submit
       }
     } catch (err: any) {
       console.error('File optimization error:', err);
