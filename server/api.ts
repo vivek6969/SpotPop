@@ -492,6 +492,14 @@ apiRouter.get('/spots/:id/comments', (req: Request, res: Response) => {
 // POST add comment or reply
 apiRouter.post('/spots/:id/comments', (req: Request, res: Response) => {
   try {
+    const authUser = getAuthenticatedUser(req);
+    const viewerHeader = (req.headers['x-viewer-id'] as string) || (req.body.viewerId as string);
+    const resolvedUser = authUser || (viewerHeader ? db.getUserById(viewerHeader) || db.getUserByUsername(viewerHeader) : null);
+
+    if (!resolvedUser) {
+      return res.status(401).json({ error: 'Authentication required. Please sign in to post comments.' });
+    }
+
     const { authorName, text, replyToId, authorAvatar } = req.body || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'Comment text cannot be empty' });
@@ -507,10 +515,10 @@ apiRouter.post('/spots/:id/comments', (req: Request, res: Response) => {
     }
 
     const comment = db.addComment(req.params.id, {
-      authorName: authorName || 'Spotter',
+      authorName: resolvedUser.displayName || resolvedUser.username || authorName || 'Spotter',
       text,
       replyToId,
-      authorAvatar,
+      authorAvatar: resolvedUser.avatarUrl || authorAvatar,
     });
 
     const updatedSpot = db.getSpotById(req.params.id);
@@ -875,13 +883,14 @@ apiRouter.post('/users/:username/follow', (req: Request, res: Response) => {
     }
 
     const authUser = getAuthenticatedUser(req);
-    const viewerId =
-      authUser?.id ||
-      authUser?.username ||
-      (req.headers['x-viewer-id'] as string) ||
-      (req.body.viewerId as string) ||
-      'v_guest_visitor';
+    const viewerHeader = (req.headers['x-viewer-id'] as string) || (req.body.viewerId as string);
+    const resolvedUser = authUser || (viewerHeader ? db.getUserById(viewerHeader) || db.getUserByUsername(viewerHeader) : null);
 
+    if (!resolvedUser) {
+      return res.status(401).json({ error: 'Authentication required. Please sign in to follow users.' });
+    }
+
+    const viewerId = resolvedUser.id;
     const result = db.followUser(viewerId, targetUsername);
 
     // Broadcast SSE event
@@ -920,13 +929,14 @@ const handleUnfollow = (req: Request, res: Response) => {
     }
 
     const authUser = getAuthenticatedUser(req);
-    const viewerId =
-      authUser?.id ||
-      authUser?.username ||
-      (req.headers['x-viewer-id'] as string) ||
-      (req.body.viewerId as string) ||
-      'v_guest_visitor';
+    const viewerHeader = (req.headers['x-viewer-id'] as string) || (req.body.viewerId as string);
+    const resolvedUser = authUser || (viewerHeader ? db.getUserById(viewerHeader) || db.getUserByUsername(viewerHeader) : null);
 
+    if (!resolvedUser) {
+      return res.status(401).json({ error: 'Authentication required. Please sign in to unfollow users.' });
+    }
+
+    const viewerId = resolvedUser.id;
     const result = db.unfollowUser(viewerId, targetUsername);
 
     // Broadcast SSE update

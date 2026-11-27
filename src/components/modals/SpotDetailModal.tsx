@@ -20,6 +20,7 @@ interface SpotDetailModalProps {
   onEditSpot?: (spot: Spot) => void;
   onDeleteSpot?: (spot: Spot) => void;
   onFollowChange?: (creatorName: string, isFollowing: boolean) => void;
+  onRequireLogin?: () => void;
 }
 
 export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
@@ -33,6 +34,7 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   onEditSpot,
   onDeleteSpot,
   onFollowChange,
+  onRequireLogin,
 }) => {
   if (!spot) return null;
 
@@ -168,6 +170,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const isSpotLocked = Boolean(spot.isLocked && !isOwner && !isFollowing && !unlockedLocally);
 
   const handleToggleFollowUser = async (targetUsername: string) => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     if (!targetUsername || loadingFollowUsernames.has(targetUsername)) return;
     setLoadingFollowUsernames(prev => new Set(prev).add(targetUsername));
     const isCurrentlyFollowing = followedUsernames.has(targetUsername);
@@ -232,6 +238,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   };
 
   const handleFollowToUnlock = async () => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     await handleToggleFollowUser(spot.creatorName);
   };
 
@@ -248,6 +258,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
   const [likeCount, setLikeCount] = useState<number>(spot.likesCount || spot.sharesCount || 0);
 
   const handleToggleLike = async () => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
     setLikeCount(prev => nextLiked ? prev + 1 : Math.max(0, prev - 1));
@@ -370,6 +384,10 @@ export const SpotDetailModal: React.FC<SpotDetailModalProps> = ({
 
   const handlePostComment = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     if (!commentInput.trim() || isSubmittingComment) return;
     setIsSubmittingComment(true);
     try {

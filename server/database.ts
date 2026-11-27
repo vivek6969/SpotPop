@@ -1616,7 +1616,15 @@ class Database {
     targetUsername?: string;
   } {
     this.data.follows = this.data.follows || [];
-    const followerId = this.normalizeUserKey(followerInput);
+
+    // Strictly enforce registered follower identity (unauthenticated guests cannot follow)
+    const followerUser = this.getUserById(followerInput) || this.getUserByUsername(followerInput);
+    if (!followerUser) {
+      const counts = this.getFollowCounts(targetInput);
+      return { followStatus: 'not_following', isFollowing: false, isRequested: false, ...counts };
+    }
+
+    const followerId = followerUser.id;
     const targetId = this.normalizeUserKey(targetInput);
 
     if (!followerId || !targetId || followerId.toLowerCase() === targetId.toLowerCase()) {
@@ -1725,7 +1733,22 @@ class Database {
     followingCount: number;
   } {
     this.data.follows = this.data.follows || [];
-    const followerId = this.normalizeUserKey(followerInput);
+
+    // Strictly enforce registered follower identity (unauthenticated guests cannot unfollow)
+    const followerUser = this.getUserById(followerInput) || this.getUserByUsername(followerInput);
+    if (!followerUser) {
+      const counts = this.getFollowCounts(targetInput);
+      return {
+        success: false,
+        followStatus: 'not_following',
+        isFollowing: false,
+        isRequested: false,
+        followersCount: counts.followersCount,
+        followingCount: counts.followingCount,
+      };
+    }
+
+    const followerId = followerUser.id;
     const targetId = this.normalizeUserKey(targetInput);
 
     if (!followerId || !targetId) {

@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Spot, FollowRelation, User } from '../src/types/index.ts';
+import { db } from '../server/database.ts';
 
 describe('Audience Visibility & Social Network Graph Protocol', () => {
   // Mock data fixture
@@ -447,5 +448,40 @@ describe('Audience Visibility & Social Network Graph Protocol', () => {
       true,
       'Users can follow each other directly from comment threads'
     );
+  });
+
+  test('Unauthenticated guest visitor (anonymous) CANNOT follow any user or alter follow counts', () => {
+    const targetUserId = 'usr_target_auth_check';
+    const targetUsername = 'target_auth_user';
+
+    db.addUser({
+      id: targetUserId,
+      username: targetUsername,
+      displayName: 'Target Auth User',
+      email: 'target_auth@spotpop.in',
+      role: 'user',
+      createdAt: new Date().toISOString(),
+      ownedSpotIds: [],
+    });
+
+    const initialCounts = db.getFollowCounts(targetUsername);
+
+    // Attempt follow with unauthenticated string / guest identifier
+    const guestResult = db.followUser('v_guest_visitor', targetUsername);
+    assert.equal(guestResult.followStatus, 'not_following');
+    assert.equal(guestResult.isFollowing, false);
+    assert.equal(guestResult.isRequested, false);
+
+    // Verify database follows collection was NOT modified
+    const currentCounts = db.getFollowCounts(targetUsername);
+    assert.equal(currentCounts.followersCount, initialCounts.followersCount);
+
+    // Attempt unfollow with unauthenticated guest
+    const unfollowResult = db.unfollowUser('v_guest_visitor', targetUsername);
+    assert.equal(unfollowResult.success, false);
+    assert.equal(unfollowResult.isFollowing, false);
+
+    // Clean up
+    db.deleteUser(targetUserId);
   });
 });

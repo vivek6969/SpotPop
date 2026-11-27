@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import { Spot, Comment } from '../../types';
+import { Spot, Comment, User } from '../../types';
 import { SpotCard } from '../canvas/SpotCard';
 import { SpotPopLogo } from '../brand/SpotPopLogo';
 import { api } from '../../services/api';
@@ -9,6 +9,9 @@ interface PopReelsModalProps {
   isOpen: boolean;
   onClose: () => void;
   spots: Spot[];
+  currentUser?: User | null;
+  authToken?: string | null;
+  onRequireLogin?: () => void;
   onFlyToSpot?: (spot: Spot) => void;
   onSelectSpot?: (spot: Spot) => void;
   onOpenShareKit?: (spot: Spot) => void;
@@ -327,6 +330,9 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
   isOpen,
   onClose,
   spots,
+  currentUser,
+  authToken,
+  onRequireLogin,
   onFlyToSpot,
   onSelectSpot,
   onOpenShareKit,
@@ -567,6 +573,10 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
   // Instant Double-Click / Double-Tap Like Action
   const handleToggleLike = async (spot: Spot, clientX?: number, clientY?: number, isDoubleTap = false) => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     const spotId = spot.id;
     const currentlyLiked = likedSpotIds.has(spotId);
     const newLiked = !currentlyLiked;
@@ -662,14 +672,21 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
   // Submit Comment
   const handlePostComment = async () => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     if (!commentInput.trim() || !commentsSpotId || isSubmittingComment) return;
     setIsSubmittingComment(true);
     try {
+      const authorName = currentUser?.displayName || currentUser?.username || 'You';
+      const authorAvatar = currentUser?.avatarUrl;
       const newComment = await api.addComment(
         commentsSpotId,
         commentInput.trim(),
         replyingTo?.id,
-        'You',
+        authorName,
+        authorAvatar,
       );
       if (newComment) {
         setCommentsList(prev => {
@@ -696,6 +713,10 @@ export const PopReelsModal: React.FC<PopReelsModalProps> = ({
 
   // Toggle Creator Follow (100% Real Backend Persistence)
   const handleToggleFollow = async (creatorName: string) => {
+    if (!currentUser) {
+      onRequireLogin?.();
+      return;
+    }
     if (!creatorName) return;
     const isCurrentlyFollowing = followedCreators.has(creatorName);
 

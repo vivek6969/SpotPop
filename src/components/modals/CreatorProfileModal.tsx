@@ -222,6 +222,10 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   // Re-follow user directly from Network Modal list
   const handleRefollowInNetwork = async (targetUsername: string) => {
+    if (!currentUser) {
+      onOpenAccountModal?.();
+      return;
+    }
     try {
       const res = await api.followUser(targetUsername, authToken || undefined);
       setUnfollowedUsernames(prev => {
@@ -245,6 +249,10 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     }
   };
   const handleToggleFollow = async () => {
+    if (!currentUser) {
+      onOpenAccountModal?.();
+      return;
+    }
     if (!profileData?.user?.username || followLoading) return;
     setFollowLoading(true);
 

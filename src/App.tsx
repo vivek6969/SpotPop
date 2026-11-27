@@ -516,6 +516,7 @@ export function App() {
         }}
         onEditSpot={handleEditSpot}
         onDeleteSpot={handleDeleteSpot}
+        onRequireLogin={() => setIsAccountOpen(true)}
         onFollowChange={(creatorName) => {
           setSpots(prev => prev.map(s => s.creatorName.toLowerCase() === creatorName.toLowerCase() ? { ...s, isLocked: false } : s));
           if (selectedSpot && selectedSpot.creatorName.toLowerCase() === creatorName.toLowerCase()) {
@@ -653,6 +654,9 @@ export function App() {
       <PopStoriesModal
         isOpen={isStoriesOpen}
         initialSpotId={storiesInitialSpotId}
+        currentUser={currentUser}
+        authToken={authToken}
+        onRequireLogin={() => setIsAccountOpen(true)}
         onClose={() => {
           setIsStoriesOpen(false);
           setStoriesInitialSpotId(null);
